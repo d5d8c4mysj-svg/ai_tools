@@ -1,7 +1,7 @@
 import streamlit as st
 import cohere
 
-API_KEY = ""
+API_KEY = st.secrets["COHERE_API_KEY"]
 co = cohere.ClientV2(API_KEY)
 
 st.title("Text Summarizer")
