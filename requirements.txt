@@ -1,2 +1,2 @@
-cohere==5.13.12
+cohere
 streamlit
