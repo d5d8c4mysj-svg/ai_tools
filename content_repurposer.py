@@ -13,10 +13,8 @@ if st.button("Repurpose") and text:
     📸 INSTAGRAM CAPTION: 150 words, conversational, 5 hashtags at end
     💼 LINKEDIN POST: professional, starts with hook, ends with question
     💬 WHATSAPP STATUS: one punchy line under 150 characters"""
-    response = client.chat(
-        model="command-r-plus-08-2024",
-        message=prompt
-    )
-
-    result = response.text
-    st.write(result)
+    response = client.generate(
+    model="command-r-plus-08-2024",
+    prompt=prompt
+)
+result = response.generations[0].text
