@@ -17,6 +17,6 @@ if st.button("Repurpose") and text:
     response = co.chat(
     model="command-r-plus-08-2024",
     messages=[{"role": "user", "content": prompt}]
-)
-result = response.message.content[0].text
-st.write(result)
+    )
+    result = response.message.content[0].text
+    st.write(result)
