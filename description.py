@@ -1,7 +1,8 @@
 import streamlit as st
 import cohere
 
-client = cohere.Client("")
+API_KEY = st.secrets["COHERE_API_KEY"]
+co = cohere.ClientV2(API_KEY)
 st.title("Product Description Generator")
 text = st.text_area("Paste your product name, its three features and the target audience")
 
@@ -21,6 +22,6 @@ if st.button("Generate") and text:
      """
 
 
-    response = client.chat(model="command-r-plus-08-2024", message=prompt)
-    result = response.text
+    response = co.chat(model="command-r-plus-08-2024", messages=[{"role": "user", "content": prompt}])
+    result = response.message.content[0].text
     st.write(result)
