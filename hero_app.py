@@ -7,7 +7,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Summarizer", "Content Repurposer", "Cold Emai
 with tab1:
     text = st.text_area("Paste your text here", height=200)
 
-    if st.button("Summarize") and text:
+    if st.button("Summarize", key="sum_btn") and text:
         prompt = """You are an AI assistant that summarizes text. When given a piece of text, return your response in exactly this format:
 
         SUMMARY: [3 sentences max]
@@ -33,7 +33,7 @@ with tab1:
 
 with tab2:
     text = st.text_area("Paste your content here", height=200)
-    if st.button("Repurpose") and text:
+    if st.button("Repurpose", key="rep_btn") and text:
         prompt = f"""Take this content and rewrite it in 4 formats:
 
         CONTENT: {text}
@@ -58,7 +58,7 @@ with tab3:
     company=st.text_input("company's name")
     problem= st.text_input("problem ")
     offer=st.text_input("offer")
-    if st.button("Generate") and name and company and problem and offer:
+    if st.button("Generate", key="email_btn") and name and company and problem and offer:
         prompt = f""" take the {name} {company} {problem} {offer} and write 3 emails                                                                      ---FORMAL---
         professional, respectful, clear
         ---CASUAL---
@@ -76,7 +76,7 @@ with tab3:
 with tab4:
     text = st.text_area("Paste your product name, its three features and the target audience")
 
-    if st.button("Generate") and text:
+    if st.button("Generate", key="desc_btn") and text:
         prompt = f"""you have to write 3 product descriptions in plain text, no JSON, no code, no extra explanation
         DESCRIPTION: {text}
 
