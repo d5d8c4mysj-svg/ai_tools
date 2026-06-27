@@ -1,7 +1,9 @@
 
 import streamlit as st
 import cohere
-client = cohere.Client("")
+API_KEY = st.secrets["COHERE_API_KEY"]
+co = cohere.ClientV2(API_KEY)
+
 st.title("cold email")
 name = st.text_input("prospect's name")
 company=st.text_input("company's name")
@@ -15,9 +17,9 @@ if st.button("Generate") and name and company and problem and offer:
     ---PUNCHY---
     very short, under 75 words, one clear action at the end
     """
-    response = client.chat(
+    response = co.chat(
     model="command-r-plus-08-2024",
-    message=prompt
+    messages=[{"role": "user", "content": prompt}]
     )
-    result = response.text
+    result = response.message.content[0].text
     st.write(result)
