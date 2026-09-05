@@ -134,26 +134,6 @@ def send_order_email(order, business_name, business_email, order_number):
 if st.session_state.get("messages"):
     st.title(f"{business_name} Chatbot")
 
-    with st.sidebar:
-        st.caption(f"Orders this session: {st.session_state.get('orders_this_session', 0)}")
-        st.subheader("Current Order")
-        order = st.session_state.get("current_order")
-        if order and order.get("items"):
-            for item in order["items"]:
-                line = f"- {item.get('quantity', 1)} x {item.get('item', 'Unknown')}"
-                if item.get("customizations"):
-                    line += f" ({item['customizations']})"
-                st.write(line)
-            st.write(f"**Requested for:** {order.get('requested_datetime', 'not specified')}")
-            st.write(f"**Estimated total:** {order.get('estimated_total', 'N/A')}")
-            st.write(f"**Fulfillment:** {order.get('fulfillment', 'unspecified')}")
-            if order.get("status") == "confirmed":
-                st.success(f"Order #{st.session_state.get('order_number')} confirmed")
-            else:
-                st.info("Order in progress")
-        else:
-            st.write("No order yet")
-
     for message in st.session_state.messages:
         if message["role"] != "system":
             with st.chat_message(message["role"]):
@@ -174,7 +154,7 @@ if st.session_state.get("messages"):
 
         bot_reply = response.message.content[0].text
 
-        order_match = re.search(r"ORDER_SUMMARY:\s*(\{.*\})\s*$", bot_reply, re.DOTALL)
+        order_match = re.search(r"ORDER_SUMMARY:\s*(\{.*\})", bot_reply, re.DOTALL)
         display_reply = bot_reply
         if order_match:
             display_reply = bot_reply[:order_match.start()].strip()
@@ -207,5 +187,25 @@ if st.session_state.get("messages"):
             st.write(display_reply)
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+
+    with st.sidebar:
+        st.caption(f"Orders this session: {st.session_state.get('orders_this_session', 0)}")
+        st.subheader("Current Order")
+        order = st.session_state.get("current_order")
+        if order and order.get("items"):
+            for item in order["items"]:
+                line = f"- {item.get('quantity', 1)} x {item.get('item', 'Unknown')}"
+                if item.get("customizations"):
+                    line += f" ({item['customizations']})"
+                st.write(line)
+            st.write(f"**Requested for:** {order.get('requested_datetime', 'not specified')}")
+            st.write(f"**Estimated total:** {order.get('estimated_total', 'N/A')}")
+            st.write(f"**Fulfillment:** {order.get('fulfillment', 'unspecified')}")
+            if order.get("status") == "confirmed":
+                st.success(f"Order #{st.session_state.get('order_number')} confirmed")
+            else:
+                st.info("Order in progress")
+        else:
+            st.write("No order yet")
 
     st.caption("Powered by [Your Tool Name]")
