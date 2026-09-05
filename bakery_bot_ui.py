@@ -93,6 +93,7 @@ ORDER_SUMMARY: {{"items": [{{"item": "name", "quantity": 1, "customizations": "n
 
 Only set "status" to "confirmed" once the customer has explicitly confirmed AND you have their name and contact info. Always include ALL items discussed so far in this block, not just the newest one, so it reflects the full running order. If there is no order-related content yet, do not include this block at all."""
         st.session_state.messages = [{"role": "system", "content": prompt}]
+        st.session_state.display_messages = []
         st.session_state.current_order = None
         st.session_state.order_email_sent = False
         st.session_state.order_number = None
@@ -134,15 +135,15 @@ def send_order_email(order, business_name, business_email, order_number):
 if st.session_state.get("messages"):
     st.title(f"{business_name} Chatbot")
 
-    for message in st.session_state.messages:
-        if message["role"] != "system":
-            with st.chat_message(message["role"]):
-                st.write(message["content"])
+    for message in st.session_state.get("display_messages", []):
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
 
     user_input = st.chat_input("Type your message...")
 
     if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
+        st.session_state.display_messages.append({"role": "user", "content": user_input})
 
         with st.chat_message("user"):
             st.write(user_input)
@@ -187,6 +188,7 @@ if st.session_state.get("messages"):
             st.write(display_reply)
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+        st.session_state.display_messages.append({"role": "assistant", "content": display_reply})
 
     with st.sidebar:
         st.caption(f"Orders this session: {st.session_state.get('orders_this_session', 0)}")
