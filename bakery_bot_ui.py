@@ -116,6 +116,16 @@ def send_order_email(order, business_name, business_email, order_number):
     body_lines.append("")
     body_lines.append(f"Customer name: {order.get('customer_name', 'not provided')}")
     body_lines.append(f"Customer contact: {order.get('customer_contact', 'not provided')}")
+
+    customer_contact = order.get("customer_contact", "")
+    whatsapp_link = None
+    if "@" not in customer_contact:
+        digits_only = re.sub(r"\D", "", customer_contact)
+        if len(digits_only) >= 10:
+            whatsapp_link = f"https://wa.me/{digits_only}"
+    if whatsapp_link:
+        body_lines.append(f"Message customer on WhatsApp: {whatsapp_link}")
+
     body = "\n".join(body_lines)
 
     msg = MIMEText(body)
@@ -123,7 +133,6 @@ def send_order_email(order, business_name, business_email, order_number):
     msg["From"] = st.secrets["EMAIL_ADDRESS"]
     msg["To"] = business_email
 
-    customer_contact = order.get("customer_contact", "")
     if "@" in customer_contact:
         msg["Reply-To"] = customer_contact
 
@@ -209,5 +218,15 @@ if st.session_state.get("messages"):
                 st.info("Order in progress")
         else:
             st.write("No order yet")
+
+        st.divider()
+        if st.button("Start New Order"):
+            for key in [
+                "messages", "display_messages", "current_order",
+                "order_email_sent", "order_number"
+            ]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
 
     st.caption("Powered by [Your Tool Name]")
