@@ -25,6 +25,11 @@ menu = st.data_editor(menu_df, num_rows="dynamic")
 contact = st.text_input("Contact email")
 address = st.text_input("Business address")
 
+fulfillment_options = st.selectbox(
+    "Fulfillment options offered",
+    ["Pickup only", "Delivery only", "Both pickup and delivery"]
+)
+
 delivery_info = st.text_area(
     "Delivery / pickup info",
     placeholder="e.g. Pickup available Tue-Sat 10am-6pm. Delivery within 5 miles, $5 fee."
@@ -67,14 +72,22 @@ if st.button("Start Chat"):
     else:
         current_time_str = datetime.now().strftime("%A, %Y-%m-%d %I:%M %p")
 
+        if fulfillment_options == "Pickup only":
+            fulfillment_instructions = f"""This business offers PICKUP ONLY -- do not offer, mention, or ask about delivery under any circumstances. Do NOT ask the customer for a delivery address. Pickup happens at the business address: {address}."""
+        elif fulfillment_options == "Delivery only":
+            fulfillment_instructions = f"""This business offers DELIVERY ONLY -- do not offer or mention pickup. Ask the customer for their delivery address."""
+        else:
+            fulfillment_instructions = f"""This business offers BOTH pickup and delivery. Ask the customer which they'd prefer. If pickup, no address is needed (pickup is at {address}). If delivery, ask for their delivery address."""
+
         prompt = f"""You are a friendly ordering assistant for {business_name}.
 You know the menu includes {menu}, including each item's price and ingredients. If a customer asks what something is made of or about allergens, answer using the ingredients listed.
 The business address is {address}.
 Delivery and pickup details: {delivery_info}
+{fulfillment_instructions}
 Frequently asked questions: {faq_info}
 Business hours: {business_hours}
 The current date and time is: {current_time_str}. Use this to tell customers if the business is currently open or closed, and to sanity-check any pickup/delivery date they request.
-Advance notice required for custom orders: {advance_notice}. If a customer requests something sooner than this, politely warn them it may not be possible and ask if they'd like to proceed anyway or pick a later date.
+Advance notice required for custom orders: {advance_notice}. Before confirming any requested date/time, explicitly calculate the number of hours between the current date/time and the requested date/time, state that calculation to yourself, and compare it against the advance notice requirement. Do not skip this step. If the requested time is sooner than required, politely warn the customer it may not be possible and ask if they'd like to proceed anyway or pick a later date.
 Items that are OUT OF STOCK today and must NOT be offered or confirmed: {sold_out_items if sold_out_items else "none"}.
 If asked about something outside this, direct customers to {contact}.
 Speak in a warm, polite, and helpful tone, with a bit of natural personality and warmth, like a friendly local shopkeeper -- not robotic or overly formal.
@@ -85,19 +98,65 @@ The business's social media / website link is: {social_link if social_link else 
 
 Customers may write to you in English, Hindi, or Hinglish (a natural mix of Hindi and English, written in Roman script). Always reply in the same style the customer is using, naturally. Don't force pure English or pure Hindi if the customer is mixing languages.
 
-You can also take orders. When a customer wants to order something, ask any clarifying questions you need: quantity, size, flavor, customizations (like "no nuts" or a message written on a cake), whether it's pickup or delivery, and the date/time they want it. Before the order is confirmed, also ask for the customer's name and a phone number or email so the business can reach them if needed. Use the menu prices to calculate a running estimated total.
+You can also take orders. When a customer wants to order something, ask any clarifying questions you need: quantity, size, flavor, customizations (like "no nuts" or a message written on a cake), and the date/time they want it, following the fulfillment rules above. Before the order is confirmed, also ask for the customer's name and a phone number or email so the business can reach them if needed. Use the menu prices to calculate a running estimated total.
+
+Before setting "status" to "confirmed", you must have ALL of the following explicitly confirmed with the customer -- do not assume, guess, or let any of them quietly drop as the conversation moves on:
+- Every item, with quantity
+- Size/weight where relevant to the item
+- Any customizations (explicitly confirmed, even if the answer is "none")
+- Fulfillment method (pickup or delivery, per the options actually offered)
+- Requested date/time
+- Customer name
+- Customer contact info (phone or email)
+If ANY of these is missing or still unspecified, do NOT confirm the order -- keep "status" as "in_progress" and ask for whatever is missing next.
 
 Once you have enough detail on the CURRENT state of their order (even if it's not finished, even if they might add more), append a hidden summary block to the END of your reply in exactly this format, with no other text after it:
 
 ORDER_SUMMARY: {{"items": [{{"item": "name", "quantity": 1, "customizations": "notes or empty string"}}], "fulfillment": "pickup or delivery or unspecified", "order_type": "retail or bulk", "requested_datetime": "date/time text or empty string", "estimated_total": 0, "customer_name": "name or empty string", "customer_contact": "phone or email or empty string", "status": "in_progress or confirmed"}}
 
-Only set "status" to "confirmed" once the customer has explicitly confirmed AND you have their name and contact info. Always include ALL items discussed so far in this block, not just the newest one, so it reflects the full running order. If there is no order-related content yet, do not include this block at all."""
+Only set "status" to "confirmed" once the customer has explicitly confirmed AND every field in the checklist above is filled in. Always include ALL items discussed so far in this block, not just the newest one, so it reflects the full running order. If there is no order-related content yet, do not include this block at all."""
         st.session_state.messages = [{"role": "system", "content": prompt}]
         st.session_state.display_messages = []
         st.session_state.current_order = None
         st.session_state.order_email_sent = False
         st.session_state.order_number = None
         st.session_state.orders_this_session = 0
+
+
+def get_missing_order_fields(order):
+    """Server-side backstop: independently verify a parsed ORDER_SUMMARY has
+    everything required before we ever trust status == 'confirmed'."""
+    missing = []
+
+    items = order.get("items", [])
+    if not items:
+        missing.append("items")
+    else:
+        if any(not item.get("item") for item in items):
+            missing.append("item name")
+        if any(
+            not isinstance(item.get("quantity"), (int, float)) or item.get("quantity", 0) <= 0
+            for item in items
+        ):
+            missing.append("item quantity")
+
+    if order.get("fulfillment") not in ("pickup", "delivery"):
+        missing.append("fulfillment method")
+
+    if not order.get("requested_datetime"):
+        missing.append("requested date/time")
+
+    if not order.get("customer_name"):
+        missing.append("customer name")
+
+    if not order.get("customer_contact"):
+        missing.append("customer contact")
+
+    total = order.get("estimated_total")
+    if not isinstance(total, (int, float)) or total <= 0:
+        missing.append("estimated total")
+
+    return missing
 
 
 def send_order_email(order, business_name, business_email, order_number):
@@ -170,6 +229,15 @@ if st.session_state.get("messages"):
             display_reply = bot_reply[:order_match.start()].strip()
             try:
                 parsed_order = json.loads(order_match.group(1))
+
+                # Server-side backstop: don't trust the model's own "confirmed"
+                # label. If required fields are missing, force it back to
+                # in_progress before it can ever trigger the email.
+                if parsed_order.get("status") == "confirmed":
+                    missing_fields = get_missing_order_fields(parsed_order)
+                    if missing_fields:
+                        parsed_order["status"] = "in_progress"
+
                 st.session_state.current_order = parsed_order
 
                 if (
