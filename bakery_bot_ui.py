@@ -21,6 +21,8 @@ st.set_page_config(page_title="Business Chatbot Builder")
 st.title("Business Chatbot Builder")
 
 business_name = st.text_input("Business name")
+slug = st.text_input("Web address name (letters/numbers only, no spaces)", placeholder="e.g. sweettreats")
+
 menu_df = pd.DataFrame({
     "Item": [""],
     "Price": [0],
