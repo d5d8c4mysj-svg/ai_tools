@@ -78,6 +78,21 @@ if st.button("Start Chat"):
         st.error("Please enter a valid email")
     else:
         current_time_str = datetime.now().strftime("%A, %Y-%m-%d %I:%M %p")
+        business_data = {
+            "slug": slug,
+            "business_name": business_name,
+            "contact_email": contact,
+            "address": address,
+            "fulfillment_options": fulfillment_options,
+            "delivery_info": delivery_info,
+            "faq_info": faq_info,
+            "business_hours": business_hours,
+            "advance_notice": advance_notice,
+            "sold_out_items": sold_out_items,
+            "social_link": social_link,
+            "menu": menu.to_dict(orient="records")
+        }
+        supabase.table("businesses").upsert(business_data, on_conflict="slug").execute()
 
         if fulfillment_options == "Pickup only":
             fulfillment_instructions = f"""This business offers PICKUP ONLY -- do not offer, mention, or ask about delivery under any circumstances. Do NOT ask the customer for a delivery address. Pickup happens at the business address: {address}."""
