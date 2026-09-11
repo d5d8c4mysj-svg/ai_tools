@@ -1,2 +1,3 @@
 cohere
 streamlit
+supabase
