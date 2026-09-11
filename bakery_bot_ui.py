@@ -182,6 +182,14 @@ def get_missing_order_fields(order):
 
     return missing
 
+def get_business(slug):
+    """Look up a business by its slug. Returns the business's data,
+    or None if no business with that slug exists."""
+    result = supabase.table("businesses").select("*").eq("slug", slug).execute()
+    if result.data:
+        return result.data[0]
+    return None
+
 
 def send_order_email(order, business_name, business_email, order_number):
     """Send the confirmed order details to the business owner's inbox."""
@@ -322,3 +330,14 @@ if st.session_state.get("messages"):
             st.rerun()
 
     st.caption("Powered by [Your Tool Name]")
+
+st.divider()
+st.subheader("TEST: Look up a business by slug")
+test_slug = st.text_input("Enter a slug to test")
+if st.button("Look it up"):
+    found = get_business(test_slug)
+    if found:
+        st.success(f"Found: {found['business_name']}")
+        st.json(found)
+    else:
+        st.error("No business found with that slug")
