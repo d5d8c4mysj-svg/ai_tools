@@ -67,8 +67,12 @@ def get_missing_order_fields(order):
 
 def get_business(slug):
     """Look up a business by its slug. Returns the business's data,
-    or None if no business with that slug exists."""
-    result = supabase.table("businesses").select("*").eq("slug", slug).execute()
+    or None if no business with that slug exists (or the lookup fails)."""
+    try:
+        result = supabase.table("businesses").select("*").eq("slug", slug).execute()
+    except Exception:
+        st.error("Something went wrong looking that up. Please try again in a moment.")
+        return None
     if result.data:
         return result.data[0]
     return None
@@ -203,12 +207,19 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         with st.chat_message("user"):
             st.write(user_input)
 
-        response = co.chat(
-            model="command-r-plus-08-2024",
-            messages=st.session_state.messages
-        )
-
-        bot_reply = response.message.content[0].text
+        try:
+            with st.spinner("Typing..."):
+                response = co.chat(
+                    model="command-r-plus-08-2024",
+                    messages=st.session_state.messages
+                )
+            bot_reply = response.message.content[0].text
+        except Exception:
+            with st.chat_message("assistant"):
+                st.write("Sorry, I'm having trouble responding right now. Please try again in a moment, or contact the business directly.")
+            st.session_state.messages.pop()
+            st.session_state.display_messages.pop()
+            st.stop()
 
         order_match = re.search(r"ORDER_SUMMARY:\s*(\{.*\})", bot_reply, re.DOTALL)
         display_reply = bot_reply
@@ -234,13 +245,20 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     if not st.session_state.get("order_number"):
                         st.session_state.order_number = random.randint(1000, 9999)
 
-                    send_order_email(
-                        parsed_order,
-                        business_name,
-                        contact,
-                        st.session_state.order_number
-                    )
-                    st.session_state.order_email_sent = True
+                    try:
+                        send_order_email(
+                            parsed_order,
+                            business_name,
+                            contact,
+                            st.session_state.order_number
+                        )
+                        st.session_state.order_email_sent = True
+                    except Exception:
+                        # Don't let a broken email break the customer's
+                        # experience -- the order is still recorded in
+                        # session state and shown in the sidebar either way.
+                        pass
+
                     st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
 
                     display_reply += f"\n\n**Your order #{st.session_state.order_number} is confirmed! We'll be in touch shortly.**"
@@ -392,10 +410,13 @@ def owner_view():
                 "social_link": social_link,
                 "menu": menu.to_dict(orient="records")
             }
-            supabase.table("businesses").upsert(business_data, on_conflict="slug").execute()
-
-            st.success("Saved! Share this link with your customers:")
-            st.code(f"https://bakery-bot.streamlit.app/?slug={slug}")
+            try:
+                supabase.table("businesses").upsert(business_data, on_conflict="slug").execute()
+            except Exception:
+                st.error("Something went wrong saving your bot. Please try again in a moment.")
+            else:
+                st.success("Saved! Share this link with your customers:")
+                st.code(f"https://bakery-bot.streamlit.app/?slug={slug}")
 
 
 # ---------------------------------------------------------------------------
