@@ -4,11 +4,11 @@ import pandas as pd
 import json
 import re
 import random
-import smtplib
+import resend
 from datetime import datetime
-from email.mime.text import MIMEText
 
 API_KEY = st.secrets["COHERE_API_KEY"]
+resend.api_key = st.secrets["RESEND_API_KEY"]
 co = cohere.ClientV2(API_KEY)
 from supabase import create_client
 
@@ -102,17 +102,16 @@ def send_order_email(order, business_name, business_email, order_number):
 
     body = "\n".join(body_lines)
 
-    msg = MIMEText(body)
-    msg["Subject"] = f"New Order #{order_number} - {business_name}"
-    msg["From"] = st.secrets["EMAIL_ADDRESS"]
-    msg["To"] = business_email
-
+    email_params = {
+        "from": "onboarding@resend.dev",
+        "to": business_email,
+        "subject": f"New Order #{order_number} - {business_name}",
+        "text": body,
+    }
     if "@" in customer_contact:
-        msg["Reply-To"] = customer_contact
+        email_params["reply_to"] = customer_contact
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(st.secrets["EMAIL_ADDRESS"], st.secrets["EMAIL_PASSWORD"])
-        server.send_message(msg)
+    resend.Emails.send(email_params)
 
 
 # ---------------------------------------------------------------------------
@@ -407,4 +406,3 @@ if mode == "owner":
     owner_view()
 else:
     customer_view()
-    
