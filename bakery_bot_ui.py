@@ -5,6 +5,7 @@ import json
 import re
 import random
 import resend
+import hashlib
 from datetime import datetime
 
 API_KEY = st.secrets["COHERE_API_KEY"]
@@ -63,6 +64,12 @@ def get_missing_order_fields(order):
         missing.append("estimated total")
 
     return missing
+
+
+def hash_password(password):
+    """Turn a plain-text password into a hash before storing it, so the
+    real password is never saved anywhere in the database."""
+    return hashlib.sha256(password.encode()).hexdigest()
 
 
 def get_business(slug):
@@ -253,10 +260,11 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                             st.session_state.order_number
                         )
                         st.session_state.order_email_sent = True
-                    except Exception as e:
-                        # TEMPORARY: show the real error for debugging.
-                        # Revert this back to `pass` once email is confirmed working.
-                        st.error(f"DEBUG - email failed to send: {e}")
+                    except Exception:
+                        # Don't let a broken email break the customer's
+                        # experience -- the order is still recorded in
+                        # session state and shown in the sidebar either way.
+                        pass
 
                     st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
 
@@ -340,6 +348,10 @@ def owner_view():
         "Web address name (letters/numbers only, no spaces)",
         placeholder="e.g. sweettreats"
     )
+    password = st.text_input(
+        "Password (create one if this is a new bot, or enter your existing password to edit it)",
+        type="password"
+    )
 
     menu_df = pd.DataFrame({
         "Item": [""],
@@ -394,7 +406,24 @@ def owner_view():
         dot_position = contact.find(".")
         if at_position == -1 or dot_position < at_position:
             st.error("Please enter a valid email")
+        elif not password:
+            st.error("Please create or enter a password for this bot.")
         else:
+            existing_business = get_business(slug) if slug else None
+
+            if existing_business:
+                # This slug already exists -- the password must match
+                # the one that was set when it was created.
+                stored_hash = existing_business.get("admin_password")
+                if stored_hash != hash_password(password):
+                    st.error("Incorrect password for this business. If this is your first time saving, choose a slug that isn't already taken.")
+                    st.stop()
+                password_hash = stored_hash  # keep the existing password unchanged
+            else:
+                # Brand new slug -- this password becomes the one required
+                # to edit this business going forward.
+                password_hash = hash_password(password)
+
             business_data = {
                 "slug": slug,
                 "business_name": business_name,
@@ -407,7 +436,8 @@ def owner_view():
                 "advance_notice": advance_notice,
                 "sold_out_items": sold_out_items,
                 "social_link": social_link,
-                "menu": menu.to_dict(orient="records")
+                "menu": menu.to_dict(orient="records"),
+                "admin_password": password_hash
             }
             try:
                 supabase.table("businesses").upsert(business_data, on_conflict="slug").execute()
