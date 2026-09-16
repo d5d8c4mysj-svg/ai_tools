@@ -102,8 +102,8 @@ def upload_menu_photos(slug, uploaded_files):
             )
             public_url = supabase.storage.from_("menu-photos").get_public_url(path)
             urls.append(public_url)
-        except Exception as e:
-            st.warning(f"Couldn't upload {photo.name}: {e}")
+        except Exception:
+            st.warning(f"Couldn't upload {photo.name} -- the rest of your bot was still saved.")
     return urls
 
 
