@@ -24,6 +24,8 @@ mode = params.get("mode", "customer")  # defaults to customer view
 
 st.set_page_config(page_title="Business Chatbot Builder")
 
+MAX_MESSAGES_PER_SESSION = 40  # caps Cohere API spend per customer session
+
 
 # ---------------------------------------------------------------------------
 # Helper functions (unchanged from before, just kept at module level so both
@@ -64,6 +66,45 @@ def get_missing_order_fields(order):
         missing.append("estimated total")
 
     return missing
+
+
+def normalize_and_validate_slug(raw_slug):
+    """Turn user input into a safe, URL-friendly slug: lowercase, letters/numbers/
+    hyphens only, no leading/trailing/duplicate hyphens. Returns (slug, error_message).
+    If error_message is not None, the slug was invalid and should not be used."""
+    slug = raw_slug.strip().lower()
+    slug = re.sub(r"[\s_]+", "-", slug)          # spaces/underscores -> hyphens
+    slug = re.sub(r"[^a-z0-9-]", "", slug)        # drop anything not alphanumeric/hyphen
+    slug = re.sub(r"-{2,}", "-", slug).strip("-")  # collapse/trim hyphens
+
+    if not slug:
+        return None, "Please enter a web address name using letters and numbers."
+    if len(slug) < 3:
+        return None, "Web address name must be at least 3 characters."
+    if len(slug) > 50:
+        return None, "Web address name must be 50 characters or fewer."
+    return slug, None
+
+
+def upload_menu_photos(slug, uploaded_files):
+    """Upload each photo to the menu-photos bucket under this business's slug,
+    and return the list of public URLs. Skips (and warns about) any file that
+    fails to upload rather than failing the whole save."""
+    urls = []
+    for photo in uploaded_files:
+        safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", photo.name)
+        path = f"{slug}/{int(datetime.now().timestamp())}_{safe_name}"
+        try:
+            supabase.storage.from_("menu-photos").upload(
+                path,
+                photo.getvalue(),
+                {"content-type": photo.type}
+            )
+            public_url = supabase.storage.from_("menu-photos").get_public_url(path)
+            urls.append(public_url)
+        except Exception:
+            st.warning(f"Couldn't upload {photo.name} -- the rest of your bot was still saved.")
+    return urls
 
 
 def hash_password(password):
@@ -141,6 +182,7 @@ def run_chatbot(business):
     advance_notice = business["advance_notice"]
     sold_out_items = business["sold_out_items"]
     social_link = business["social_link"]
+    menu_photo_urls = business.get("menu_photo_urls") or []
     menu = business["menu"]  # list of dicts, already stored this way in Supabase
 
     if "messages" not in st.session_state:
@@ -201,11 +243,23 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
     st.title(f"{business_name} Chatbot")
 
+    if menu_photo_urls:
+        with st.expander("See menu photos", expanded=False):
+            st.image(menu_photo_urls, width=150)
+
     for message in st.session_state.get("display_messages", []):
         with st.chat_message(message["role"]):
             st.write(message["content"])
 
     user_input = st.chat_input("Type your message...")
+
+    message_count = len(st.session_state.get("display_messages", []))
+    if message_count >= MAX_MESSAGES_PER_SESSION:
+        st.warning(
+            f"This chat has reached its message limit for one session. "
+            f"Please contact {contact} directly, or start a new order below."
+        )
+        user_input = None
 
     if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
@@ -317,17 +371,22 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 # ---------------------------------------------------------------------------
 
 def customer_view():
-    slug = st.text_input(
+    slug_input = st.text_input(
         "Enter your bakery's link name",
         value=slug_from_url,
         placeholder="e.g. sweettreats"
     )
 
-    if not slug:
+    if not slug_input:
         st.info("Enter a slug above, or visit a link like ?slug=sweettreats")
         return
 
-    business = get_business(slug)
+    clean_slug, slug_error = normalize_and_validate_slug(slug_input)
+    if slug_error:
+        st.error("That doesn't look like a valid link name.")
+        return
+
+    business = get_business(clean_slug)
     if not business:
         st.error("No business found with that slug.")
         return
@@ -404,12 +463,15 @@ def owner_view():
     if st.button("Save My Bakery Bot"):
         at_position = contact.find("@")
         dot_position = contact.find(".")
-        if at_position == -1 or dot_position < at_position:
+        clean_slug, slug_error = normalize_and_validate_slug(slug)
+        if slug_error:
+            st.error(slug_error)
+        elif at_position == -1 or dot_position < at_position:
             st.error("Please enter a valid email")
         elif not password:
             st.error("Please create or enter a password for this bot.")
         else:
-            existing_business = get_business(slug) if slug else None
+            existing_business = get_business(clean_slug)
 
             if existing_business:
                 # This slug already exists -- the password must match
@@ -424,8 +486,15 @@ def owner_view():
                 # to edit this business going forward.
                 password_hash = hash_password(password)
 
+            # Upload any newly selected photos. If the owner didn't pick new
+            # photos this time, keep whatever URLs were already saved.
+            if menu_photos:
+                menu_photo_urls = upload_menu_photos(clean_slug, menu_photos)
+            else:
+                menu_photo_urls = (existing_business or {}).get("menu_photo_urls", [])
+
             business_data = {
-                "slug": slug,
+                "slug": clean_slug,
                 "business_name": business_name,
                 "contact_email": contact,
                 "address": address,
@@ -437,6 +506,7 @@ def owner_view():
                 "sold_out_items": sold_out_items,
                 "social_link": social_link,
                 "menu": menu.to_dict(orient="records"),
+                "menu_photo_urls": menu_photo_urls,
                 "admin_password": password_hash
             }
             try:
@@ -445,7 +515,7 @@ def owner_view():
                 st.error("Something went wrong saving your bot. Please try again in a moment.")
             else:
                 st.success("Saved! Share this link with your customers:")
-                st.code(f"https://bakery-bot.streamlit.app/?slug={slug}")
+                st.code(f"https://bakery-bot.streamlit.app/?slug={clean_slug}")
 
 
 # ---------------------------------------------------------------------------
