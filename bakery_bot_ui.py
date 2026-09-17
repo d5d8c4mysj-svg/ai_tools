@@ -27,16 +27,52 @@ st.set_page_config(page_title="Business Chatbot Builder")
 MAX_MESSAGES_PER_SESSION = 40  # caps Cohere API spend per customer session
 
 
-# ---------------------------------------------------------------------------
-# Helper functions (unchanged from before, just kept at module level so both
-# views can use them)
-# ---------------------------------------------------------------------------
+def parse_advance_notice_hours(text):
+    """Extract a number of hours from a free-text advance-notice setting
+    like '48 hours', '2 days', or '1 week'. Returns None if it can't be
+    parsed, so callers know to skip the check rather than guess."""
+    if not text:
+        return None
+    match = re.search(r"(\d+(?:\.\d+)?)\s*(hour|hr|day|week)", text, re.IGNORECASE)
+    if not match:
+        return None
+    value = float(match.group(1))
+    unit = match.group(2).lower()
+    if unit.startswith("day"):
+        return value * 24
+    if unit.startswith("week"):
+        return value * 24 * 7
+    return value  # hours or hr
+
+
+def check_advance_notice(requested_datetime_iso, advance_notice_text):
+    """Independently verify (in real Python, not AI arithmetic) whether a
+    requested order date/time actually satisfies the business's advance
+    notice requirement. Returns a dict describing what was found -- this
+    is a backstop against the AI miscalculating the gap itself."""
+    if not requested_datetime_iso:
+        return {"checked": False}
+
+    try:
+        requested_dt = datetime.fromisoformat(requested_datetime_iso)
+    except (ValueError, TypeError):
+        return {"checked": False}
+
+    required_hours = parse_advance_notice_hours(advance_notice_text)
+    if required_hours is None:
+        return {"checked": False}
+
+    actual_hours = (requested_dt - datetime.now()).total_seconds() / 3600
+    return {
+        "checked": True,
+        "ok": actual_hours >= required_hours,
+        "actual_hours": round(actual_hours, 1),
+        "required_hours": required_hours,
+    }
+
 
 def get_missing_order_fields(order):
-    """Server-side backstop: independently verify a parsed ORDER_SUMMARY has
-    everything required before we ever trust status == 'confirmed'."""
     missing = []
-
     items = order.get("items", [])
     if not items:
         missing.append("items")
@@ -48,35 +84,25 @@ def get_missing_order_fields(order):
             for item in items
         ):
             missing.append("item quantity")
-
     if order.get("fulfillment") not in ("pickup", "delivery"):
         missing.append("fulfillment method")
-
     if not order.get("requested_datetime"):
         missing.append("requested date/time")
-
     if not order.get("customer_name"):
         missing.append("customer name")
-
     if not order.get("customer_contact"):
         missing.append("customer contact")
-
     total = order.get("estimated_total")
     if not isinstance(total, (int, float)) or total <= 0:
         missing.append("estimated total")
-
     return missing
 
 
 def normalize_and_validate_slug(raw_slug):
-    """Turn user input into a safe, URL-friendly slug: lowercase, letters/numbers/
-    hyphens only, no leading/trailing/duplicate hyphens. Returns (slug, error_message).
-    If error_message is not None, the slug was invalid and should not be used."""
     slug = raw_slug.strip().lower()
-    slug = re.sub(r"[\s_]+", "-", slug)          # spaces/underscores -> hyphens
-    slug = re.sub(r"[^a-z0-9-]", "", slug)        # drop anything not alphanumeric/hyphen
-    slug = re.sub(r"-{2,}", "-", slug).strip("-")  # collapse/trim hyphens
-
+    slug = re.sub(r"[\s_]+", "-", slug)
+    slug = re.sub(r"[^a-z0-9-]", "", slug)
+    slug = re.sub(r"-{2,}", "-", slug).strip("-")
     if not slug:
         return None, "Please enter a web address name using letters and numbers."
     if len(slug) < 3:
@@ -87,9 +113,6 @@ def normalize_and_validate_slug(raw_slug):
 
 
 def upload_menu_photos(slug, uploaded_files):
-    """Upload each photo to the menu-photos bucket under this business's slug,
-    and return the list of public URLs. Skips (and warns about) any file that
-    fails to upload rather than failing the whole save."""
     urls = []
     for photo in uploaded_files:
         safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", photo.name)
@@ -108,14 +131,10 @@ def upload_menu_photos(slug, uploaded_files):
 
 
 def hash_password(password):
-    """Turn a plain-text password into a hash before storing it, so the
-    real password is never saved anywhere in the database."""
     return hashlib.sha256(password.encode()).hexdigest()
 
 
 def get_business(slug):
-    """Look up a business by its slug. Returns the business's data,
-    or None if no business with that slug exists (or the lookup fails)."""
     try:
         result = supabase.table("businesses").select("*").eq("slug", slug).execute()
     except Exception:
@@ -127,7 +146,6 @@ def get_business(slug):
 
 
 def send_order_email(order, business_name, business_email, order_number):
-    """Send the confirmed order details to the business owner's inbox."""
     body_lines = [f"New confirmed order #{order_number} for {business_name}:", ""]
     for item in order.get("items", []):
         line = f"- {item.get('quantity', 1)} x {item.get('item', 'Unknown')}"
@@ -166,11 +184,6 @@ def send_order_email(order, business_name, business_email, order_number):
     resend.Emails.send(email_params)
 
 
-# ---------------------------------------------------------------------------
-# The chatbot itself -- takes a `business` dict (loaded from Supabase) and
-# runs the ordering conversation. Used by the customer view.
-# ---------------------------------------------------------------------------
-
 def run_chatbot(business):
     business_name = business["business_name"]
     contact = business["contact_email"]
@@ -183,7 +196,7 @@ def run_chatbot(business):
     sold_out_items = business["sold_out_items"]
     social_link = business["social_link"]
     menu_photo_urls = business.get("menu_photo_urls") or []
-    menu = business["menu"]  # list of dicts, already stored this way in Supabase
+    menu = business["menu"]
 
     if "messages" not in st.session_state:
         current_time_str = datetime.now().strftime("%A, %Y-%m-%d %I:%M %p")
@@ -203,12 +216,12 @@ Delivery and pickup details: {delivery_info}
 Frequently asked questions: {faq_info}
 Business hours: {business_hours}
 The current date and time is: {current_time_str}. Use this to tell customers if the business is currently open or closed, and to sanity-check any pickup/delivery date they request.
-Advance notice required for custom orders: {advance_notice}. Before confirming any requested date/time, explicitly calculate the number of hours between the current date/time and the requested date/time, state that calculation to yourself, and compare it against the advance notice requirement. Do not skip this step. If the requested time is sooner than required, politely warn the customer it may not be possible and ask if they'd like to proceed anyway or pick a later date.
+Advance notice required for custom orders: {advance_notice}. When a customer requests a date/time, always work out and state to the customer in your visible reply the exact number of hours between now ({current_time_str}) and their requested date/time, and compare that to the advance notice requirement -- do this out loud in the conversation, not silently, so the number is always visible and can be checked. If the requested time is sooner than required, politely warn the customer it may not be possible and ask if they'd like to proceed anyway or pick a later date.
 Items that are OUT OF STOCK today and must NOT be offered or confirmed: {sold_out_items if sold_out_items else "none"}.
 If asked about something outside this, direct customers to {contact}.
 Speak in a warm, polite, and helpful tone, with a bit of natural personality and warmth, like a friendly local shopkeeper -- not robotic or overly formal.
 
-If a customer orders a large quantity (for example, more than 10 of an item, or mentions an event/party/wholesale), treat this as a BULK order: mention that bulk orders may need extra lead time and ask if they'd like a deposit conversation, rather than confirming it exactly like a small retail order.
+Only treat an order as BULK if the customer orders MORE THAN 10 of a single item, or explicitly mentions an event, party, or wholesale quantity. A normal order of a few items (even 2-3 of something) is always a regular RETAIL order, not bulk -- do not mention deposits or extra lead time for ordinary small orders.
 
 The business's social media / website link is: {social_link if social_link else "not provided"}. Mention it naturally when relevant (e.g. if a customer asks to see photos, or wants to follow the business) -- don't force it into every message.
 
@@ -230,7 +243,9 @@ If ANY of these is missing or still unspecified, do NOT confirm the order -- kee
 
 Once you have enough detail on the CURRENT state of their order (even if it's not finished, even if they might add more), append a hidden summary block to the END of your reply in exactly this format, with no other text after it:
 
-ORDER_SUMMARY: {{"items": [{{"item": "name", "quantity": 1, "customizations": "notes or empty string"}}], "fulfillment": "pickup or delivery or unspecified", "order_type": "retail or bulk", "requested_datetime": "date/time text or empty string", "estimated_total": 0, "customer_name": "name or empty string", "customer_contact": "phone or email or empty string", "status": "in_progress or confirmed"}}
+ORDER_SUMMARY: {{"items": [{{"item": "name", "quantity": 1, "customizations": "notes or empty string"}}], "fulfillment": "pickup or delivery or unspecified", "order_type": "retail or bulk", "requested_datetime": "date/time text or empty string", "requested_datetime_iso": "YYYY-MM-DDTHH:MM:SS in 24-hour time, based on the current date/time given above, or empty string if not yet known", "estimated_total": 0, "customer_name": "name or empty string", "customer_contact": "phone or email or empty string", "status": "in_progress or confirmed"}}
+
+The requested_datetime_iso field must always be a precise, computed date and time (year-month-day and hour:minute:second), worked out from the current date/time given above plus whatever the customer said (e.g. "tomorrow at 2pm", "in two days", "next Saturday") -- never leave it as vague text; convert it to an exact timestamp.
 
 Only set "status" to "confirmed" once the customer has explicitly confirmed AND every field in the checklist above is filled in. Always include ALL items discussed so far in this block, not just the newest one, so it reflects the full running order. If there is no order-related content yet, do not include this block at all."""
 
@@ -289,13 +304,29 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             try:
                 parsed_order = json.loads(order_match.group(1))
 
-                # Server-side backstop: don't trust the model's own "confirmed"
-                # label. If required fields are missing, force it back to
-                # in_progress before it can ever trigger the email.
                 if parsed_order.get("status") == "confirmed":
                     missing_fields = get_missing_order_fields(parsed_order)
                     if missing_fields:
                         parsed_order["status"] = "in_progress"
+
+                # Second backstop: independently verify the advance-notice
+                # math in real Python, rather than trusting the AI's own
+                # arithmetic. If the AI wrongly confirmed an order that's
+                # actually too soon, correct it here before it ever reaches
+                # the sidebar or triggers an email.
+                notice_check = check_advance_notice(
+                    parsed_order.get("requested_datetime_iso"),
+                    advance_notice
+                )
+                notice_warning = None
+                if parsed_order.get("status") == "confirmed" and notice_check.get("checked") and not notice_check.get("ok"):
+                    parsed_order["status"] = "in_progress"
+                    notice_warning = (
+                        f"Actually, let me double check that -- that's only about "
+                        f"{notice_check['actual_hours']:.1f} hours from now, and we need "
+                        f"{notice_check['required_hours']:.0f} hours' notice for this. "
+                        f"Could you choose a later date/time, or confirm you'd still like to proceed?"
+                    )
 
                 st.session_state.current_order = parsed_order
 
@@ -315,14 +346,13 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         )
                         st.session_state.order_email_sent = True
                     except Exception:
-                        # Don't let a broken email break the customer's
-                        # experience -- the order is still recorded in
-                        # session state and shown in the sidebar either way.
                         pass
 
                     st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
 
                     display_reply += f"\n\n**Your order #{st.session_state.order_number} is confirmed! We'll be in touch shortly.**"
+                elif notice_warning:
+                    display_reply += f"\n\n{notice_warning}"
 
             except json.JSONDecodeError:
                 pass
@@ -366,10 +396,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     st.caption("Powered by [Your Tool Name]")
 
 
-# ---------------------------------------------------------------------------
-# CUSTOMER VIEW -- looks a business up by slug, then hands off to the chatbot
-# ---------------------------------------------------------------------------
-
 def customer_view():
     slug_input = st.text_input(
         "Enter your bakery's link name",
@@ -393,11 +419,6 @@ def customer_view():
 
     run_chatbot(business)
 
-
-# ---------------------------------------------------------------------------
-# OWNER VIEW -- the original "build my bot" form, now just saves to Supabase
-# and shows the owner their shareable link (it no longer starts a chat here)
-# ---------------------------------------------------------------------------
 
 def owner_view():
     st.title("Business Chatbot Builder")
@@ -474,20 +495,14 @@ def owner_view():
             existing_business = get_business(clean_slug)
 
             if existing_business:
-                # This slug already exists -- the password must match
-                # the one that was set when it was created.
                 stored_hash = existing_business.get("admin_password")
                 if stored_hash != hash_password(password):
                     st.error("Incorrect password for this business. If this is your first time saving, choose a slug that isn't already taken.")
                     st.stop()
-                password_hash = stored_hash  # keep the existing password unchanged
+                password_hash = stored_hash
             else:
-                # Brand new slug -- this password becomes the one required
-                # to edit this business going forward.
                 password_hash = hash_password(password)
 
-            # Upload any newly selected photos. If the owner didn't pick new
-            # photos this time, keep whatever URLs were already saved.
             if menu_photos:
                 menu_photo_urls = upload_menu_photos(clean_slug, menu_photos)
             else:
@@ -517,10 +532,6 @@ def owner_view():
                 st.success("Saved! Share this link with your customers:")
                 st.code(f"https://bakery-bot.streamlit.app/?slug={clean_slug}")
 
-
-# ---------------------------------------------------------------------------
-# ROUTING -- decide which view to show based on the URL's ?mode= value
-# ---------------------------------------------------------------------------
 
 if mode == "owner":
     owner_view()
