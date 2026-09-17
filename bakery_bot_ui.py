@@ -420,6 +420,72 @@ def customer_view():
     run_chatbot(business)
 
 
+# ---------------------------------------------------------------------------
+# QUICK UPDATE VIEW -- a fast, lightweight way for an owner to mark items
+# sold out during the day, without opening the full builder form.
+# ---------------------------------------------------------------------------
+
+def quick_update_view():
+    st.title("Quick Stock Update")
+    st.caption("Mark items as sold out for today. This won't change anything else about your bot.")
+
+    slug_input = st.text_input(
+        "Web address name",
+        value=slug_from_url,
+        placeholder="e.g. sweettreats"
+    )
+    password = st.text_input("Password", type="password")
+
+    if not slug_input or not password:
+        st.info("Enter your slug and password to continue.")
+        return
+
+    clean_slug, slug_error = normalize_and_validate_slug(slug_input)
+    if slug_error:
+        st.error(slug_error)
+        return
+
+    business = get_business(clean_slug)
+    if not business:
+        st.error("No business found with that slug.")
+        return
+
+    if business.get("admin_password") != hash_password(password):
+        st.error("Incorrect password.")
+        return
+
+    menu_items = business.get("menu") or []
+    if not menu_items:
+        st.info("This business doesn't have any menu items yet.")
+        return
+
+    current_sold_out = [
+        name.strip()
+        for name in (business.get("sold_out_items") or "").split(",")
+        if name.strip()
+    ]
+
+    st.write("Check anything that's sold out right now:")
+    newly_sold_out = []
+    for item in menu_items:
+        item_name = item.get("Item", "")
+        if not item_name:
+            continue
+        checked = st.checkbox(item_name, value=item_name in current_sold_out, key=f"soldout_{item_name}")
+        if checked:
+            newly_sold_out.append(item_name)
+
+    if st.button("Update"):
+        try:
+            supabase.table("businesses").update(
+                {"sold_out_items": ", ".join(newly_sold_out)}
+            ).eq("slug", clean_slug).execute()
+        except Exception:
+            st.error("Something went wrong updating this. Please try again in a moment.")
+        else:
+            st.success("Updated! Your bot will now reflect today's availability.")
+
+
 def owner_view():
     st.title("Business Chatbot Builder")
 
@@ -531,9 +597,13 @@ def owner_view():
             else:
                 st.success("Saved! Share this link with your customers:")
                 st.code(f"https://bakery-bot.streamlit.app/?slug={clean_slug}")
+                st.caption("Bookmark this link to quickly mark items sold out during the day, without opening this full form:")
+                st.code(f"https://bakery-bot.streamlit.app/?mode=quickupdate&slug={clean_slug}")
 
 
 if mode == "owner":
     owner_view()
+elif mode == "quickupdate":
+    quick_update_view()
 else:
     customer_view()
