@@ -99,7 +99,12 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
     border:1px solid var(--border);
     border-radius:10px;
     box-shadow:none;
-    margin-bottom:6px;
+    margin-bottom:5px;
+}
+[data-testid="stExpander"] summary {
+    min-height:38px !important;
+    padding-top:6px !important;
+    padding-bottom:6px !important;
 }
 
 .popular-title {
@@ -108,7 +113,7 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
     font-weight:800;
     letter-spacing:-.02em;
     color:var(--ink);
-    margin:18px 0 10px;
+    margin:24px 0 14px;
 }
 .product-card-copy {
     padding:8px 2px 16px;
@@ -121,8 +126,8 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
     margin-bottom:3px;
 }
 .product-card-desc {
-    font-size:10px;
-    line-height:1.4;
+    font-size:11px;
+    line-height:1.45;
     color:var(--muted);
     min-height:28px;
     display:-webkit-box;
@@ -643,8 +648,8 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         unsafe_allow_html=True
     )
 
-    # Demo storefront: pair uploaded photos with menu items in upload order.
-    # Later this can be replaced with a real per-product photo field.
+    # Product storefront. New saves persist PhotoURL on each menu item;
+    # older bakeries fall back to the legacy photo list by position.
     visible_menu_items = [item for item in menu if item.get("Item")][:6]
 
     if visible_menu_items:
@@ -655,7 +660,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             item_name = item.get("Item", "")
             price = item.get("Price", "")
             ingredients = item.get("Ingredients", "")
-            photo_url = menu_photo_urls[idx] if idx < len(menu_photo_urls) else None
+            photo_url = item.get("PhotoURL") or (menu_photo_urls[idx] if idx < len(menu_photo_urls) else None)
 
             with card_cols[idx % 3]:
                 if photo_url:
@@ -988,9 +993,10 @@ def owner_view():
         placeholder="e.g. Red velvet cake, Croissants"
     )
     menu_photos = st.file_uploader(
-        "Menu photos (optional)",
+        "Product photos (optional — upload in the same order as your menu items)",
         accept_multiple_files=True,
-        type=["png", "jpg", "jpeg"]
+        type=["png", "jpg", "jpeg"],
+        help="Photo 1 will be linked to menu item 1, photo 2 to menu item 2, and so on."
     )
     social_link = st.text_input(
         "Instagram / website link (optional)",
@@ -1028,6 +1034,16 @@ def owner_view():
             else:
                 menu_photo_urls = (existing_business or {}).get("menu_photo_urls", [])
 
+            # Persist a photo on each menu item. Old bakeries still work because
+            # the customer page falls back to menu_photo_urls by position.
+            menu_records = menu.to_dict(orient="records")
+            existing_menu = (existing_business or {}).get("menu", []) or []
+            for idx, item in enumerate(menu_records):
+                if idx < len(menu_photo_urls):
+                    item["PhotoURL"] = menu_photo_urls[idx]
+                elif idx < len(existing_menu) and existing_menu[idx].get("PhotoURL"):
+                    item["PhotoURL"] = existing_menu[idx].get("PhotoURL")
+
             business_data = {
                 "slug": clean_slug,
                 "business_name": business_name,
@@ -1040,7 +1056,7 @@ def owner_view():
                 "advance_notice": advance_notice,
                 "sold_out_items": sold_out_items,
                 "social_link": social_link,
-                "menu": menu.to_dict(orient="records"),
+                "menu": menu_records,
                 "menu_photo_urls": menu_photo_urls,
                 "admin_password": password_hash
             }
