@@ -39,21 +39,21 @@ st.markdown("""
 }
 html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 .stApp { background:var(--cream); color:var(--ink); }
-.block-container { max-width:980px; padding-top:3.5rem; padding-bottom:8rem; }
+.block-container { max-width:980px; padding-top:2rem; padding-bottom:4rem; }
 #MainMenu, footer { visibility:hidden; }
 
-.loaf-topbar { display:flex; align-items:center; justify-content:space-between; padding-bottom:14px; margin-bottom:28px; border-bottom:1px solid var(--border); }
+.loaf-topbar { display:flex; align-items:center; justify-content:space-between; padding-bottom:9px; margin-bottom:14px; border-bottom:1px solid var(--border); }
 .loaf-wordmark { font-family:"Manrope",sans-serif; font-size:13px; font-weight:800; letter-spacing:.15em; color:var(--chocolate); }
 .loaf-topnote { font-size:12px; color:var(--muted); }
 .bakery-name { font-family:"Manrope",sans-serif; font-size:46px; font-weight:800; letter-spacing:-.045em; line-height:1.04; color:var(--ink); margin:0 0 10px; }
-.bakery-subtitle { max-width:650px; color:var(--muted); font-size:15px; line-height:1.65; margin:0 0 22px; }
+.bakery-subtitle { max-width:650px; color:var(--muted); font-size:15px; line-height:1.5; margin:0 0 12px; }
 .brand-dot { width:42px; height:4px; border-radius:999px; background:var(--pink); margin-bottom:16px; }
 
-.assistant-intro { margin:22px 0 10px; padding-top:18px; border-top:1px solid var(--border); }
+.assistant-intro { margin:12px 0 7px; padding-top:11px; border-top:1px solid var(--border); }
 .assistant-title { font-family:"Manrope",sans-serif; font-size:21px; font-weight:800; letter-spacing:-.025em; color:var(--ink); margin-bottom:5px; }
 .assistant-copy { color:var(--muted); font-size:13px; line-height:1.55; }
 
-.chat-row { display:flex; width:100%; margin:12px 0; }
+.chat-row { display:flex; width:100%; margin:8px 0; }
 .chat-row.user { justify-content:flex-end; }
 .chat-row.assistant { justify-content:flex-start; }
 .chat-wrap { max-width:74%; }
@@ -65,7 +65,19 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 
 [data-testid="stChatMessage"] { display:none; }
 [data-testid="stChatInput"] { border:1px solid var(--border); border-radius:12px; background:var(--white); box-shadow:0 8px 24px rgba(53,33,29,.06); }
-[data-testid="stExpander"] { background:var(--white); border:1px solid var(--border); border-radius:10px; box-shadow:none; }
+[data-testid="stExpander"] {
+    background:var(--white);
+    border:1px solid var(--border);
+    border-radius:10px;
+    box-shadow:none;
+    margin-bottom:6px;
+}
+[data-testid="stImage"] img {
+    aspect-ratio:4 / 3;
+    object-fit:cover;
+    border-radius:10px;
+}
+[data-testid="stVerticalBlock"] { gap:.55rem; }
 [data-testid="stExpander"] summary { font-family:"Inter",sans-serif; font-weight:600; }
 .stButton > button { border-radius:8px; border:1px solid var(--chocolate); background:var(--chocolate); color:white; font-weight:600; }
 .stButton > button:hover { background:var(--chocolate-dark); border-color:var(--chocolate-dark); color:white; }
@@ -78,14 +90,14 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 
 @media (max-width:768px) {
     .block-container {
-        padding-top:1.25rem;
+        padding-top:.5rem;
         padding-left:1rem;
         padding-right:1rem;
-        padding-bottom:8rem;
+        padding-bottom:4rem;
     }
     .loaf-topbar {
-        margin-bottom:10px;
-        padding-bottom:9px;
+        margin-bottom:7px;
+        padding-bottom:7px;
     }
     .loaf-topnote { display:none; }
     .bakery-name {
@@ -106,8 +118,8 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
         margin-bottom:11px;
     }
     .assistant-intro {
-        margin-top:14px;
-        padding-top:12px;
+        margin-top:9px;
+        padding-top:9px;
     }
     .assistant-title {
         font-size:18px;
@@ -452,14 +464,15 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         else:
             st.markdown('<div class="order-empty">Your items will appear here as you order.</div>', unsafe_allow_html=True)
 
-        if st.button("Start New Order", key="top_start_new_order"):
-            for key in [
-                "messages", "display_messages", "current_order",
-                "order_email_sent", "order_number"
-            ]:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.rerun()
+        if order_count > 0:
+            if st.button("Start New Order", key="top_start_new_order"):
+                for key in [
+                    "messages", "display_messages", "current_order",
+                    "order_email_sent", "order_number"
+                ]:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.rerun()
 
     st.markdown(
         f"""
