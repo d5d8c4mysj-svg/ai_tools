@@ -64,7 +64,36 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 .chat-row.user .chat-bubble { background:var(--chocolate); color:#fff; border:1px solid var(--chocolate); border-bottom-right-radius:5px; }
 
 [data-testid="stChatMessage"] { display:none; }
-[data-testid="stChatInput"] { border:1px solid var(--border); border-radius:12px; background:var(--white); box-shadow:0 8px 24px rgba(53,33,29,.06); }
+[data-testid="stChatInput"] {
+    max-width:680px;
+    margin:0 auto 10px auto;
+    border:1px solid #E6C9C7;
+    border-radius:10px;
+    background:#FFFDFC;
+    box-shadow:0 5px 16px rgba(53,33,29,.045);
+}
+[data-testid="stChatInput"] textarea {
+    min-height:42px !important;
+    height:42px !important;
+    padding-top:10px !important;
+    padding-bottom:8px !important;
+    font-size:13px !important;
+}
+[data-testid="stChatInput"] button {
+    width:34px !important;
+    height:34px !important;
+    min-height:34px !important;
+    border-radius:8px !important;
+}
+[data-testid="stBottom"] {
+    background:rgba(255,249,243,.96) !important;
+    padding-top:8px !important;
+    padding-bottom:4px !important;
+}
+[data-testid="stBottomBlockContainer"] {
+    padding-top:0 !important;
+    padding-bottom:0 !important;
+}
 [data-testid="stExpander"] {
     background:var(--white);
     border:1px solid var(--border);
@@ -109,7 +138,7 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 }
 [data-testid="stImage"] img {
     width:100%;
-    aspect-ratio:4 / 3;
+    max-height:220px;
     object-fit:cover;
     border-radius:10px;
 }
@@ -557,7 +586,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     for message in st.session_state.get("display_messages", []):
         render_chat_message(message["role"], message["content"], business_name)
 
-    user_input = st.chat_input(f"Message {display_business_name}...")
+    user_input = st.chat_input(f"Ask {display_business_name} anything...")
 
     message_count = len(st.session_state.get("display_messages", []))
     if message_count >= MAX_MESSAGES_PER_SESSION:
