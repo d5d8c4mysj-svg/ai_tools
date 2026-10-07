@@ -77,16 +77,58 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 [data-testid="stStatusWidget"] { visibility:hidden; }
 
 @media (max-width:768px) {
-    .block-container { padding-top:2rem; padding-left:1rem; padding-right:1rem; padding-bottom:8rem; }
-    .loaf-topbar { margin-bottom:20px; }
+    .block-container {
+        padding-top:5.5rem;
+        padding-left:1rem;
+        padding-right:1rem;
+        padding-bottom:8rem;
+    }
+    .loaf-topbar {
+        margin-bottom:16px;
+        padding-bottom:11px;
+    }
     .loaf-topnote { display:none; }
-    .bakery-name { font-size:34px; line-height:1.08; letter-spacing:-.04em; margin-bottom:9px; }
-    .bakery-subtitle { font-size:14px; line-height:1.5; margin-bottom:16px; }
-    .brand-dot { width:32px; margin-bottom:13px; }
-    .assistant-intro { margin-top:18px; padding-top:16px; }
-    .assistant-title { font-size:19px; }
-    .chat-wrap { max-width:88%; }
-    .chat-bubble { font-size:14px; padding:10px 13px; }
+    .bakery-name {
+        font-size:30px;
+        line-height:1.1;
+        letter-spacing:-.035em;
+        margin-bottom:7px;
+    }
+    .bakery-subtitle {
+        font-size:13px;
+        line-height:1.45;
+        margin-bottom:13px;
+        max-width:95%;
+    }
+    .brand-dot {
+        width:28px;
+        height:3px;
+        margin-bottom:11px;
+    }
+    .assistant-intro {
+        margin-top:15px;
+        padding-top:14px;
+    }
+    .assistant-title {
+        font-size:18px;
+        margin-bottom:3px;
+    }
+    .assistant-copy {
+        font-size:12px;
+        line-height:1.45;
+    }
+    .chat-row { margin:9px 0; }
+    .chat-wrap { max-width:90%; }
+    .chat-name { font-size:9px; }
+    .chat-bubble {
+        font-size:13px;
+        line-height:1.5;
+        padding:9px 12px;
+        border-radius:13px;
+    }
+    [data-testid="stExpander"] {
+        border-radius:8px;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -261,7 +303,11 @@ def render_chat_message(role, content, business_name):
         label = "You"
         css_role = "user"
     else:
-        label = f"{html.escape(str(business_name))} Assistant"
+        display_name = str(business_name)
+        for suffix in [" Bakery Test", " Bakery", " Test"]:
+            if display_name.endswith(suffix):
+                display_name = display_name[:-len(suffix)]
+        label = f"{html.escape(display_name)} Assistant"
         css_role = "assistant"
 
     st.markdown(
@@ -290,6 +336,11 @@ def run_chatbot(business):
     social_link = business["social_link"]
     menu_photo_urls = business.get("menu_photo_urls") or []
     menu = business["menu"]
+
+    display_business_name = str(business_name)
+    for suffix in [" Bakery Test", " Bakery", " Test"]:
+        if display_business_name.endswith(suffix):
+            display_business_name = display_business_name[:-len(suffix)]
 
     if "messages" not in st.session_state:
         current_time_str = datetime.now().strftime("%A, %Y-%m-%d %I:%M %p")
@@ -363,8 +414,8 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     st.markdown(
         f"""
         <div class="assistant-intro">
-            <div class="assistant-title">Need help ordering?</div>
-            <div class="assistant-copy">Ask {business_name} about flavours, allergens, custom cakes, pickup or delivery.</div>
+            <div class="assistant-title">Need help?</div>
+            <div class="assistant-copy">Ask about flavours, allergens, custom orders, pickup or delivery.</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -430,7 +481,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     del st.session_state[key]
             st.rerun()
 
-    user_input = st.chat_input(f"Message {business_name}...")
+    user_input = st.chat_input(f"Message {display_business_name}...")
 
     message_count = len(st.session_state.get("display_messages", []))
     if message_count >= MAX_MESSAGES_PER_SESSION:
