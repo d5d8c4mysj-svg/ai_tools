@@ -237,6 +237,52 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
     padding-top:5px !important;
     padding-bottom:2px !important;
 }
+
+/* Compact the entire fixed composer, not only the input element */
+[data-testid="stBottom"] > div {
+    max-width:520px !important;
+    margin-left:auto !important;
+    margin-right:auto !important;
+}
+[data-testid="stBottomBlockContainer"] {
+    max-width:520px !important;
+    width:calc(100% - 32px) !important;
+    margin:0 auto !important;
+    padding:4px 0 6px !important;
+}
+[data-testid="stChatInput"] {
+    width:100% !important;
+    max-width:520px !important;
+    min-height:34px !important;
+    margin:0 !important;
+    border-radius:9px !important;
+}
+[data-testid="stChatInput"] textarea {
+    min-height:34px !important;
+    height:34px !important;
+    padding:7px 42px 5px 12px !important;
+    font-size:11px !important;
+    line-height:20px !important;
+}
+[data-testid="stChatInput"] button {
+    width:28px !important;
+    height:28px !important;
+    min-height:28px !important;
+    margin:3px 4px 3px 0 !important;
+}
+
+
+@media (max-width:768px) {
+    [data-testid="stBottom"] > div,
+    [data-testid="stBottomBlockContainer"] {
+        max-width:100% !important;
+    }
+    [data-testid="stBottomBlockContainer"] {
+        width:calc(100% - 20px) !important;
+        padding:3px 0 5px !important;
+    }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -517,10 +563,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         '<div class="bakery-subtitle">Browse today\'s bakes, ask about ingredients or custom orders, and place your order in one conversation.</div>',
         unsafe_allow_html=True
     )
-
-    # Use one strong bakery image as the hero.
-    if menu_photo_urls:
-        st.image(menu_photo_urls[0], use_container_width=True)
 
     # Demo storefront: pair uploaded photos with menu items in upload order.
     # Later this can be replaced with a real per-product photo field.
