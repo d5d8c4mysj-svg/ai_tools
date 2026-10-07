@@ -143,8 +143,10 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 }
 [data-testid="stImage"] img {
     width:100%;
-    max-height:150px;
+    height:170px;
+    max-height:170px;
     object-fit:cover;
+    object-position:center;
     border-radius:9px;
 }
 [data-testid="stVerticalBlock"] { gap:.55rem; }
@@ -159,6 +161,11 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 [data-testid="stStatusWidget"] { visibility:hidden; }
 
 @media (max-width:768px) {
+    [data-testid="stImage"] img {
+        height:145px;
+        max-height:145px;
+    }
+
     .block-container {
         padding-top:.5rem;
         padding-left:1rem;
@@ -679,18 +686,34 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 )
 
     with st.expander("View menu", expanded=False):
-        for item in menu:
-            item_name = item.get("Item", "")
-            if not item_name:
-                continue
-            price = item.get("Price", "")
-            ingredients = item.get("Ingredients", "")
-            st.markdown(f"**{item_name}**  ")
-            if ingredients:
-                st.caption(str(ingredients))
-            if price not in ("", None, 0):
-                st.write(f"₹{price}")
-            st.divider()
+        full_menu_items = [item for item in menu if item.get("Item")]
+        if full_menu_items:
+            menu_cols = st.columns(3)
+            for idx, item in enumerate(full_menu_items):
+                item_name = item.get("Item", "")
+                price = item.get("Price", "")
+                ingredients = item.get("Ingredients", "")
+                photo_url = item.get("PhotoURL") or (
+                    menu_photo_urls[idx] if idx < len(menu_photo_urls) else None
+                )
+
+                with menu_cols[idx % 3]:
+                    if photo_url:
+                        st.image(photo_url, use_container_width=True)
+
+                    price_text = f"₹{price}" if price not in ("", None, 0) else ""
+                    st.markdown(
+                        f"""
+                        <div class="product-card-copy">
+                            <div class="product-card-name">{item_name}</div>
+                            <div class="product-card-desc">{ingredients}</div>
+                            <div class="product-card-price">{price_text}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+        else:
+            st.caption("No menu items available yet.")
 
     order = st.session_state.get("current_order")
     order_count = len(order.get("items", [])) if order and order.get("items") else 0
