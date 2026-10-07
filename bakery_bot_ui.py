@@ -26,246 +26,67 @@ mode = params.get("mode", "customer")  # defaults to customer view
 st.set_page_config(page_title="Loaf")
 
 # ---------------------------------------------------------
-# LOAF DESIGN — clean storefront / Manrope + Inter
+# LOAF DESIGN — mobile-first storefront
 # ---------------------------------------------------------
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
 
 :root {
-    --chocolate: #633229;
-    --chocolate-dark: #35211D;
-    --pink: #E9A9A8;
-    --blush: #F7DEDA;
-    --sage: #B7B58A;
-    --vanilla: #F4EBC8;
-    --cream: #FFF9F3;
-    --white: #FFFFFF;
-    --ink: #252321;
-    --muted: #706B67;
-    --border: #E9E1DC;
+    --chocolate:#633229; --chocolate-dark:#35211D; --pink:#E9A9A8;
+    --sage:#B7B58A; --vanilla:#F4EBC8; --cream:#FFF9F3;
+    --white:#FFFFFF; --ink:#252321; --muted:#706B67; --border:#E8E0DB;
 }
+html, body, [class*="css"] { font-family:"Inter",sans-serif; }
+.stApp { background:var(--cream); color:var(--ink); }
+.block-container { max-width:980px; padding-top:3.5rem; padding-bottom:8rem; }
+#MainMenu, footer { visibility:hidden; }
 
-html, body, [class*="css"] {
-    font-family: "Inter", sans-serif;
-}
+.loaf-topbar { display:flex; align-items:center; justify-content:space-between; padding-bottom:14px; margin-bottom:28px; border-bottom:1px solid var(--border); }
+.loaf-wordmark { font-family:"Manrope",sans-serif; font-size:13px; font-weight:800; letter-spacing:.15em; color:var(--chocolate); }
+.loaf-topnote { font-size:12px; color:var(--muted); }
+.bakery-name { font-family:"Manrope",sans-serif; font-size:46px; font-weight:800; letter-spacing:-.045em; line-height:1.04; color:var(--ink); margin:0 0 10px; }
+.bakery-subtitle { max-width:650px; color:var(--muted); font-size:15px; line-height:1.65; margin:0 0 22px; }
+.brand-dot { width:42px; height:4px; border-radius:999px; background:var(--pink); margin-bottom:16px; }
 
-.stApp {
-    background: var(--cream);
-    color: var(--ink);
-}
+.assistant-intro { margin:22px 0 10px; padding-top:18px; border-top:1px solid var(--border); }
+.assistant-title { font-family:"Manrope",sans-serif; font-size:21px; font-weight:800; letter-spacing:-.025em; color:var(--ink); margin-bottom:5px; }
+.assistant-copy { color:var(--muted); font-size:13px; line-height:1.55; }
 
-.block-container {
-    max-width: 1040px;
-    padding-top: 4.25rem;
-    padding-bottom: 7rem;
-}
+.chat-row { display:flex; width:100%; margin:12px 0; }
+.chat-row.user { justify-content:flex-end; }
+.chat-row.assistant { justify-content:flex-start; }
+.chat-wrap { max-width:74%; }
+.chat-name { font-size:10px; font-weight:700; color:var(--muted); margin:0 0 4px 2px; }
+.chat-row.user .chat-name { text-align:right; margin-right:2px; }
+.chat-bubble { font-family:"Inter",sans-serif; font-size:14px; line-height:1.55; padding:11px 14px; border-radius:15px; }
+.chat-row.assistant .chat-bubble { background:var(--white); color:var(--ink); border:1px solid var(--border); border-bottom-left-radius:5px; }
+.chat-row.user .chat-bubble { background:var(--chocolate); color:#fff; border:1px solid var(--chocolate); border-bottom-right-radius:5px; }
 
-#MainMenu, footer {
-    visibility: hidden;
-}
+[data-testid="stChatMessage"] { display:none; }
+[data-testid="stChatInput"] { border:1px solid var(--border); border-radius:12px; background:var(--white); box-shadow:0 8px 24px rgba(53,33,29,.06); }
+[data-testid="stExpander"] { background:var(--white); border:1px solid var(--border); border-radius:10px; box-shadow:none; }
+[data-testid="stExpander"] summary { font-family:"Inter",sans-serif; font-weight:600; }
+.stButton > button { border-radius:8px; border:1px solid var(--chocolate); background:var(--chocolate); color:white; font-weight:600; }
+.stButton > button:hover { background:var(--chocolate-dark); border-color:var(--chocolate-dark); color:white; }
+.loaf-footer { text-align:center; color:#9B918C; font-size:10px; margin-top:36px; }
+[data-testid="stSidebar"] { display:none; }
 
-.loaf-topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-    padding: 0 0 16px;
-    margin-bottom: 34px;
-}
+[data-testid="stToolbar"] { visibility:hidden; height:0; }
+[data-testid="stDecoration"] { display:none; }
+[data-testid="stStatusWidget"] { visibility:hidden; }
 
-.loaf-wordmark {
-    font-family: "Manrope", sans-serif;
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: .16em;
-    color: var(--chocolate);
-}
-
-.loaf-topnote {
-    font-size: 12px;
-    color: var(--muted);
-}
-
-.bakery-name {
-    font-family: "Manrope", sans-serif;
-    font-size: clamp(34px, 5vw, 54px);
-    font-weight: 800;
-    letter-spacing: -0.045em;
-    line-height: 1.02;
-    color: var(--ink);
-    margin: 0 0 12px;
-}
-
-.bakery-subtitle {
-    max-width: 680px;
-    color: var(--muted);
-    font-size: 16px;
-    line-height: 1.65;
-    margin-bottom: 24px;
-}
-
-.brand-strip {
-    width: 92px;
-    height: 5px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, var(--chocolate) 0 34%, var(--pink) 34% 62%, var(--sage) 62% 82%, var(--vanilla) 82% 100%);
-    margin-bottom: 18px;
-}
-
-.section-label {
-    font-family: "Manrope", sans-serif;
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: .11em;
-    text-transform: uppercase;
-    color: var(--chocolate);
-    margin: 30px 0 12px;
-}
-
-.assistant-intro {
-    margin: 28px 0 12px;
-    padding-top: 24px;
-    border-top: 1px solid var(--border);
-}
-
-.assistant-title {
-    font-family: "Manrope", sans-serif;
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: -0.025em;
-    color: var(--ink);
-    margin-bottom: 6px;
-}
-
-.assistant-copy {
-    color: var(--muted);
-    font-size: 14px;
-    line-height: 1.6;
-}
-
-.chat-row {
-    display: flex;
-    width: 100%;
-    margin: 14px 0;
-}
-
-.chat-row.user {
-    justify-content: flex-end;
-}
-
-.chat-row.assistant {
-    justify-content: flex-start;
-}
-
-.chat-wrap {
-    max-width: 72%;
-}
-
-.chat-name {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--muted);
-    margin: 0 0 5px 2px;
-}
-
-.chat-row.user .chat-name {
-    text-align: right;
-    margin-right: 2px;
-}
-
-.chat-bubble {
-    font-family: "Inter", sans-serif;
-    font-size: 14px;
-    line-height: 1.6;
-    padding: 12px 15px;
-    border-radius: 16px;
-    box-shadow: 0 2px 10px rgba(53,33,29,.035);
-}
-
-.chat-row.assistant .chat-bubble {
-    background: var(--white);
-    color: var(--ink);
-    border: 1px solid var(--border);
-    border-bottom-left-radius: 5px;
-}
-
-.chat-row.user .chat-bubble {
-    background: var(--chocolate);
-    color: white;
-    border: 1px solid var(--chocolate);
-    border-bottom-right-radius: 5px;
-}
-
-[data-testid="stChatMessage"] {
-    display: none;
-}
-
-[data-testid="stChatInput"] {
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--white);
-    box-shadow: 0 10px 30px rgba(53,33,29,.07);
-}
-
-.stButton > button {
-    border-radius: 8px;
-    border: 1px solid var(--chocolate);
-    background: var(--chocolate);
-    color: white;
-    font-family: "Inter", sans-serif;
-    font-weight: 600;
-}
-
-.stButton > button:hover {
-    background: var(--chocolate-dark);
-    border-color: var(--chocolate-dark);
-    color: white;
-}
-
-[data-testid="stExpander"] {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-}
-
-[data-testid="stExpander"] summary {
-    font-family: "Inter", sans-serif;
-    font-weight: 600;
-}
-
-.order-empty {
-    color: var(--muted);
-    font-size: 13px;
-    padding: 4px 0 8px;
-}
-
-.loaf-footer {
-    text-align: center;
-    color: #9B918C;
-    font-size: 11px;
-    margin-top: 44px;
-}
-
-[data-testid="stSidebar"] {
-    display: none;
-}
-
-@media (max-width: 768px) {
-    .block-container {
-        padding-top: 3.8rem;
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
-    .bakery-name {
-        font-size: 38px;
-    }
-    .chat-wrap {
-        max-width: 88%;
-    }
-    .loaf-topnote {
-        display: none;
-    }
+@media (max-width:768px) {
+    .block-container { padding-top:2rem; padding-left:1rem; padding-right:1rem; padding-bottom:8rem; }
+    .loaf-topbar { margin-bottom:20px; }
+    .loaf-topnote { display:none; }
+    .bakery-name { font-size:34px; line-height:1.08; letter-spacing:-.04em; margin-bottom:9px; }
+    .bakery-subtitle { font-size:14px; line-height:1.5; margin-bottom:16px; }
+    .brand-dot { width:32px; margin-bottom:13px; }
+    .assistant-intro { margin-top:18px; padding-top:16px; }
+    .assistant-title { font-size:19px; }
+    .chat-wrap { max-width:88%; }
+    .chat-bubble { font-size:14px; padding:10px 13px; }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -532,12 +353,32 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         '<div class="loaf-topbar"><div class="loaf-wordmark">LOAF</div><div class="loaf-topnote">Online ordering</div></div>',
         unsafe_allow_html=True
     )
-    st.markdown('<div class="brand-strip"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-dot"></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="bakery-name">{business_name}</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="bakery-subtitle">Browse today\'s bakes, ask about ingredients or custom orders, and place your order in one conversation.</div>',
         unsafe_allow_html=True
     )
+
+    st.markdown(
+        f"""
+        <div class="assistant-intro">
+            <div class="assistant-title">Need help ordering?</div>
+            <div class="assistant-copy">Ask {business_name} about flavours, allergens, custom cakes, pickup or delivery.</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    if not st.session_state.get("display_messages"):
+        render_chat_message(
+            "assistant",
+            "Hi! Tell me what you're looking for and I'll help you with the menu or take your order.",
+            business_name
+        )
+
+    for message in st.session_state.get("display_messages", []):
+        render_chat_message(message["role"], message["content"], business_name)
 
     if menu_photo_urls:
         st.markdown('<div class="section-label">From the bakery</div>', unsafe_allow_html=True)
@@ -588,26 +429,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 if key in st.session_state:
                     del st.session_state[key]
             st.rerun()
-
-    st.markdown(
-        f"""
-        <div class="assistant-intro">
-            <div class="assistant-title">Need help ordering?</div>
-            <div class="assistant-copy">Ask {business_name} about flavours, allergens, custom cakes, pickup or delivery.</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    if not st.session_state.get("display_messages"):
-        render_chat_message(
-            "assistant",
-            "Hi! Tell me what you're looking for and I'll help you with the menu or take your order.",
-            business_name
-        )
-
-    for message in st.session_state.get("display_messages", []):
-        render_chat_message(message["role"], message["content"], business_name)
 
     user_input = st.chat_input(f"Message {business_name}...")
 
