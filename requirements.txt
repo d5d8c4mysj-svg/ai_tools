@@ -1,4 +1,4 @@
 cohere
 streamlit
 supabase
-resend
+
