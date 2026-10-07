@@ -138,9 +138,9 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 }
 [data-testid="stImage"] img {
     width:100%;
-    max-height:220px;
+    max-height:150px;
     object-fit:cover;
-    border-radius:10px;
+    border-radius:9px;
 }
 [data-testid="stVerticalBlock"] { gap:.55rem; }
 [data-testid="stExpander"] summary { font-family:"Inter",sans-serif; font-weight:600; }
@@ -206,6 +206,36 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
     [data-testid="stExpander"] {
         border-radius:8px;
     }
+}
+
+/* Compact product imagery inside columns */
+[data-testid="stHorizontalBlock"] [data-testid="stImage"] img {
+    height:125px !important;
+    max-height:125px !important;
+    object-fit:cover !important;
+}
+
+/* Smaller fixed chat composer */
+[data-testid="stChatInput"] {
+    max-width:560px !important;
+    min-height:38px !important;
+    margin:0 auto 6px auto !important;
+}
+[data-testid="stChatInput"] textarea {
+    min-height:36px !important;
+    height:36px !important;
+    padding-top:8px !important;
+    padding-bottom:6px !important;
+    font-size:12px !important;
+}
+[data-testid="stChatInput"] button {
+    width:30px !important;
+    height:30px !important;
+    min-height:30px !important;
+}
+[data-testid="stBottom"] {
+    padding-top:5px !important;
+    padding-bottom:2px !important;
 }
 </style>
 """, unsafe_allow_html=True)
