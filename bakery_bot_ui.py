@@ -4,12 +4,12 @@ import pandas as pd
 import json
 import re
 import random
-import resend
+import smtplib
 import hashlib
 from datetime import datetime
+from email.mime.text import MIMEText
 
 API_KEY = st.secrets["COHERE_API_KEY"]
-resend.api_key = st.secrets["RESEND_API_KEY"]
 co = cohere.ClientV2(API_KEY)
 from supabase import create_client
 
@@ -22,7 +22,7 @@ params = st.query_params
 slug_from_url = params.get("slug", "")
 mode = params.get("mode", "customer")  # defaults to customer view
 
-st.set_page_config(page_title="Loaf")
+st.set_page_config(page_title="Business Chatbot Builder")
 
 MAX_MESSAGES_PER_SESSION = 40  # caps Cohere API spend per customer session
 
@@ -172,16 +172,17 @@ def send_order_email(order, business_name, business_email, order_number):
 
     body = "\n".join(body_lines)
 
-    email_params = {
-        "from": "onboarding@resend.dev",
-        "to": business_email,
-        "subject": f"New Order #{order_number} - {business_name}",
-        "text": body,
-    }
-    if "@" in customer_contact:
-        email_params["reply_to"] = customer_contact
+    msg = MIMEText(body)
+    msg["Subject"] = f"New Order #{order_number} - {business_name}"
+    msg["From"] = st.secrets["EMAIL_ADDRESS"]
+    msg["To"] = business_email
 
-    resend.Emails.send(email_params)
+    if "@" in customer_contact:
+        msg["Reply-To"] = customer_contact
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(st.secrets["EMAIL_ADDRESS"], st.secrets["EMAIL_PASSWORD"])
+        server.send_message(msg)
 
 
 def run_chatbot(business):
@@ -309,6 +310,11 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     if missing_fields:
                         parsed_order["status"] = "in_progress"
 
+                # Second backstop: independently verify the advance-notice
+                # math in real Python, rather than trusting the AI's own
+                # arithmetic. If the AI wrongly confirmed an order that's
+                # actually too soon, correct it here before it ever reaches
+                # the sidebar or triggers an email.
                 notice_check = check_advance_notice(
                     parsed_order.get("requested_datetime_iso"),
                     advance_notice
@@ -388,7 +394,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     del st.session_state[key]
             st.rerun()
 
-    st.caption("Powered by Loaf")
+    st.caption("Powered by [Your Tool Name]")
 
 
 def customer_view():
@@ -481,34 +487,8 @@ def quick_update_view():
             st.success("Updated! Your bot will now reflect today's availability.")
 
 
-def validate_invite_code(code):
-    """Check an invite code is real and hasn't been used yet. Returns True/False."""
-    if not code:
-        return False
-    try:
-        result = supabase.table("invite_codes").select("*").eq("code", code).execute()
-    except Exception:
-        st.error("Something went wrong checking that code. Please try again in a moment.")
-        return False
-    if not result.data:
-        return False
-    return result.data[0].get("used") is not True
-
-
-def mark_invite_code_used(code, slug):
-    """Consume an invite code once it's successfully used to create a business,
-    so it can never be reused for a different business."""
-    try:
-        supabase.table("invite_codes").update(
-            {"used": True, "used_by_slug": slug, "used_at": datetime.now().isoformat()}
-        ).eq("code", code).execute()
-    except Exception:
-        pass  # the business itself is already saved; a failed mark-as-used isn't fatal
-
-
 def owner_view():
-    st.title("Loaf")
-    st.caption("Set up your bakery's ordering chatbot")
+    st.title("Business Chatbot Builder")
 
     business_name = st.text_input("Business name")
     slug = st.text_input(
@@ -518,11 +498,6 @@ def owner_view():
     password = st.text_input(
         "Password (create one if this is a new bot, or enter your existing password to edit it)",
         type="password"
-    )
-    invite_code = st.text_input(
-        "Invite code (only needed the first time you set up a new bot)",
-        type="password",
-        help="Given to you privately when you were onboarded. Not needed when editing an existing bot."
     )
 
     menu_df = pd.DataFrame({
@@ -593,9 +568,6 @@ def owner_view():
                     st.stop()
                 password_hash = stored_hash
             else:
-                if not validate_invite_code(invite_code):
-                    st.error("This isn't a valid or unused invite code. You'll need one to set up a new bot -- ask the person who onboarded you.")
-                    st.stop()
                 password_hash = hash_password(password)
 
             if menu_photos:
@@ -624,8 +596,6 @@ def owner_view():
             except Exception:
                 st.error("Something went wrong saving your bot. Please try again in a moment.")
             else:
-                if not existing_business:
-                    mark_invite_code_used(invite_code, clean_slug)
                 st.success("Saved! Share this link with your customers:")
                 st.code(f"https://bakery-bot.streamlit.app/?slug={clean_slug}")
                 st.caption("Bookmark this link to quickly mark items sold out during the day, without opening this full form:")
