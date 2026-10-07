@@ -374,6 +374,38 @@ header[data-testid="stHeader"] {
     }
 }
 
+
+/* AI ordering is the primary action */
+.assistant-intro {
+    background:#FFFDFC;
+    border:1px solid #E8D9D3;
+    border-left:4px solid var(--pink);
+    border-radius:12px;
+    padding:16px 18px !important;
+    margin:18px 0 10px !important;
+}
+.assistant-title { font-size:20px !important; }
+.assistant-copy { max-width:700px; }
+
+@media (max-width:768px) {
+    .assistant-intro {
+        padding:13px 14px !important;
+        margin:14px 0 8px !important;
+    }
+    .assistant-title { font-size:18px !important; }
+    [data-testid="stForm"] [data-testid="stHorizontalBlock"] {
+        flex-wrap:nowrap !important;
+    }
+    [data-testid="stForm"] [data-testid="column"]:first-child {
+        width:calc(100% - 44px) !important;
+        flex:1 1 auto !important;
+    }
+    [data-testid="stForm"] [data-testid="column"]:last-child {
+        width:40px !important;
+        flex:0 0 40px !important;
+    }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -655,6 +687,40 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         unsafe_allow_html=True
     )
 
+    st.markdown(
+        f"""
+        <div class="assistant-intro">
+            <div class="assistant-title">Order with {display_business_name}</div>
+            <div class="assistant-copy">Tell me what you are looking for - I can recommend bakes, answer questions, and take your order.</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    if not st.session_state.get("display_messages"):
+        render_chat_message(
+            "assistant",
+            "Hi! Tell me what you are in the mood for, or ask me anything about the menu.",
+            business_name
+        )
+
+    for message in st.session_state.get("display_messages", []):
+        render_chat_message(message["role"], message["content"], business_name)
+
+    with st.form("chat_form", clear_on_submit=True):
+        chat_col, send_col = st.columns([12, 1])
+        with chat_col:
+            user_input = st.text_input(
+                "Message",
+                placeholder=f"Ask {display_business_name} anything...",
+                label_visibility="collapsed"
+            )
+        with send_col:
+            send_message = st.form_submit_button("↑", use_container_width=True)
+
+    if not send_message:
+        user_input = None
+
     # Product storefront. New saves persist PhotoURL on each menu item;
     # older bakeries fall back to the legacy photo list by position.
     visible_menu_items = [item for item in menu if item.get("Item")][:6]
@@ -750,39 +816,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         del st.session_state[key]
                 st.rerun()
 
-    st.markdown(
-        f"""
-        <div class="assistant-intro">
-            <div class="assistant-title">Need help?</div>
-            <div class="assistant-copy">Ask about flavours, allergens, custom orders, pickup or delivery.</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    if not st.session_state.get("display_messages"):
-        render_chat_message(
-            "assistant",
-            "Hi! What can I help you order today?",
-            business_name
-        )
-
-    for message in st.session_state.get("display_messages", []):
-        render_chat_message(message["role"], message["content"], business_name)
-
-    with st.form("chat_form", clear_on_submit=True):
-        chat_col, send_col = st.columns([12, 1])
-        with chat_col:
-            user_input = st.text_input(
-                "Message",
-                placeholder=f"Ask {display_business_name} anything...",
-                label_visibility="collapsed"
-            )
-        with send_col:
-            send_message = st.form_submit_button("↑", use_container_width=True)
-
-    if not send_message:
-        user_input = None
 
     message_count = len(st.session_state.get("display_messages", []))
     if message_count >= MAX_MESSAGES_PER_SESSION:
@@ -1105,4 +1138,3 @@ elif mode == "quickupdate":
     quick_update_view()
 else:
     customer_view()
-    
