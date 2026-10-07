@@ -406,6 +406,73 @@ header[data-testid="stHeader"] {
     }
 }
 
+
+/* Final mobile polish: no horizontal overflow + compact one-row composer */
+html, body, .stApp {
+    max-width:100%;
+    overflow-x:hidden !important;
+}
+.block-container {
+    overflow-x:hidden !important;
+}
+[data-testid="stForm"] {
+    width:100% !important;
+    max-width:700px !important;
+    margin:14px 0 10px 0 !important;
+}
+[data-testid="stForm"] [data-testid="stHorizontalBlock"] {
+    display:grid !important;
+    grid-template-columns:minmax(0, 1fr) 44px !important;
+    gap:8px !important;
+    width:100% !important;
+    align-items:center !important;
+}
+[data-testid="stForm"] [data-testid="column"] {
+    width:auto !important;
+    min-width:0 !important;
+    flex:none !important;
+}
+[data-testid="stForm"] .stTextInput {
+    width:100% !important;
+    min-width:0 !important;
+}
+[data-testid="stForm"] .stTextInput input {
+    width:100% !important;
+    box-sizing:border-box !important;
+}
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] {
+    width:44px !important;
+}
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
+    width:44px !important;
+    min-width:44px !important;
+    max-width:44px !important;
+    margin:0 !important;
+}
+@media (max-width:768px) {
+    [data-testid="stForm"] {
+        max-width:100% !important;
+        margin:10px 0 8px 0 !important;
+    }
+    [data-testid="stForm"] [data-testid="stHorizontalBlock"] {
+        grid-template-columns:minmax(0, 1fr) 40px !important;
+        gap:6px !important;
+    }
+    [data-testid="stForm"] [data-testid="stFormSubmitButton"],
+    [data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
+        width:40px !important;
+        min-width:40px !important;
+        max-width:40px !important;
+    }
+    .assistant-intro {
+        padding:11px 13px !important;
+        margin:12px 0 7px !important;
+    }
+    .assistant-copy {
+        line-height:1.4 !important;
+    }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -691,7 +758,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         f"""
         <div class="assistant-intro">
             <div class="assistant-title">Order with {display_business_name}</div>
-            <div class="assistant-copy">Tell me what you are looking for - I can recommend bakes, answer questions, and take your order.</div>
+            <div class="assistant-copy">Ask for recommendations, menu details, or simply tell me what you would like to order.</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -700,7 +767,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     if not st.session_state.get("display_messages"):
         render_chat_message(
             "assistant",
-            "Hi! Tell me what you are in the mood for, or ask me anything about the menu.",
+            "Hi! What can I help you order today?",
             business_name
         )
 
