@@ -30,7 +30,7 @@ st.set_page_config(page_title="Loaf")
 st.markdown("""
 <style>
 .stApp { background: #FFF9F2; }
-.block-container { max-width: 850px; padding-top: 2rem; padding-bottom: 3rem; }
+.block-container { max-width: 850px; padding-top: 4rem; padding-bottom: 3rem; }
 #MainMenu { visibility: hidden; }
 footer { visibility: hidden; }
 .loaf-logo { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; color: #B76532; margin-bottom: 28px; }
