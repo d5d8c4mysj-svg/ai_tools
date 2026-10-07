@@ -79,40 +79,39 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
     font-weight:800;
     letter-spacing:-.02em;
     color:var(--ink);
-    margin:18px 0 8px;
+    margin:18px 0 10px;
 }
-.menu-row {
-    display:flex;
-    justify-content:space-between;
-    gap:18px;
-    align-items:flex-start;
-    padding:12px 2px;
-    border-bottom:1px solid var(--border);
+.product-card-copy {
+    padding:8px 2px 16px;
 }
-.menu-item-name {
+.product-card-name {
     font-family:"Manrope",sans-serif;
     font-size:14px;
     font-weight:700;
     color:var(--ink);
+    margin-bottom:3px;
 }
-.menu-item-copy {
-    margin-top:3px;
-    font-size:11px;
-    line-height:1.45;
+.product-card-desc {
+    font-size:10px;
+    line-height:1.4;
     color:var(--muted);
-    max-width:620px;
+    min-height:28px;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
 }
-.menu-item-price {
+.product-card-price {
+    margin-top:7px;
     font-size:13px;
     font-weight:700;
     color:var(--chocolate);
-    white-space:nowrap;
 }
 [data-testid="stImage"] img {
     width:100%;
-    max-height:330px;
+    aspect-ratio:4 / 3;
     object-fit:cover;
-    border-radius:12px;
+    border-radius:10px;
 }
 [data-testid="stVerticalBlock"] { gap:.55rem; }
 [data-testid="stExpander"] summary { font-family:"Inter",sans-serif; font-weight:600; }
@@ -460,35 +459,39 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         unsafe_allow_html=True
     )
 
-    # Use one strong bakery image as the hero instead of a large photo gallery.
+    # Use one strong bakery image as the hero.
     if menu_photo_urls:
         st.image(menu_photo_urls[0], use_container_width=True)
 
-    # Show a few menu items immediately so the page feels like a storefront.
-    visible_menu_items = [
-        item for item in menu
-        if item.get("Item")
-    ][:3]
+    # Demo storefront: pair uploaded photos with menu items in upload order.
+    # Later this can be replaced with a real per-product photo field.
+    visible_menu_items = [item for item in menu if item.get("Item")][:6]
 
     if visible_menu_items:
         st.markdown('<div class="popular-title">Popular picks</div>', unsafe_allow_html=True)
-        for item in visible_menu_items:
+
+        card_cols = st.columns(3)
+        for idx, item in enumerate(visible_menu_items):
             item_name = item.get("Item", "")
             price = item.get("Price", "")
             ingredients = item.get("Ingredients", "")
-            price_text = f"₹{price}" if price not in ("", None, 0) else ""
-            st.markdown(
-                f"""
-                <div class="menu-row">
-                    <div>
-                        <div class="menu-item-name">{item_name}</div>
-                        <div class="menu-item-copy">{ingredients}</div>
+            photo_url = menu_photo_urls[idx] if idx < len(menu_photo_urls) else None
+
+            with card_cols[idx % 3]:
+                if photo_url:
+                    st.image(photo_url, use_container_width=True)
+
+                price_text = f"₹{price}" if price not in ("", None, 0) else ""
+                st.markdown(
+                    f"""
+                    <div class="product-card-copy">
+                        <div class="product-card-name">{item_name}</div>
+                        <div class="product-card-desc">{ingredients}</div>
+                        <div class="product-card-price">{price_text}</div>
                     </div>
-                    <div class="menu-item-price">{price_text}</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+                    """,
+                    unsafe_allow_html=True
+                )
 
     with st.expander("View menu", expanded=False):
         for item in menu:
