@@ -72,10 +72,47 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
     box-shadow:none;
     margin-bottom:6px;
 }
+
+.popular-title {
+    font-family:"Manrope",sans-serif;
+    font-size:18px;
+    font-weight:800;
+    letter-spacing:-.02em;
+    color:var(--ink);
+    margin:18px 0 8px;
+}
+.menu-row {
+    display:flex;
+    justify-content:space-between;
+    gap:18px;
+    align-items:flex-start;
+    padding:12px 2px;
+    border-bottom:1px solid var(--border);
+}
+.menu-item-name {
+    font-family:"Manrope",sans-serif;
+    font-size:14px;
+    font-weight:700;
+    color:var(--ink);
+}
+.menu-item-copy {
+    margin-top:3px;
+    font-size:11px;
+    line-height:1.45;
+    color:var(--muted);
+    max-width:620px;
+}
+.menu-item-price {
+    font-size:13px;
+    font-weight:700;
+    color:var(--chocolate);
+    white-space:nowrap;
+}
 [data-testid="stImage"] img {
-    aspect-ratio:4 / 3;
+    width:100%;
+    max-height:330px;
     object-fit:cover;
-    border-radius:10px;
+    border-radius:12px;
 }
 [data-testid="stVerticalBlock"] { gap:.55rem; }
 [data-testid="stExpander"] summary { font-family:"Inter",sans-serif; font-weight:600; }
@@ -423,12 +460,35 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         unsafe_allow_html=True
     )
 
+    # Use one strong bakery image as the hero instead of a large photo gallery.
     if menu_photo_urls:
-        st.markdown('<div class="section-label">From the bakery</div>', unsafe_allow_html=True)
-        photo_cols = st.columns(min(len(menu_photo_urls), 3))
-        for idx, photo_url in enumerate(menu_photo_urls[:6]):
-            with photo_cols[idx % len(photo_cols)]:
-                st.image(photo_url, use_container_width=True)
+        st.image(menu_photo_urls[0], use_container_width=True)
+
+    # Show a few menu items immediately so the page feels like a storefront.
+    visible_menu_items = [
+        item for item in menu
+        if item.get("Item")
+    ][:3]
+
+    if visible_menu_items:
+        st.markdown('<div class="popular-title">Popular picks</div>', unsafe_allow_html=True)
+        for item in visible_menu_items:
+            item_name = item.get("Item", "")
+            price = item.get("Price", "")
+            ingredients = item.get("Ingredients", "")
+            price_text = f"₹{price}" if price not in ("", None, 0) else ""
+            st.markdown(
+                f"""
+                <div class="menu-row">
+                    <div>
+                        <div class="menu-item-name">{item_name}</div>
+                        <div class="menu-item-copy">{ingredients}</div>
+                    </div>
+                    <div class="menu-item-price">{price_text}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
     with st.expander("View menu", expanded=False):
         for item in menu:
