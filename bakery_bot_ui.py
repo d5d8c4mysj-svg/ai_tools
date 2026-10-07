@@ -218,7 +218,7 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 /* Smaller fixed chat composer */
 [data-testid="stChatInput"] {
     max-width:560px !important;
-    min-height:38px !important;
+    min-height:44px !important;
     margin:0 auto 6px auto !important;
 }
 [data-testid="stChatInput"] textarea {
@@ -226,7 +226,7 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
     height:36px !important;
     padding-top:8px !important;
     padding-bottom:6px !important;
-    font-size:12px !important;
+    font-size:13px !important;
 }
 [data-testid="stChatInput"] button {
     width:30px !important;
@@ -286,8 +286,8 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 
 /* Inline message composer */
 [data-testid="stForm"] {
-    max-width:620px;
-    margin:16px auto 8px auto;
+    max-width:700px;
+    margin:20px auto 10px auto;
     padding:0 !important;
     border:0 !important;
     background:transparent !important;
@@ -297,8 +297,8 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
     gap:6px;
 }
 [data-testid="stForm"] .stTextInput input {
-    height:38px !important;
-    min-height:38px !important;
+    height:44px !important;
+    min-height:44px !important;
     border:1px solid #E6C9C7 !important;
     border-radius:9px !important;
     background:#FFFDFC !important;
@@ -308,9 +308,9 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 }
 [data-testid="stForm"] .stButton > button,
 [data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
-    height:38px !important;
-    min-height:38px !important;
-    width:38px !important;
+    height:44px !important;
+    min-height:44px !important;
+    width:44px !important;
     padding:0 !important;
     border-radius:9px !important;
     background:var(--chocolate) !important;
@@ -328,15 +328,15 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
         margin:12px 0 6px 0;
     }
     [data-testid="stForm"] .stTextInput input {
-        height:36px !important;
-        min-height:36px !important;
+        height:40px !important;
+        min-height:40px !important;
         font-size:12px !important;
     }
     [data-testid="stForm"] .stButton > button,
     [data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
-        height:36px !important;
-        min-height:36px !important;
-        width:36px !important;
+        height:40px !important;
+        min-height:40px !important;
+        width:40px !important;
     }
 }
 
