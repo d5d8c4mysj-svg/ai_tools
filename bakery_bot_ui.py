@@ -25,24 +25,49 @@ mode = params.get("mode", "customer")  # defaults to customer view
 st.set_page_config(page_title="Loaf")
 
 # ---------------------------------------------------------
-# LOAF DESIGN
+# LOAF BAKERY THEME
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-.stApp { background: #FFF9F2; }
-.block-container { max-width: 850px; padding-top: 4rem; padding-bottom: 3rem; }
+.stApp { background: #FFF8EE; }
+.block-container { max-width: 880px; padding-top: 4rem; padding-bottom: 3rem; }
 #MainMenu { visibility: hidden; }
 footer { visibility: hidden; }
-.loaf-logo { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; color: #B76532; margin-bottom: 28px; }
-.bakery-name { font-size: 42px; font-weight: 750; letter-spacing: -1.5px; color: #2D241F; margin-bottom: 5px; line-height: 1.1; }
-.bakery-subtitle { color: #7A6B62; font-size: 17px; margin-bottom: 25px; }
-.welcome-card { background: #FFFFFF; border: 1px solid #F0E5DA; border-radius: 18px; padding: 18px 20px; margin-bottom: 20px; box-shadow: 0px 4px 18px rgba(70,45,30,0.04); }
-[data-testid="stChatMessage"] { background: #FFFFFF; border: 1px solid #F0E5DA; border-radius: 16px; padding: 10px; margin-bottom: 10px; }
-[data-testid="stChatInput"] { border-radius: 16px; }
-.stButton > button { border-radius: 12px; border: 1px solid #D8C4B6; font-weight: 600; }
-[data-testid="stSidebar"] { background: #F8EFE6; }
-.streamlit-expanderHeader { font-weight: 600; }
-.loaf-footer { text-align: center; color: #A39287; font-size: 12px; margin-top: 30px; }
+
+.loaf-logo {
+    display: inline-block; padding: 7px 12px; border-radius: 999px;
+    background: #F3E1CC; color: #7A4328; font-size: 15px; font-weight: 800;
+    letter-spacing: .2px; margin-bottom: 22px;
+}
+.bakery-name {
+    font-family: Georgia, serif; font-size: 46px; font-weight: 700;
+    letter-spacing: -1.2px; color: #3A241A; line-height: 1.08; margin-bottom: 6px;
+}
+.bakery-subtitle { color: #8A604A; font-size: 18px; margin-bottom: 16px; }
+.bakery-chips { margin-bottom: 20px; color: #6F5142; font-size: 14px; line-height: 2; }
+.bakery-chips span {
+    background: #F7E9D8; border: 1px solid #E9D2BA; border-radius: 999px;
+    padding: 6px 10px; margin-right: 6px; white-space: nowrap;
+}
+.welcome-card {
+    background: #FFFDF9; border: 1px solid #EAD6C1; border-radius: 20px;
+    padding: 20px 22px; margin: 4px 0 18px;
+    box-shadow: 0 8px 24px rgba(87,55,35,.06); color: #4A3328;
+}
+.welcome-title { font-family: Georgia, serif; font-size: 20px; font-weight: 700; margin-bottom: 5px; color: #4A2D20; }
+[data-testid="stChatMessage"] {
+    background: #FFFDF9; border: 1px solid #EADBCB; border-radius: 18px;
+    padding: 10px 12px; margin-bottom: 10px; box-shadow: 0 3px 12px rgba(87,55,35,.035);
+}
+[data-testid="stChatInput"] { border-radius: 18px; }
+.stButton > button {
+    border-radius: 14px; border: 1px solid #C99C79; font-weight: 700;
+    background: #FFF9F2; color: #5C3828;
+}
+[data-testid="stSidebar"] { background: #F5E7D7; border-right: 1px solid #E4CEB8; }
+[data-testid="stSidebar"] h3 { font-family: Georgia, serif; color: #4A2D20; }
+.streamlit-expanderHeader { font-weight: 650; color: #5C3828; }
+.loaf-footer { text-align: center; color: #A17F6C; font-size: 12px; margin-top: 32px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -281,12 +306,14 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.order_number = None
         st.session_state.orders_this_session = 0
 
-    st.markdown('<div class="loaf-logo">🍞 loaf</div>', unsafe_allow_html=True)
+    st.markdown('<div class="loaf-logo">🍞 LOAF</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="bakery-name">{business_name}</div>', unsafe_allow_html=True)
-    st.markdown('<div class="bakery-subtitle">Order something delicious ✨</div>', unsafe_allow_html=True)
+    st.markdown('<div class="bakery-subtitle">Freshly baked. Easily ordered.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="bakery-chips"><span>🥐 Explore the menu</span><span>🎂 Custom orders</span><span>🛍️ Pickup & delivery</span></div>', unsafe_allow_html=True)
     st.markdown("""
     <div class="welcome-card">
-        👋 <b>Hi!</b> I can help you explore the menu, answer questions, and place your order.
+        <div class="welcome-title">🥐 Welcome to the bakery</div>
+        Ask what is available, explore flavours, or tell me what you would like to order.
     </div>
     """, unsafe_allow_html=True)
 
@@ -396,7 +423,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.display_messages.append({"role": "assistant", "content": display_reply})
 
     with st.sidebar:
-        st.subheader("🛍️ Your Order")
+        st.subheader("🧺 Your Box")
         order = st.session_state.get("current_order")
         if order and order.get("items"):
             for item in order["items"]:
@@ -412,10 +439,10 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             else:
                 st.info("Order in progress")
         else:
-            st.caption("Your items will appear here as you order.")
+            st.caption("Your treats will appear here as you order.")
 
         st.divider()
-        if st.button("Start New Order"):
+        if st.button("Start Fresh Order"):
             for key in [
                 "messages", "display_messages", "current_order",
                 "order_email_sent", "order_number"
