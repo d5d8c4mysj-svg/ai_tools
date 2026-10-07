@@ -25,49 +25,50 @@ mode = params.get("mode", "customer")  # defaults to customer view
 st.set_page_config(page_title="Loaf")
 
 # ---------------------------------------------------------
-# LOAF BAKERY THEME
+# LOAF DESIGN
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-.stApp { background: #FFF8EE; }
-.block-container { max-width: 880px; padding-top: 4rem; padding-bottom: 3rem; }
+:root {
+    --bg: #FAFAF8;
+    --surface: #FFFFFF;
+    --text: #1F1F1F;
+    --muted: #6B6B68;
+    --accent: #B8613C;
+    --accent-soft: #F7ECE6;
+    --border: #E8E6E1;
+}
+.stApp { background: var(--bg); color: var(--text); }
+.block-container { max-width: 980px; padding-top: 4.25rem; padding-bottom: 7rem; }
 #MainMenu { visibility: hidden; }
 footer { visibility: hidden; }
 
-.loaf-logo {
-    display: inline-block; padding: 7px 12px; border-radius: 999px;
-    background: #F3E1CC; color: #7A4328; font-size: 15px; font-weight: 800;
-    letter-spacing: .2px; margin-bottom: 22px;
+.loaf-brand { font-size: 13px; font-weight: 800; letter-spacing: 0.16em; color: var(--accent); text-transform: uppercase; margin-bottom: 24px; }
+.store-kicker { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+.store-name { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 44px; font-weight: 750; letter-spacing: -1.5px; line-height: 1.08; color: var(--text); margin: 0 0 10px 0; }
+.store-subtitle { color: var(--muted); font-size: 17px; line-height: 1.55; margin-bottom: 24px; }
+.store-divider { height: 1px; background: var(--border); margin: 8px 0 24px; }
+.assistant-label { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.assistant-intro { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 18px; color: #343432; box-shadow: 0 2px 8px rgba(0,0,0,0.025); }
+.loaf-footer { text-align: center; color: #96938D; font-size: 11px; margin-top: 28px; letter-spacing: .02em; }
+
+[data-testid="stChatMessage"] { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 10px 14px; margin-bottom: 10px; box-shadow: none; }
+[data-testid="stChatInput"] { border-radius: 12px; }
+[data-testid="stChatInput"] textarea { font-size: 15px; }
+.stButton > button { border-radius: 10px; border: 1px solid #D7D4CE; background: white; color: var(--text); font-weight: 650; }
+.stButton > button:hover { border-color: var(--accent); color: var(--accent); }
+[data-testid="stSidebar"] { background: #F4F3EF; border-right: 1px solid var(--border); }
+[data-testid="stSidebar"] .block-container { padding-top: 4.25rem; }
+.streamlit-expanderHeader { font-weight: 650; }
+
+/* Product/menu image treatment */
+[data-testid="stImage"] img { border-radius: 12px; border: 1px solid var(--border); }
+
+@media (max-width: 768px) {
+    .block-container { padding-top: 3.5rem; padding-left: 1.1rem; padding-right: 1.1rem; }
+    .store-name { font-size: 34px; }
+    .store-subtitle { font-size: 15px; }
 }
-.bakery-name {
-    font-family: Georgia, serif; font-size: 46px; font-weight: 700;
-    letter-spacing: -1.2px; color: #3A241A; line-height: 1.08; margin-bottom: 6px;
-}
-.bakery-subtitle { color: #8A604A; font-size: 18px; margin-bottom: 16px; }
-.bakery-chips { margin-bottom: 20px; color: #6F5142; font-size: 14px; line-height: 2; }
-.bakery-chips span {
-    background: #F7E9D8; border: 1px solid #E9D2BA; border-radius: 999px;
-    padding: 6px 10px; margin-right: 6px; white-space: nowrap;
-}
-.welcome-card {
-    background: #FFFDF9; border: 1px solid #EAD6C1; border-radius: 20px;
-    padding: 20px 22px; margin: 4px 0 18px;
-    box-shadow: 0 8px 24px rgba(87,55,35,.06); color: #4A3328;
-}
-.welcome-title { font-family: Georgia, serif; font-size: 20px; font-weight: 700; margin-bottom: 5px; color: #4A2D20; }
-[data-testid="stChatMessage"] {
-    background: #FFFDF9; border: 1px solid #EADBCB; border-radius: 18px;
-    padding: 10px 12px; margin-bottom: 10px; box-shadow: 0 3px 12px rgba(87,55,35,.035);
-}
-[data-testid="stChatInput"] { border-radius: 18px; }
-.stButton > button {
-    border-radius: 14px; border: 1px solid #C99C79; font-weight: 700;
-    background: #FFF9F2; color: #5C3828;
-}
-[data-testid="stSidebar"] { background: #F5E7D7; border-right: 1px solid #E4CEB8; }
-[data-testid="stSidebar"] h3 { font-family: Georgia, serif; color: #4A2D20; }
-.streamlit-expanderHeader { font-weight: 650; color: #5C3828; }
-.loaf-footer { text-align: center; color: #A17F6C; font-size: 12px; margin-top: 32px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -306,20 +307,24 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.order_number = None
         st.session_state.orders_this_session = 0
 
-    st.markdown('<div class="loaf-logo">🍞 LOAF</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="bakery-name">{business_name}</div>', unsafe_allow_html=True)
-    st.markdown('<div class="bakery-subtitle">Freshly baked. Easily ordered.</div>', unsafe_allow_html=True)
-    st.markdown('<div class="bakery-chips"><span>🥐 Explore the menu</span><span>🎂 Custom orders</span><span>🛍️ Pickup & delivery</span></div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="welcome-card">
-        <div class="welcome-title">🥐 Welcome to the bakery</div>
-        Ask what is available, explore flavours, or tell me what you would like to order.
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="loaf-brand">LOAF</div>', unsafe_allow_html=True)
+    st.markdown('<div class="store-kicker">ONLINE ORDERING</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="store-name">{business_name}</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="store-subtitle">Browse the menu, ask about ingredients or delivery, and place your order with our assistant.</div>',
+        unsafe_allow_html=True
+    )
 
     if menu_photo_urls:
-        with st.expander("See menu photos", expanded=False):
-            st.image(menu_photo_urls, width=150)
+        st.markdown("**Featured menu**")
+        st.image(menu_photo_urls, width=210)
+
+    st.markdown('<div class="store-divider"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="assistant-label">ORDERING ASSISTANT</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="assistant-intro"><b>{business_name}</b><br>Hi! What can I help you order today? You can also ask about the menu, ingredients, pickup, or delivery.</div>',
+        unsafe_allow_html=True
+    )
 
     for message in st.session_state.get("display_messages", []):
         with st.chat_message(message["role"]):
@@ -423,7 +428,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.display_messages.append({"role": "assistant", "content": display_reply})
 
     with st.sidebar:
-        st.subheader("🧺 Your Box")
+        st.subheader("Your order")
         order = st.session_state.get("current_order")
         if order and order.get("items"):
             for item in order["items"]:
@@ -439,10 +444,10 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             else:
                 st.info("Order in progress")
         else:
-            st.caption("Your treats will appear here as you order.")
+            st.caption("Your items will appear here as you order.")
 
         st.divider()
-        if st.button("Start Fresh Order"):
+        if st.button("Start New Order"):
             for key in [
                 "messages", "display_messages", "current_order",
                 "order_email_sent", "order_number"
@@ -451,14 +456,14 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     del st.session_state[key]
             st.rerun()
 
-    st.markdown('<div class="loaf-footer">Powered by 🍞 Loaf</div>', unsafe_allow_html=True)
+    st.markdown('<div class="loaf-footer">Powered by Loaf</div>', unsafe_allow_html=True)
 
 
 def customer_view():
     if slug_from_url:
         slug_input = slug_from_url
     else:
-        st.markdown('<div class="loaf-logo">🍞 loaf</div>', unsafe_allow_html=True)
+        st.markdown('<div class="loaf-brand">LOAF</div>', unsafe_allow_html=True)
         st.title("Order from your bakery")
         slug_input = st.text_input("Bakery link name", placeholder="e.g. sweettreats")
         if not slug_input:
