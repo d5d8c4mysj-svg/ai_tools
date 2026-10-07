@@ -6,6 +6,7 @@ import re
 import random
 import smtplib
 import hashlib
+import html
 from datetime import datetime
 from email.mime.text import MIMEText
 
@@ -25,169 +26,245 @@ mode = params.get("mode", "customer")  # defaults to customer view
 st.set_page_config(page_title="Loaf")
 
 # ---------------------------------------------------------
-# LOAF DESIGN — boutique bakery palette + editorial typography
+# LOAF DESIGN — clean storefront / Manrope + Inter
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
 
 :root {
     --chocolate: #633229;
-    --chocolate-dark: #3B2521;
+    --chocolate-dark: #35211D;
     --pink: #E9A9A8;
-    --blush: #F6D0CC;
+    --blush: #F7DEDA;
     --sage: #B7B58A;
     --vanilla: #F4EBC8;
     --cream: #FFF9F3;
     --white: #FFFFFF;
-    --muted: #746763;
-    --border: #E8DDD6;
+    --ink: #252321;
+    --muted: #706B67;
+    --border: #E9E1DC;
 }
 
 html, body, [class*="css"] {
-    font-family: "DM Sans", sans-serif;
+    font-family: "Inter", sans-serif;
 }
 
 .stApp {
     background: var(--cream);
-    color: var(--chocolate-dark);
+    color: var(--ink);
 }
 
 .block-container {
-    max-width: 1120px;
-    padding-top: 4.5rem;
-    padding-bottom: 6rem;
+    max-width: 1040px;
+    padding-top: 4.25rem;
+    padding-bottom: 7rem;
 }
 
 #MainMenu, footer {
     visibility: hidden;
 }
 
-h1, h2, h3, .bakery-name, .editorial-title {
-    font-family: "DM Serif Display", Georgia, serif !important;
-    color: var(--chocolate-dark);
-    font-weight: 400 !important;
-    letter-spacing: -0.02em;
+.loaf-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    padding: 0 0 16px;
+    margin-bottom: 34px;
 }
 
-.loaf-logo {
-    display: inline-block;
-    font-family: "DM Sans", sans-serif;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: .18em;
-    text-transform: uppercase;
+.loaf-wordmark {
+    font-family: "Manrope", sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: .16em;
     color: var(--chocolate);
-    margin-bottom: 24px;
+}
+
+.loaf-topnote {
+    font-size: 12px;
+    color: var(--muted);
 }
 
 .bakery-name {
-    font-size: clamp(44px, 6vw, 76px);
-    line-height: .98;
-    margin: 0 0 14px;
+    font-family: "Manrope", sans-serif;
+    font-size: clamp(34px, 5vw, 54px);
+    font-weight: 800;
+    letter-spacing: -0.045em;
+    line-height: 1.02;
+    color: var(--ink);
+    margin: 0 0 12px;
 }
 
 .bakery-subtitle {
     max-width: 680px;
     color: var(--muted);
-    font-size: 17px;
-    line-height: 1.7;
-    margin-bottom: 30px;
+    font-size: 16px;
+    line-height: 1.65;
+    margin-bottom: 24px;
 }
 
 .brand-strip {
-    height: 7px;
+    width: 92px;
+    height: 5px;
     border-radius: 999px;
-    background: linear-gradient(90deg,
-        var(--chocolate) 0 31%,
-        var(--pink) 31% 56%,
-        var(--sage) 56% 78%,
-        var(--vanilla) 78% 100%);
-    margin: 0 0 34px;
+    background: linear-gradient(90deg, var(--chocolate) 0 34%, var(--pink) 34% 62%, var(--sage) 62% 82%, var(--vanilla) 82% 100%);
+    margin-bottom: 18px;
 }
 
-.welcome-card {
+.section-label {
+    font-family: "Manrope", sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--chocolate);
+    margin: 30px 0 12px;
+}
+
+.assistant-intro {
+    margin: 28px 0 12px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+}
+
+.assistant-title {
+    font-family: "Manrope", sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin-bottom: 6px;
+}
+
+.assistant-copy {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.chat-row {
+    display: flex;
+    width: 100%;
+    margin: 14px 0;
+}
+
+.chat-row.user {
+    justify-content: flex-end;
+}
+
+.chat-row.assistant {
+    justify-content: flex-start;
+}
+
+.chat-wrap {
+    max-width: 72%;
+}
+
+.chat-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    margin: 0 0 5px 2px;
+}
+
+.chat-row.user .chat-name {
+    text-align: right;
+    margin-right: 2px;
+}
+
+.chat-bubble {
+    font-family: "Inter", sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 12px 15px;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(53,33,29,.035);
+}
+
+.chat-row.assistant .chat-bubble {
     background: var(--white);
+    color: var(--ink);
     border: 1px solid var(--border);
-    border-left: 5px solid var(--pink);
-    border-radius: 6px;
-    padding: 20px 22px;
-    margin: 18px 0 24px;
-    box-shadow: 0 8px 28px rgba(59, 37, 33, .045);
-    color: var(--chocolate-dark);
+    border-bottom-left-radius: 5px;
+}
+
+.chat-row.user .chat-bubble {
+    background: var(--chocolate);
+    color: white;
+    border: 1px solid var(--chocolate);
+    border-bottom-right-radius: 5px;
 }
 
 [data-testid="stChatMessage"] {
-    background: transparent;
-    border: 0;
-    padding: 8px 0;
-    margin: 2px 0 12px;
-}
-
-[data-testid="stChatMessageContent"] {
-    font-family: "DM Sans", sans-serif;
-    line-height: 1.65;
+    display: none;
 }
 
 [data-testid="stChatInput"] {
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 12px;
     background: var(--white);
-    box-shadow: 0 8px 24px rgba(59,37,33,.05);
+    box-shadow: 0 10px 30px rgba(53,33,29,.07);
 }
 
 .stButton > button {
-    border-radius: 6px;
+    border-radius: 8px;
     border: 1px solid var(--chocolate);
     background: var(--chocolate);
     color: white;
-    font-family: "DM Sans", sans-serif;
+    font-family: "Inter", sans-serif;
     font-weight: 600;
-    padding: .6rem 1rem;
 }
 
 .stButton > button:hover {
-    border-color: var(--chocolate-dark);
     background: var(--chocolate-dark);
+    border-color: var(--chocolate-dark);
     color: white;
-}
-
-[data-testid="stSidebar"] {
-    background: #F7E9DE;
-    border-right: 1px solid #E5D1C3;
-}
-
-[data-testid="stSidebar"] h3 {
-    font-family: "DM Serif Display", Georgia, serif !important;
-    font-size: 28px;
 }
 
 [data-testid="stExpander"] {
     background: var(--white);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 10px;
+}
+
+[data-testid="stExpander"] summary {
+    font-family: "Inter", sans-serif;
+    font-weight: 600;
+}
+
+.order-empty {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 4px 0 8px;
 }
 
 .loaf-footer {
     text-align: center;
-    color: #9A8B85;
+    color: #9B918C;
     font-size: 11px;
-    letter-spacing: .04em;
-    margin-top: 42px;
+    margin-top: 44px;
 }
 
-hr {
-    border-color: var(--border) !important;
+[data-testid="stSidebar"] {
+    display: none;
 }
 
 @media (max-width: 768px) {
     .block-container {
-        padding-top: 4rem;
-        padding-left: 1.15rem;
-        padding-right: 1.15rem;
+        padding-top: 3.8rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
     }
     .bakery-name {
-        font-size: 46px;
+        font-size: 38px;
+    }
+    .chat-wrap {
+        max-width: 88%;
+    }
+    .loaf-topnote {
+        display: none;
     }
 }
 </style>
@@ -356,6 +433,29 @@ def send_order_email(order, business_name, business_email, order_number):
         server.send_message(msg)
 
 
+
+def render_chat_message(role, content, business_name):
+    safe_content = html.escape(str(content)).replace("\n", "<br>")
+    if role == "user":
+        label = "You"
+        css_role = "user"
+    else:
+        label = f"{html.escape(str(business_name))} Assistant"
+        css_role = "assistant"
+
+    st.markdown(
+        f"""
+        <div class="chat-row {css_role}">
+            <div class="chat-wrap">
+                <div class="chat-name">{label}</div>
+                <div class="chat-bubble">{safe_content}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
 def run_chatbot(business):
     business_name = business["business_name"]
     contact = business["contact_email"]
@@ -428,29 +528,88 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.order_number = None
         st.session_state.orders_this_session = 0
 
-    st.markdown('<div class="loaf-logo">LOAF</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="loaf-topbar"><div class="loaf-wordmark">LOAF</div><div class="loaf-topnote">Online ordering</div></div>',
+        unsafe_allow_html=True
+    )
     st.markdown('<div class="brand-strip"></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="bakery-name">{business_name}</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="bakery-subtitle">Fresh bakes, thoughtful details, and an easier way to order. Browse the menu or tell us what you are looking for.</div>',
+        '<div class="bakery-subtitle">Browse today\'s bakes, ask about ingredients or custom orders, and place your order in one conversation.</div>',
         unsafe_allow_html=True
     )
-    st.markdown("""
-    <div class="welcome-card">
-        <b>How can we help?</b><br>
-        Ask about flavours, ingredients, custom orders, pickup or delivery — or simply tell us what you would like to order.
-    </div>
-    """, unsafe_allow_html=True)
 
     if menu_photo_urls:
-        with st.expander("See menu photos", expanded=False):
-            st.image(menu_photo_urls, width=150)
+        st.markdown('<div class="section-label">From the bakery</div>', unsafe_allow_html=True)
+        photo_cols = st.columns(min(len(menu_photo_urls), 3))
+        for idx, photo_url in enumerate(menu_photo_urls[:6]):
+            with photo_cols[idx % len(photo_cols)]:
+                st.image(photo_url, use_container_width=True)
+
+    with st.expander("View menu", expanded=False):
+        for item in menu:
+            item_name = item.get("Item", "")
+            if not item_name:
+                continue
+            price = item.get("Price", "")
+            ingredients = item.get("Ingredients", "")
+            st.markdown(f"**{item_name}**  ")
+            if ingredients:
+                st.caption(str(ingredients))
+            if price not in ("", None, 0):
+                st.write(f"₹{price}")
+            st.divider()
+
+    order = st.session_state.get("current_order")
+    order_count = len(order.get("items", [])) if order and order.get("items") else 0
+    with st.expander(f"Your order · {order_count} item{'s' if order_count != 1 else ''}", expanded=bool(order_count)):
+        if order_count:
+            for item in order["items"]:
+                line = f"**{item.get('quantity', 1)} × {item.get('item', 'Unknown')}**"
+                st.markdown(line)
+                if item.get("customizations"):
+                    st.caption(item["customizations"])
+            st.divider()
+            st.write(f"**Requested for:** {order.get('requested_datetime', 'not specified')}")
+            st.write(f"**Estimated total:** {order.get('estimated_total', 'N/A')}")
+            st.write(f"**Fulfillment:** {order.get('fulfillment', 'unspecified')}")
+            if order.get("status") == "confirmed":
+                st.success(f"Order #{st.session_state.get('order_number')} confirmed")
+            else:
+                st.info("Order in progress")
+        else:
+            st.markdown('<div class="order-empty">Your items will appear here as you order.</div>', unsafe_allow_html=True)
+
+        if st.button("Start New Order", key="top_start_new_order"):
+            for key in [
+                "messages", "display_messages", "current_order",
+                "order_email_sent", "order_number"
+            ]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
+
+    st.markdown(
+        f"""
+        <div class="assistant-intro">
+            <div class="assistant-title">Need help ordering?</div>
+            <div class="assistant-copy">Ask {business_name} about flavours, allergens, custom cakes, pickup or delivery.</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    if not st.session_state.get("display_messages"):
+        render_chat_message(
+            "assistant",
+            "Hi! Tell me what you're looking for and I'll help you with the menu or take your order.",
+            business_name
+        )
 
     for message in st.session_state.get("display_messages", []):
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
+        render_chat_message(message["role"], message["content"], business_name)
 
-    user_input = st.chat_input("Type your message...")
+    user_input = st.chat_input(f"Message {business_name}...")
 
     message_count = len(st.session_state.get("display_messages", []))
     if message_count >= MAX_MESSAGES_PER_SESSION:
@@ -464,8 +623,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.messages.append({"role": "user", "content": user_input})
         st.session_state.display_messages.append({"role": "user", "content": user_input})
 
-        with st.chat_message("user"):
-            st.write(user_input)
+        render_chat_message("user", user_input, business_name)
 
         try:
             with st.spinner("Typing..."):
@@ -475,8 +633,11 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 )
             bot_reply = response.message.content[0].text
         except Exception:
-            with st.chat_message("assistant"):
-                st.write("Sorry, I'm having trouble responding right now. Please try again in a moment, or contact the business directly.")
+            render_chat_message(
+                "assistant",
+                "Sorry, I'm having trouble responding right now. Please try again in a moment, or contact the business directly.",
+                business_name
+            )
             st.session_state.messages.pop()
             st.session_state.display_messages.pop()
             st.stop()
@@ -541,40 +702,10 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             except json.JSONDecodeError:
                 pass
 
-        with st.chat_message("assistant"):
-            st.write(display_reply)
+        render_chat_message("assistant", display_reply, business_name)
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
         st.session_state.display_messages.append({"role": "assistant", "content": display_reply})
-
-    with st.sidebar:
-        st.subheader("Your order")
-        order = st.session_state.get("current_order")
-        if order and order.get("items"):
-            for item in order["items"]:
-                line = f"- {item.get('quantity', 1)} x {item.get('item', 'Unknown')}"
-                if item.get("customizations"):
-                    line += f" ({item['customizations']})"
-                st.write(line)
-            st.write(f"**Requested for:** {order.get('requested_datetime', 'not specified')}")
-            st.write(f"**Estimated total:** {order.get('estimated_total', 'N/A')}")
-            st.write(f"**Fulfillment:** {order.get('fulfillment', 'unspecified')}")
-            if order.get("status") == "confirmed":
-                st.success(f"Order #{st.session_state.get('order_number')} confirmed")
-            else:
-                st.info("Order in progress")
-        else:
-            st.caption("Your items will appear here as you order.")
-
-        st.divider()
-        if st.button("Start New Order"):
-            for key in [
-                "messages", "display_messages", "current_order",
-                "order_email_sent", "order_number"
-            ]:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.rerun()
 
     st.markdown('<div class="loaf-footer">Powered by Loaf</div>', unsafe_allow_html=True)
 
@@ -583,7 +714,7 @@ def customer_view():
     if slug_from_url:
         slug_input = slug_from_url
     else:
-        st.markdown('<div class="loaf-logo">LOAF</div>', unsafe_allow_html=True)
+        st.markdown('<div class="loaf-wordmark">LOAF</div>', unsafe_allow_html=True)
         st.title("Order from your bakery")
         slug_input = st.text_input("Bakery link name", placeholder="e.g. sweettreats")
         if not slug_input:
