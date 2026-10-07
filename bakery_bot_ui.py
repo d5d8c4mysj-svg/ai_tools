@@ -283,6 +283,63 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
     }
 }
 
+
+/* Inline message composer */
+[data-testid="stForm"] {
+    max-width:620px;
+    margin:16px auto 8px auto;
+    padding:0 !important;
+    border:0 !important;
+    background:transparent !important;
+}
+[data-testid="stForm"] [data-testid="stHorizontalBlock"] {
+    align-items:center;
+    gap:6px;
+}
+[data-testid="stForm"] .stTextInput input {
+    height:38px !important;
+    min-height:38px !important;
+    border:1px solid #E6C9C7 !important;
+    border-radius:9px !important;
+    background:#FFFDFC !important;
+    font-size:12px !important;
+    padding:0 12px !important;
+    box-shadow:none !important;
+}
+[data-testid="stForm"] .stButton > button,
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
+    height:38px !important;
+    min-height:38px !important;
+    width:38px !important;
+    padding:0 !important;
+    border-radius:9px !important;
+    background:var(--chocolate) !important;
+    border-color:var(--chocolate) !important;
+    color:white !important;
+    font-size:16px !important;
+}
+[data-testid="stBottom"],
+[data-testid="stBottomBlockContainer"] {
+    display:none !important;
+}
+@media (max-width:768px) {
+    [data-testid="stForm"] {
+        max-width:100%;
+        margin:12px 0 6px 0;
+    }
+    [data-testid="stForm"] .stTextInput input {
+        height:36px !important;
+        min-height:36px !important;
+        font-size:12px !important;
+    }
+    [data-testid="stForm"] .stButton > button,
+    [data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
+        height:36px !important;
+        min-height:36px !important;
+        width:36px !important;
+    }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -658,7 +715,19 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     for message in st.session_state.get("display_messages", []):
         render_chat_message(message["role"], message["content"], business_name)
 
-    user_input = st.chat_input(f"Ask {display_business_name} anything...")
+    with st.form("chat_form", clear_on_submit=True):
+        chat_col, send_col = st.columns([12, 1])
+        with chat_col:
+            user_input = st.text_input(
+                "Message",
+                placeholder=f"Ask {display_business_name} anything...",
+                label_visibility="collapsed"
+            )
+        with send_col:
+            send_message = st.form_submit_button("↑", use_container_width=True)
+
+    if not send_message:
+        user_input = None
 
     message_count = len(st.session_state.get("display_messages", []))
     if message_count >= MAX_MESSAGES_PER_SESSION:
