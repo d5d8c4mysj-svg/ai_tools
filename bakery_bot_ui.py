@@ -25,57 +25,174 @@ mode = params.get("mode", "customer")  # defaults to customer view
 st.set_page_config(page_title="Loaf")
 
 # ---------------------------------------------------------
-# LOAF STOREFRONT DESIGN
+# LOAF DESIGN — boutique bakery palette + editorial typography
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-:root { --ink:#171717; --muted:#6d6a68; --accent:#b43a4a; --soft:#f8e9eb; --line:#ebe7e4; --bg:#fffdfb; }
-.stApp { background: var(--bg); color: var(--ink); }
-.block-container { max-width: 1120px; padding-top: 3.6rem; padding-bottom: 7rem; }
-#MainMenu, footer { visibility: hidden; }
-header[data-testid="stHeader"] { background: rgba(255,253,251,.92); }
-[data-testid="stSidebar"] { background:#ffffff; border-right:1px solid var(--line); }
-[data-testid="stSidebar"] > div:first-child { padding-top: 2.4rem; }
-.loaf-nav { display:flex; align-items:center; justify-content:space-between; padding:0 0 22px; border-bottom:1px solid var(--line); margin-bottom:34px; }
-.loaf-mark { font-size:18px; font-weight:850; letter-spacing:-.6px; }
-.loaf-mark span { color:var(--accent); }
-.nav-note { font-size:13px; color:var(--muted); }
-.hero { display:grid; grid-template-columns:1.1fr .9fr; gap:34px; align-items:stretch; margin-bottom:42px; }
-.hero-copy { min-height:300px; padding:30px 4px 24px 0; display:flex; flex-direction:column; justify-content:center; }
-.eyebrow { color:var(--accent); font-size:12px; font-weight:800; letter-spacing:1.4px; text-transform:uppercase; margin-bottom:14px; }
-.hero h1 { font-family:Arial,sans-serif; font-size:54px; line-height:1.01; letter-spacing:-2.5px; margin:0 0 18px; color:var(--ink); }
-.hero p { font-size:18px; line-height:1.6; color:var(--muted); max-width:580px; margin:0; }
-.hero-visual { min-height:300px; border-radius:26px; overflow:hidden; background:linear-gradient(135deg,#f7d8dc,#f5efe9 58%,#ead5c8); position:relative; display:flex; align-items:center; justify-content:center; }
-.hero-visual img { width:100%; height:100%; min-height:300px; object-fit:cover; display:block; }
-.hero-placeholder { padding:38px; text-align:center; color:#74444a; }
-.hero-placeholder strong { display:block; font-size:24px; margin-bottom:8px; color:#3b2427; }
-.section-kicker { font-size:12px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
-.section-title { font-size:30px; font-weight:800; letter-spacing:-1px; margin-bottom:8px; }
-.section-copy { color:var(--muted); margin-bottom:20px; }
-.menu-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:0 0 44px; }
-.menu-card { background:#fff; border:1px solid var(--line); border-radius:18px; padding:18px; min-height:112px; box-shadow:0 8px 28px rgba(30,20,15,.035); }
-.menu-name { font-weight:750; font-size:16px; margin-bottom:7px; }
-.menu-price { color:var(--accent); font-weight:800; }
-.menu-desc { color:var(--muted); font-size:13px; margin-top:7px; line-height:1.4; }
-.assistant-shell { background:#fff; border:1px solid var(--line); border-radius:24px; padding:24px; box-shadow:0 14px 42px rgba(30,20,15,.045); margin-bottom:18px; }
-.assistant-head { display:flex; justify-content:space-between; gap:16px; align-items:center; margin-bottom:18px; }
-.assistant-name { font-size:20px; font-weight:800; }
-.assistant-status { font-size:12px; color:#267a55; background:#edf8f2; padding:7px 10px; border-radius:999px; font-weight:700; }
-.assistant-intro { color:var(--muted); line-height:1.55; margin-bottom:4px; }
-[data-testid="stChatMessage"] { border:0 !important; background:transparent !important; padding:4px 0 !important; margin:8px 0 !important; }
-[data-testid="stChatMessage"] [data-testid="stChatMessageAvatarUser"], [data-testid="stChatMessage"] [data-testid="stChatMessageAvatarAssistant"] { display:none; }
-[data-testid="stChatMessageContent"] { max-width:76%; width:fit-content; border-radius:18px; padding:12px 15px; line-height:1.5; }
-[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) [data-testid="stChatMessageContent"] { margin-left:auto; background:var(--accent); color:#fff; border-bottom-right-radius:6px; }
-[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) [data-testid="stChatMessageContent"] { background:#f5f3f1; color:var(--ink); border-bottom-left-radius:6px; }
-[data-testid="stChatInput"] { border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 8px 30px rgba(30,20,15,.05); }
-.stButton > button { border-radius:12px; border:1px solid #ded8d4; font-weight:700; background:#fff; }
-.stButton > button:hover { border-color:var(--accent); color:var(--accent); }
-.order-title { font-size:20px; font-weight:850; letter-spacing:-.4px; margin-bottom:6px; }
-.order-empty { color:var(--muted); font-size:13px; line-height:1.5; }
-.loaf-footer { text-align:center; color:#9b9692; font-size:11px; margin-top:28px; }
-@media (max-width:800px) { .block-container{padding-top:3rem;} .hero{grid-template-columns:1fr;gap:18px}.hero h1{font-size:40px}.hero-copy{min-height:auto;padding-top:8px}.hero-visual{min-height:220px}.menu-grid{grid-template-columns:1fr}.nav-note{display:none}[data-testid="stChatMessageContent"]{max-width:88%;} }
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
+
+:root {
+    --chocolate: #633229;
+    --chocolate-dark: #3B2521;
+    --pink: #E9A9A8;
+    --blush: #F6D0CC;
+    --sage: #B7B58A;
+    --vanilla: #F4EBC8;
+    --cream: #FFF9F3;
+    --white: #FFFFFF;
+    --muted: #746763;
+    --border: #E8DDD6;
+}
+
+html, body, [class*="css"] {
+    font-family: "DM Sans", sans-serif;
+}
+
+.stApp {
+    background: var(--cream);
+    color: var(--chocolate-dark);
+}
+
+.block-container {
+    max-width: 1120px;
+    padding-top: 4.5rem;
+    padding-bottom: 6rem;
+}
+
+#MainMenu, footer {
+    visibility: hidden;
+}
+
+h1, h2, h3, .bakery-name, .editorial-title {
+    font-family: "DM Serif Display", Georgia, serif !important;
+    color: var(--chocolate-dark);
+    font-weight: 400 !important;
+    letter-spacing: -0.02em;
+}
+
+.loaf-logo {
+    display: inline-block;
+    font-family: "DM Sans", sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--chocolate);
+    margin-bottom: 24px;
+}
+
+.bakery-name {
+    font-size: clamp(44px, 6vw, 76px);
+    line-height: .98;
+    margin: 0 0 14px;
+}
+
+.bakery-subtitle {
+    max-width: 680px;
+    color: var(--muted);
+    font-size: 17px;
+    line-height: 1.7;
+    margin-bottom: 30px;
+}
+
+.brand-strip {
+    height: 7px;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+        var(--chocolate) 0 31%,
+        var(--pink) 31% 56%,
+        var(--sage) 56% 78%,
+        var(--vanilla) 78% 100%);
+    margin: 0 0 34px;
+}
+
+.welcome-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--pink);
+    border-radius: 6px;
+    padding: 20px 22px;
+    margin: 18px 0 24px;
+    box-shadow: 0 8px 28px rgba(59, 37, 33, .045);
+    color: var(--chocolate-dark);
+}
+
+[data-testid="stChatMessage"] {
+    background: transparent;
+    border: 0;
+    padding: 8px 0;
+    margin: 2px 0 12px;
+}
+
+[data-testid="stChatMessageContent"] {
+    font-family: "DM Sans", sans-serif;
+    line-height: 1.65;
+}
+
+[data-testid="stChatInput"] {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    box-shadow: 0 8px 24px rgba(59,37,33,.05);
+}
+
+.stButton > button {
+    border-radius: 6px;
+    border: 1px solid var(--chocolate);
+    background: var(--chocolate);
+    color: white;
+    font-family: "DM Sans", sans-serif;
+    font-weight: 600;
+    padding: .6rem 1rem;
+}
+
+.stButton > button:hover {
+    border-color: var(--chocolate-dark);
+    background: var(--chocolate-dark);
+    color: white;
+}
+
+[data-testid="stSidebar"] {
+    background: #F7E9DE;
+    border-right: 1px solid #E5D1C3;
+}
+
+[data-testid="stSidebar"] h3 {
+    font-family: "DM Serif Display", Georgia, serif !important;
+    font-size: 28px;
+}
+
+[data-testid="stExpander"] {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.loaf-footer {
+    text-align: center;
+    color: #9A8B85;
+    font-size: 11px;
+    letter-spacing: .04em;
+    margin-top: 42px;
+}
+
+hr {
+    border-color: var(--border) !important;
+}
+
+@media (max-width: 768px) {
+    .block-container {
+        padding-top: 4rem;
+        padding-left: 1.15rem;
+        padding-right: 1.15rem;
+    }
+    .bakery-name {
+        font-size: 46px;
+    }
+}
 </style>
 """, unsafe_allow_html=True)
+
 
 MAX_MESSAGES_PER_SESSION = 40  # caps Cohere API spend per customer session
 
@@ -311,55 +428,29 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.order_number = None
         st.session_state.orders_this_session = 0
 
-    hero_url = menu_photo_urls[0] if menu_photo_urls else ""
-    hero_media = (
-        f'<img src="{hero_url}" alt="{business_name} bakery">'
-        if hero_url
-        else '<div class="hero-placeholder"><strong>Made fresh for every order.</strong><span>Add bakery photos in the owner setup to make this storefront yours.</span></div>'
+    st.markdown('<div class="loaf-logo">LOAF</div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-strip"></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="bakery-name">{business_name}</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="bakery-subtitle">Fresh bakes, thoughtful details, and an easier way to order. Browse the menu or tell us what you are looking for.</div>',
+        unsafe_allow_html=True
     )
-
-    st.markdown(f"""
-    <div class="loaf-nav">
-      <div class="loaf-mark">LOAF<span>.</span></div>
-      <div class="nav-note">AI-powered ordering for {business_name}</div>
-    </div>
-    <section class="hero">
-      <div class="hero-copy">
-        <div class="eyebrow">{business_name}</div>
-        <h1>Dessert should be the easiest decision you make today.</h1>
-        <p>Browse the menu, ask about ingredients or delivery, and place a complete order in one conversation.</p>
-      </div>
-      <div class="hero-visual">{hero_media}</div>
-    </section>
-    """, unsafe_allow_html=True)
-
-    clean_menu = [item for item in (menu or []) if item.get("Item")]
-    if clean_menu:
-        st.markdown('<div class="section-kicker">Menu</div><div class="section-title">What are you craving?</div><div class="section-copy">A quick look at what is available. Ask the assistant for details, ingredients, sizes or customisations.</div>', unsafe_allow_html=True)
-        cards = []
-        for item in clean_menu[:6]:
-            name = item.get("Item", "")
-            price = item.get("Price", "")
-            ingredients = item.get("Ingredients", "") or "Ask us for ingredients and customisation options."
-            cards.append(f'<div class="menu-card"><div class="menu-name">{name}</div><div class="menu-price">₹{price}</div><div class="menu-desc">{ingredients}</div></div>')
-        st.markdown('<div class="menu-grid">' + ''.join(cards) + '</div>', unsafe_allow_html=True)
-
-    st.markdown(f"""
-    <div class="section-kicker">Ordering assistant</div>
-    <div class="assistant-shell">
-      <div class="assistant-head">
-        <div class="assistant-name">{business_name} Assistant</div>
-        <div class="assistant-status">● Online</div>
-      </div>
-      <div class="assistant-intro">Hi! Tell me what you would like to order, or ask me about the menu, ingredients, pickup or delivery.</div>
+    st.markdown("""
+    <div class="welcome-card">
+        <b>How can we help?</b><br>
+        Ask about flavours, ingredients, custom orders, pickup or delivery — or simply tell us what you would like to order.
     </div>
     """, unsafe_allow_html=True)
+
+    if menu_photo_urls:
+        with st.expander("See menu photos", expanded=False):
+            st.image(menu_photo_urls, width=150)
 
     for message in st.session_state.get("display_messages", []):
         with st.chat_message(message["role"]):
             st.write(message["content"])
 
-    user_input = st.chat_input(f"Message {business_name}...")
+    user_input = st.chat_input("Type your message...")
 
     message_count = len(st.session_state.get("display_messages", []))
     if message_count >= MAX_MESSAGES_PER_SESSION:
@@ -457,7 +548,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.display_messages.append({"role": "assistant", "content": display_reply})
 
     with st.sidebar:
-        st.markdown('<div class="order-title">Your order</div>', unsafe_allow_html=True)
+        st.subheader("Your order")
         order = st.session_state.get("current_order")
         if order and order.get("items"):
             for item in order["items"]:
@@ -473,10 +564,10 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             else:
                 st.info("Order in progress")
         else:
-            st.markdown('<div class="order-empty">Your items will appear here once you start ordering.</div>', unsafe_allow_html=True)
+            st.caption("Your items will appear here as you order.")
 
         st.divider()
-        if st.button("Start new order"):
+        if st.button("Start New Order"):
             for key in [
                 "messages", "display_messages", "current_order",
                 "order_email_sent", "order_number"
@@ -492,8 +583,8 @@ def customer_view():
     if slug_from_url:
         slug_input = slug_from_url
     else:
-        st.markdown('<div class="loaf-mark">LOAF<span>.</span></div>', unsafe_allow_html=True)
-        st.title("Find your bakery")
+        st.markdown('<div class="loaf-logo">LOAF</div>', unsafe_allow_html=True)
+        st.title("Order from your bakery")
         slug_input = st.text_input("Bakery link name", placeholder="e.g. sweettreats")
         if not slug_input:
             st.info("Enter your bakery's link name to get started.")
