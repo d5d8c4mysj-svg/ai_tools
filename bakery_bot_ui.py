@@ -340,6 +340,28 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
     }
 }
 
+
+/* Remove Streamlit's reserved top chrome so the storefront starts higher */
+header[data-testid="stHeader"] {
+    display: none !important;
+    height: 0 !important;
+}
+[data-testid="stToolbar"],
+[data-testid="stDecoration"] {
+    display: none !important;
+}
+.stApp > header {
+    display: none !important;
+}
+.block-container {
+    padding-top: 1rem !important;
+}
+@media (max-width:768px) {
+    .block-container {
+        padding-top: .75rem !important;
+    }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
