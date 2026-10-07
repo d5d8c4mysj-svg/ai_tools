@@ -22,7 +22,7 @@ params = st.query_params
 slug_from_url = params.get("slug", "")
 mode = params.get("mode", "customer")  # defaults to customer view
 
-st.set_page_config(page_title="Business Chatbot Builder")
+st.set_page_config(page_title="Loaf")
 
 MAX_MESSAGES_PER_SESSION = 40  # caps Cohere API spend per customer session
 
@@ -137,8 +137,9 @@ def hash_password(password):
 def get_business(slug):
     try:
         result = supabase.table("businesses").select("*").eq("slug", slug).execute()
-    except Exception:
+    except Exception as e:
         st.error("Something went wrong looking that up. Please try again in a moment.")
+        st.exception(e)  # TEMPORARY -- remove once we've found the root cause
         return None
     if result.data:
         return result.data[0]
@@ -394,7 +395,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     del st.session_state[key]
             st.rerun()
 
-    st.caption("Powered by [Your Tool Name]")
+    st.caption("Powered by Loaf")
 
 
 def customer_view():
@@ -488,7 +489,8 @@ def quick_update_view():
 
 
 def owner_view():
-    st.title("Business Chatbot Builder")
+    st.title("Loaf")
+    st.caption("Set up your bakery's ordering chatbot")
 
     business_name = st.text_input("Business name")
     slug = st.text_input(
