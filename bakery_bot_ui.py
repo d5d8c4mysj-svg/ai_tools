@@ -473,6 +473,35 @@ html, body, .stApp {
     }
 }
 
+
+/* Customer-facing Streamlit chrome cleanup */
+#MainMenu { visibility:hidden !important; }
+footer { visibility:hidden !important; }
+header[data-testid="stHeader"] {
+    display:none !important;
+    height:0 !important;
+}
+[data-testid="stToolbar"],
+[data-testid="stDecoration"],
+[data-testid="stStatusWidget"],
+[data-testid="stAppDeployButton"],
+[data-testid="stMainMenu"] {
+    display:none !important;
+    visibility:hidden !important;
+}
+.stApp > header {
+    display:none !important;
+    height:0 !important;
+}
+
+/* Hide Streamlit viewer badges / floating controls where current markup permits */
+[data-testid="stViewerBadge"],
+[data-testid="stAppCreatorAvatar"],
+[data-testid="stAppCreatorBadge"] {
+    display:none !important;
+    visibility:hidden !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
