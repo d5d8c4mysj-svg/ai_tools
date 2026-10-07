@@ -69,7 +69,7 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 [data-testid="stExpander"] summary { font-family:"Inter",sans-serif; font-weight:600; }
 .stButton > button { border-radius:8px; border:1px solid var(--chocolate); background:var(--chocolate); color:white; font-weight:600; }
 .stButton > button:hover { background:var(--chocolate-dark); border-color:var(--chocolate-dark); color:white; }
-.loaf-footer { text-align:center; color:#9B918C; font-size:10px; margin-top:36px; }
+.loaf-footer { text-align:center; color:#9B918C; font-size:10px; margin-top:20px; }
 [data-testid="stSidebar"] { display:none; }
 
 [data-testid="stToolbar"] { visibility:hidden; height:0; }
@@ -78,18 +78,18 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
 
 @media (max-width:768px) {
     .block-container {
-        padding-top:5.5rem;
+        padding-top:1.25rem;
         padding-left:1rem;
         padding-right:1rem;
         padding-bottom:8rem;
     }
     .loaf-topbar {
-        margin-bottom:16px;
-        padding-bottom:11px;
+        margin-bottom:10px;
+        padding-bottom:9px;
     }
     .loaf-topnote { display:none; }
     .bakery-name {
-        font-size:30px;
+        font-size:29px;
         line-height:1.1;
         letter-spacing:-.035em;
         margin-bottom:7px;
@@ -106,8 +106,8 @@ html, body, [class*="css"] { font-family:"Inter",sans-serif; }
         margin-bottom:11px;
     }
     .assistant-intro {
-        margin-top:15px;
-        padding-top:14px;
+        margin-top:14px;
+        padding-top:12px;
     }
     .assistant-title {
         font-size:18px;
@@ -411,26 +411,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         unsafe_allow_html=True
     )
 
-    st.markdown(
-        f"""
-        <div class="assistant-intro">
-            <div class="assistant-title">Need help?</div>
-            <div class="assistant-copy">Ask about flavours, allergens, custom orders, pickup or delivery.</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    if not st.session_state.get("display_messages"):
-        render_chat_message(
-            "assistant",
-            "Hi! Tell me what you're looking for and I'll help you with the menu or take your order.",
-            business_name
-        )
-
-    for message in st.session_state.get("display_messages", []):
-        render_chat_message(message["role"], message["content"], business_name)
-
     if menu_photo_urls:
         st.markdown('<div class="section-label">From the bakery</div>', unsafe_allow_html=True)
         photo_cols = st.columns(min(len(menu_photo_urls), 3))
@@ -480,6 +460,26 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 if key in st.session_state:
                     del st.session_state[key]
             st.rerun()
+
+    st.markdown(
+        f"""
+        <div class="assistant-intro">
+            <div class="assistant-title">Need help?</div>
+            <div class="assistant-copy">Ask about flavours, allergens, custom orders, pickup or delivery.</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    if not st.session_state.get("display_messages"):
+        render_chat_message(
+            "assistant",
+            "Hi! What can I help you order today?",
+            business_name
+        )
+
+    for message in st.session_state.get("display_messages", []):
+        render_chat_message(message["role"], message["content"], business_name)
 
     user_input = st.chat_input(f"Message {display_business_name}...")
 
