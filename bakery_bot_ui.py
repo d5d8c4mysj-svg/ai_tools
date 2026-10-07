@@ -685,19 +685,26 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     unsafe_allow_html=True
                 )
 
-    with st.expander("View menu", expanded=False):
-        full_menu_items = [item for item in menu if item.get("Item")]
-        if full_menu_items:
+    # Popular Picks already shows the first six products.
+    # Only show View menu when there are additional products.
+    full_menu_items = [item for item in menu if item.get("Item")]
+    remaining_menu_items = full_menu_items[6:]
+
+    if remaining_menu_items:
+        with st.expander(f"View full menu · {len(remaining_menu_items)} more", expanded=False):
             menu_cols = st.columns(3)
-            for idx, item in enumerate(full_menu_items):
+            for display_idx, item in enumerate(remaining_menu_items):
+                original_idx = display_idx + 6
                 item_name = item.get("Item", "")
                 price = item.get("Price", "")
                 ingredients = item.get("Ingredients", "")
                 photo_url = item.get("PhotoURL") or (
-                    menu_photo_urls[idx] if idx < len(menu_photo_urls) else None
+                    menu_photo_urls[original_idx]
+                    if original_idx < len(menu_photo_urls)
+                    else None
                 )
 
-                with menu_cols[idx % 3]:
+                with menu_cols[display_idx % 3]:
                     if photo_url:
                         st.image(photo_url, use_container_width=True)
 
@@ -712,8 +719,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         """,
                         unsafe_allow_html=True
                     )
-        else:
-            st.caption("No menu items available yet.")
 
     order = st.session_state.get("current_order")
     order_count = len(order.get("items", [])) if order and order.get("items") else 0
@@ -1100,3 +1105,4 @@ elif mode == "quickupdate":
     quick_update_view()
 else:
     customer_view()
+    
