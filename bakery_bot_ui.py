@@ -918,7 +918,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.messages.append({"role": "user", "content": user_input})
         st.session_state.display_messages.append({"role": "user", "content": user_input})
 
-        render_chat_message("user", user_input, business_name)
 
         try:
             with st.spinner("Typing..."):
@@ -928,14 +927,14 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 )
             bot_reply = response.message.content[0].text
         except Exception:
-            render_chat_message(
-                "assistant",
-                "Sorry, I'm having trouble responding right now. Please try again in a moment, or contact the business directly.",
-                business_name
-            )
+            error_message = "Sorry, I'm having trouble responding right now. Please try again in a moment, or contact the business directly."
             st.session_state.messages.pop()
             st.session_state.display_messages.pop()
-            st.stop()
+            st.session_state.display_messages.append({
+                "role": "assistant",
+                "content": error_message
+            })
+            st.rerun()
 
         order_match = re.search(r"ORDER_SUMMARY:\s*(\{.*\})", bot_reply, re.DOTALL)
         display_reply = bot_reply
@@ -997,10 +996,10 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             except json.JSONDecodeError:
                 pass
 
-        render_chat_message("assistant", display_reply, business_name)
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
         st.session_state.display_messages.append({"role": "assistant", "content": display_reply})
+        st.rerun()
 
     st.markdown('<div class="loaf-footer">Powered by Loaf</div>', unsafe_allow_html=True)
 
