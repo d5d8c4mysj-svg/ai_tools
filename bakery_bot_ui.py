@@ -775,6 +775,139 @@ html, body, .stApp {
     .pw-cake-dots span,.pw-whole-cake{animation:none!important}
 }
 
+
+/* =========================================================
+   PINK WHISK — restrained premium palette
+   Keep personality, reduce the overly pink/cute feeling.
+   ========================================================= */
+:root {
+    --premium-ink:#332824;
+    --premium-chocolate:#694238;
+    --premium-cream:#FBF7F1;
+    --premium-card:#FFFCF8;
+    --premium-border:#E6DDD5;
+    --premium-muted:#746B66;
+    --premium-blush:#D9A2A0;
+    --premium-blush-soft:#F7ECE9;
+    --premium-sage:#A8AA8B;
+}
+
+.stApp {
+    background:var(--premium-cream) !important;
+    color:var(--premium-ink) !important;
+}
+
+/* Brand */
+.loaf-wordmark {
+    color:var(--premium-chocolate) !important;
+}
+.bakery-name {
+    color:var(--premium-ink) !important;
+}
+.bakery-subtitle {
+    color:var(--premium-muted) !important;
+}
+.brand-dot {
+    background:var(--premium-blush) !important;
+}
+
+/* AI area: ivory card + one blush accent instead of a large pink block */
+.assistant-intro {
+    background:var(--premium-card) !important;
+    border:1px solid var(--premium-border) !important;
+    border-left:4px solid var(--premium-blush) !important;
+    border-radius:12px !important;
+    box-shadow:0 5px 18px rgba(51,40,36,.035) !important;
+}
+.assistant-title {
+    color:var(--premium-ink) !important;
+}
+.assistant-copy {
+    color:var(--premium-muted) !important;
+}
+
+/* Conversation */
+.chat-row.assistant .chat-bubble {
+    background:var(--premium-card) !important;
+    border-color:var(--premium-border) !important;
+    color:var(--premium-ink) !important;
+}
+.chat-row.user .chat-bubble {
+    background:var(--premium-chocolate) !important;
+    border-color:var(--premium-chocolate) !important;
+    color:#fff !important;
+}
+
+/* Composer */
+[data-testid="stForm"] .stTextInput input {
+    background:#fff !important;
+    border-color:#DDD3CC !important;
+    color:var(--premium-ink) !important;
+}
+[data-testid="stForm"] .stTextInput input:focus {
+    border-color:var(--premium-blush) !important;
+    box-shadow:0 0 0 1px var(--premium-blush) !important;
+}
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
+    background:var(--premium-chocolate) !important;
+    border-color:var(--premium-chocolate) !important;
+}
+
+/* Product cards */
+.popular-title {
+    color:var(--premium-ink) !important;
+}
+.product-card-shell {
+    background:var(--premium-card) !important;
+    border-color:var(--premium-border) !important;
+    box-shadow:0 4px 14px rgba(51,40,36,.035) !important;
+}
+.product-card-name {
+    color:var(--premium-ink) !important;
+}
+.product-card-price {
+    color:var(--premium-chocolate) !important;
+}
+.product-card-desc {
+    color:var(--premium-muted) !important;
+}
+
+/* Menu + order */
+[data-testid="stExpander"] {
+    background:var(--premium-card) !important;
+    border-color:var(--premium-border) !important;
+}
+
+/* Make the cake loader feel more editorial and less toy-like */
+.pw-cake-body {
+    background:#E8C5BC !important;
+    border-color:var(--premium-chocolate) !important;
+}
+.pw-cake-top {
+    background:#F6EEE7 !important;
+    border-color:var(--premium-chocolate) !important;
+}
+.pw-cake-icing,
+.pw-cake-icing:before,
+.pw-cake-icing:after {
+    background:#DCA4A2 !important;
+}
+.pw-cherry {
+    background:#B96F70 !important;
+    border-color:var(--premium-chocolate) !important;
+}
+.pw-cake-dots span {
+    background:#C98D8D !important;
+}
+.pw-cake-cheek {
+    background:#D9A2A0 !important;
+}
+
+/* Slightly quieter footer */
+.loaf-footer {
+    color:#9B918B !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
