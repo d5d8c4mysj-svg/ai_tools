@@ -908,6 +908,26 @@ html, body, .stApp {
     color:#9B918B !important;
 }
 
+/* Balanced Pink Whisk palette */
+:root{--fp-cream:#FFF8F2;--fp-card:#FFFCF9;--fp-ink:#382622;--fp-brown:#71392F;--fp-pink:#DFA09F;--fp-soft:#F4D9D7;--fp-pale:#FBECEA;--fp-border:#E8D7D1;--fp-muted:#756965;}
+.stApp{background:var(--fp-cream)!important}
+.loaf-wordmark{color:var(--fp-brown)!important}.bakery-name{color:var(--fp-ink)!important}.bakery-subtitle{color:var(--fp-muted)!important}.brand-dot{background:var(--fp-pink)!important}
+.assistant-intro{background:var(--fp-soft)!important;border:1px solid #EAC5C2!important;border-left:5px solid var(--fp-pink)!important;border-radius:14px!important}
+.assistant-title{color:var(--fp-ink)!important}.assistant-copy{color:#715C57!important}
+.chat-row.assistant .chat-bubble{background:var(--fp-pale)!important;border:1px solid #EACFCB!important;color:var(--fp-ink)!important}
+.chat-row.user .chat-bubble{background:var(--fp-brown)!important;border-color:var(--fp-brown)!important;color:#fff!important}
+[data-testid="stForm"] .stTextInput input{background:#FFFDFB!important;border:1px solid #E9B8B6!important;color:var(--fp-ink)!important}
+[data-testid="stForm"] .stTextInput input:focus{border-color:var(--fp-pink)!important;box-shadow:0 0 0 1px var(--fp-pink)!important}
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] button{background:var(--fp-brown)!important;border-color:var(--fp-brown)!important}
+[data-testid="InputInstructions"],[data-testid="stInputInstructions"],.stTextInput small{display:none!important}
+.popular-title,.product-card-name{color:var(--fp-ink)!important}.product-card-price{color:var(--fp-brown)!important}.product-card-desc{color:var(--fp-muted)!important}
+.product-card-shell{background:var(--fp-card)!important;border:1px solid var(--fp-border)!important}.product-card-copy{border-top:2px solid #F2D1CF!important}
+[data-testid="stExpander"]{background:var(--fp-card)!important;border-color:var(--fp-border)!important}
+[data-testid="stExpander"] summary:hover{background:#FBEDEA!important}
+.pw-cake-body{background:#EABDB9!important;border-color:var(--fp-brown)!important}.pw-cake-top{background:#FFF0E8!important;border-color:var(--fp-brown)!important}
+.pw-cake-icing,.pw-cake-icing:before,.pw-cake-icing:after{background:#E89FA1!important}.pw-cherry{background:#C96F76!important;border-color:var(--fp-brown)!important}.pw-cake-dots span{background:var(--fp-pink)!important}
+.loaf-topnote{color:#7E8068!important}
+
 </style>
 """, unsafe_allow_html=True)
 
