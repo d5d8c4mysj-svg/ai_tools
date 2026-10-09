@@ -603,6 +603,112 @@ html, body, .stApp {
     .thinking-mark span { animation:none !important; }
 }
 
+
+/* Tiny Pink Whisk muffin loader: appears only while a submitted message waits for AI */
+.pink-whisk-thinking.muffin-loader{
+    position:relative !important;
+    display:block !important;
+    width:38px !important;
+    height:47px !important;
+    padding:0 !important;
+    margin:5px 0 4px 5px !important;
+    background:transparent !important;
+    border:0 !important;
+    box-shadow:none !important;
+    animation:muffinBob 1.25s ease-in-out infinite;
+}
+.muffin-thoughts{
+    position:absolute;
+    top:0;
+    left:7px;
+    width:27px;
+    height:8px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+.muffin-thoughts span{
+    width:5px;
+    height:5px;
+    border-radius:50%;
+    background:#e8aaa9;
+    animation:muffinDot 1.05s ease-in-out infinite;
+}
+.muffin-thoughts span:nth-child(2){animation-delay:.14s}
+.muffin-thoughts span:nth-child(3){animation-delay:.28s}
+.muffin-top{
+    position:absolute;
+    left:4px;
+    top:12px;
+    width:31px;
+    height:18px;
+    border:2px solid #6b352c;
+    border-radius:16px 16px 8px 8px;
+    background:#d9a56e;
+    box-sizing:border-box;
+}
+.muffin-base{
+    position:absolute;
+    left:7px;
+    top:27px;
+    width:25px;
+    height:17px;
+    border:2px solid #6b352c;
+    border-top:0;
+    border-radius:2px 2px 7px 7px;
+    background:#f4d7c6;
+    box-sizing:border-box;
+}
+.muffin-base:before,.muffin-base:after{
+    content:"";
+    position:absolute;
+    top:3px;
+    bottom:3px;
+    width:1px;
+    background:#dfa9a2;
+}
+.muffin-base:before{left:7px}
+.muffin-base:after{right:7px}
+.chip{
+    position:absolute;
+    width:4px;
+    height:4px;
+    border-radius:50%;
+    background:#6b352c;
+}
+.chip-1{left:6px;top:5px}.chip-2{left:14px;top:2px}.chip-3{right:5px;top:7px}
+.eye{
+    position:absolute;
+    top:5px;
+    width:2px;
+    height:3px;
+    border-radius:50%;
+    background:#6b352c;
+    z-index:2;
+}
+.eye-left{left:6px}.eye-right{right:6px}
+.smile{
+    position:absolute;
+    left:9px;
+    top:8px;
+    width:5px;
+    height:3px;
+    border-bottom:1.5px solid #6b352c;
+    border-radius:0 0 6px 6px;
+    z-index:2;
+}
+@keyframes muffinDot{
+    0%,70%,100%{opacity:.3;transform:translateY(0)}
+    35%{opacity:1;transform:translateY(-2px)}
+}
+@keyframes muffinBob{
+    0%,100%{transform:translateY(0)}
+    50%{transform:translateY(-2px)}
+}
+@media(prefers-reduced-motion:reduce){
+    .pink-whisk-thinking.muffin-loader,.muffin-thoughts span{animation:none!important}
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -904,6 +1010,9 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     for message in st.session_state.get("display_messages", []):
         render_chat_message(message["role"], message["content"], business_name)
 
+    # Loading state appears directly above the "Ask The Pink Whisk anything..." box.
+    thinking_slot = st.empty()
+
     with st.form("chat_form", clear_on_submit=True):
         chat_col, send_col = st.columns([12, 1])
         with chat_col:
@@ -918,8 +1027,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     if not send_message:
         user_input = None
 
-    # Reserved spot for the assistant loading state so it appears here, not at page end.
-    thinking_slot = st.empty()
 
     # Image-led product cards rendered as HTML to avoid Streamlit's fullscreen image viewer.
     visible_menu_items = [item for item in menu if item.get("Item")][:6]
@@ -1021,11 +1128,18 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         try:
             thinking_slot.markdown(
                 """
-                <div class="pink-whisk-thinking">
-                    <div class="thinking-mark">
-                        <span></span><span></span><span></span>
+                <div class="pink-whisk-thinking muffin-loader" aria-label="Assistant is responding">
+                    <div class="muffin-thoughts"><span></span><span></span><span></span></div>
+                    <div class="muffin-top">
+                        <i class="chip chip-1"></i>
+                        <i class="chip chip-2"></i>
+                        <i class="chip chip-3"></i>
                     </div>
-                    <div class="thinking-copy">The Pink Whisk is thinking</div>
+                    <div class="muffin-base">
+                        <i class="eye eye-left"></i>
+                        <i class="eye eye-right"></i>
+                        <i class="smile"></i>
+                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True
