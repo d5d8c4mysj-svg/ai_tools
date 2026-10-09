@@ -561,6 +561,48 @@ html, body, .stApp {
     .thinking-cake, .thinking-dots i { animation:none !important; }
 }
 
+
+/* Refined assistant thinking indicator */
+.pink-whisk-thinking {
+    display:inline-flex !important;
+    align-items:center !important;
+    gap:9px !important;
+    background:#fffdf9 !important;
+    border:1px solid #eadbd2 !important;
+    border-radius:12px !important;
+    padding:8px 11px !important;
+    margin:6px 0 10px !important;
+    box-shadow:none !important;
+}
+.thinking-mark {
+    display:flex;
+    align-items:center;
+    gap:3px;
+    height:14px;
+}
+.thinking-mark span {
+    display:block;
+    width:5px;
+    height:5px;
+    border-radius:50%;
+    background:#d98f91;
+    animation:pwPulse 1.05s infinite ease-in-out;
+}
+.thinking-mark span:nth-child(2){animation-delay:.14s}
+.thinking-mark span:nth-child(3){animation-delay:.28s}
+.pink-whisk-thinking .thinking-copy {
+    font-size:11px !important;
+    font-weight:600 !important;
+    color:#6b514b !important;
+}
+@keyframes pwPulse {
+    0%,70%,100% { opacity:.35; transform:translateY(0); }
+    35% { opacity:1; transform:translateY(-2px); }
+}
+@media (prefers-reduced-motion:reduce) {
+    .thinking-mark span { animation:none !important; }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -876,6 +918,9 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     if not send_message:
         user_input = None
 
+    # Reserved spot for the assistant loading state so it appears here, not at page end.
+    thinking_slot = st.empty()
+
     # Image-led product cards rendered as HTML to avoid Streamlit's fullscreen image viewer.
     visible_menu_items = [item for item in menu if item.get("Item")][:6]
     if visible_menu_items:
@@ -974,15 +1019,13 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
 
         try:
-            thinking_placeholder = st.empty()
-            thinking_placeholder.markdown(
+            thinking_slot.markdown(
                 """
                 <div class="pink-whisk-thinking">
-                    <div class="thinking-cake">🍰</div>
-                    <div class="thinking-copy">
-                        <span>The Pink Whisk is thinking</span>
-                        <span class="thinking-dots"><i></i><i></i><i></i></span>
+                    <div class="thinking-mark">
+                        <span></span><span></span><span></span>
                     </div>
+                    <div class="thinking-copy">The Pink Whisk is thinking</div>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -993,7 +1036,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     messages=st.session_state.messages
                 )
             finally:
-                thinking_placeholder.empty()
+                thinking_slot.empty()
             bot_reply = response.message.content[0].text
         except Exception:
             error_message = "Sorry, I'm having trouble responding right now. Please try again in a moment, or contact the business directly."
