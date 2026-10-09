@@ -483,13 +483,29 @@ html, body, .stApp {
 .assistant-copy{color:#6d5752!important}
 .popular-title{font-size:22px!important;margin:24px 0 12px!important;color:var(--pw-ink)!important}
 .product-card-shell{background:var(--pw-card);border:1px solid var(--pw-border);border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:0 5px 18px rgba(56,35,31,.045)}
-.product-card-photo{width:100%;height:175px;object-fit:cover;display:block}
+.product-card-photo{
+    width:100% !important;
+    height:auto !important;
+    aspect-ratio:16 / 10 !important;
+    object-fit:cover !important;
+    object-position:center !important;
+    display:block !important;
+    margin:0 !important;
+}
 .product-card-copy{padding:12px 13px 14px!important}
 .product-card-topline{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .product-card-name{font-size:15px!important;color:var(--pw-ink)!important}
 .product-card-price{margin-top:0!important;font-size:14px!important;color:var(--pw-chocolate)!important;white-space:nowrap}
 .product-card-desc{font-size:11px!important;line-height:1.45!important;min-height:0!important;margin-top:6px;color:var(--pw-muted)!important}
-@media(max-width:768px){.bakery-name{font-size:34px!important}.assistant-intro{padding:14px 15px!important;border-radius:13px!important}.assistant-title{font-size:19px!important}.product-card-photo{height:170px}}
+@media(max-width:768px){.bakery-name{font-size:34px!important}.assistant-intro{padding:14px 15px!important;border-radius:13px!important}.assistant-title{font-size:19px!important}.product-card-photo{aspect-ratio:16 / 10 !important}}
+
+
+.product-card-shell > .product-card-photo {
+    border-radius:0 !important;
+}
+.product-card-shell {
+    padding:0 !important;
+}
 
 </style>
 """, unsafe_allow_html=True)
