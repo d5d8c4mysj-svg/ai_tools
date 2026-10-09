@@ -474,33 +474,22 @@ html, body, .stApp {
 }
 
 
-/* Customer-facing Streamlit chrome cleanup */
-#MainMenu { visibility:hidden !important; }
-footer { visibility:hidden !important; }
-header[data-testid="stHeader"] {
-    display:none !important;
-    height:0 !important;
-}
-[data-testid="stToolbar"],
-[data-testid="stDecoration"],
-[data-testid="stStatusWidget"],
-[data-testid="stAppDeployButton"],
-[data-testid="stMainMenu"] {
-    display:none !important;
-    visibility:hidden !important;
-}
-.stApp > header {
-    display:none !important;
-    height:0 !important;
-}
-
-/* Hide Streamlit viewer badges / floating controls where current markup permits */
-[data-testid="stViewerBadge"],
-[data-testid="stAppCreatorAvatar"],
-[data-testid="stAppCreatorBadge"] {
-    display:none !important;
-    visibility:hidden !important;
-}
+/* Boutique storefront polish */
+:root{--pw-ink:#38231f;--pw-chocolate:#6b352c;--pw-pink:#e8aaa9;--pw-pink-soft:#f6dedd;--pw-card:#fffdf9;--pw-border:#eadbd2;--pw-muted:#786a64;}
+.bakery-name{color:var(--pw-ink)!important;font-size:44px!important;margin-bottom:6px!important}
+.bakery-subtitle{color:var(--pw-muted)!important;font-size:15px!important;margin-bottom:10px!important}
+.assistant-intro{background:var(--pw-pink-soft)!important;border:0!important;border-radius:16px!important;padding:18px 20px!important;margin:18px 0 10px!important}
+.assistant-title{color:var(--pw-ink)!important;font-size:22px!important}
+.assistant-copy{color:#6d5752!important}
+.popular-title{font-size:22px!important;margin:24px 0 12px!important;color:var(--pw-ink)!important}
+.product-card-shell{background:var(--pw-card);border:1px solid var(--pw-border);border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:0 5px 18px rgba(56,35,31,.045)}
+.product-card-photo{width:100%;height:175px;object-fit:cover;display:block}
+.product-card-copy{padding:12px 13px 14px!important}
+.product-card-topline{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.product-card-name{font-size:15px!important;color:var(--pw-ink)!important}
+.product-card-price{margin-top:0!important;font-size:14px!important;color:var(--pw-chocolate)!important;white-space:nowrap}
+.product-card-desc{font-size:11px!important;line-height:1.45!important;min-height:0!important;margin-top:6px;color:var(--pw-muted)!important}
+@media(max-width:768px){.bakery-name{font-size:34px!important}.assistant-intro{padding:14px 15px!important;border-radius:13px!important}.assistant-title{font-size:19px!important}.product-card-photo{height:170px}}
 
 </style>
 """, unsafe_allow_html=True)
@@ -787,7 +776,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         f"""
         <div class="assistant-intro">
             <div class="assistant-title">Order with {display_business_name}</div>
-            <div class="assistant-copy">Ask for recommendations, menu details, or simply tell me what you would like to order.</div>
+            <div class="assistant-copy">Tell us what you are craving. Get recommendations, ask about ingredients, or place your order here.</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -817,35 +806,23 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     if not send_message:
         user_input = None
 
-    # Product storefront. New saves persist PhotoURL on each menu item;
-    # older bakeries fall back to the legacy photo list by position.
+    # Image-led product cards rendered as HTML to avoid Streamlit's fullscreen image viewer.
     visible_menu_items = [item for item in menu if item.get("Item")][:6]
-
     if visible_menu_items:
-        st.markdown('<div class="popular-title">Popular picks</div>', unsafe_allow_html=True)
-
+        st.markdown('<div class="popular-title">Our favourites</div>', unsafe_allow_html=True)
         card_cols = st.columns(3)
         for idx, item in enumerate(visible_menu_items):
-            item_name = item.get("Item", "")
+            item_name = html.escape(str(item.get("Item", "")))
             price = item.get("Price", "")
-            ingredients = item.get("Ingredients", "")
+            ingredients = str(item.get("Ingredients", ""))
             photo_url = item.get("PhotoURL") or (menu_photo_urls[idx] if idx < len(menu_photo_urls) else None)
-
+            price_text = f"₹{price}" if price not in ("", None, 0) else ""
+            parts = [p.strip() for p in ingredients.split(",") if p.strip()]
+            short_desc = html.escape(" · ".join(parts[:4]) if parts else ingredients)
+            safe_photo = html.escape(str(photo_url), quote=True) if photo_url else ""
+            photo_html = f'<img class="product-card-photo" src="{safe_photo}" alt="{item_name}">' if safe_photo else ""
             with card_cols[idx % 3]:
-                if photo_url:
-                    st.image(photo_url, use_container_width=True)
-
-                price_text = f"₹{price}" if price not in ("", None, 0) else ""
-                st.markdown(
-                    f"""
-                    <div class="product-card-copy">
-                        <div class="product-card-name">{item_name}</div>
-                        <div class="product-card-desc">{ingredients}</div>
-                        <div class="product-card-price">{price_text}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                st.markdown(f"""<div class="product-card-shell">{photo_html}<div class="product-card-copy"><div class="product-card-topline"><div class="product-card-name">{item_name}</div><div class="product-card-price">{price_text}</div></div><div class="product-card-desc">{short_desc}</div></div></div>""",unsafe_allow_html=True)
 
     # Popular Picks already shows the first six products.
     # Only show View menu when there are additional products.
