@@ -604,109 +604,111 @@ html, body, .stApp {
 }
 
 
-/* Tiny Pink Whisk muffin loader: appears only while a submitted message waits for AI */
-.pink-whisk-thinking.muffin-loader{
-    position:relative !important;
-    display:block !important;
-    width:38px !important;
-    height:47px !important;
-    padding:0 !important;
-    margin:5px 0 4px 5px !important;
-    background:transparent !important;
-    border:0 !important;
-    box-shadow:none !important;
-    animation:muffinBob 1.25s ease-in-out infinite;
+/* Tiny Pink Whisk muffin loader — only shown while waiting for a reply */
+.pw-muffin-loader{
+    position:relative;
+    width:46px;
+    height:56px;
+    margin:4px 0 3px 4px;
+    background:transparent;
 }
-.muffin-thoughts{
+.pw-dots{
     position:absolute;
     top:0;
-    left:7px;
-    width:27px;
-    height:8px;
+    left:10px;
+    width:28px;
     display:flex;
     justify-content:space-between;
-    align-items:center;
 }
-.muffin-thoughts span{
+.pw-dots span{
     width:5px;
     height:5px;
     border-radius:50%;
     background:#e8aaa9;
-    animation:muffinDot 1.05s ease-in-out infinite;
+    animation:pwDot 1s ease-in-out infinite;
 }
-.muffin-thoughts span:nth-child(2){animation-delay:.14s}
-.muffin-thoughts span:nth-child(3){animation-delay:.28s}
-.muffin-top{
+.pw-dots span:nth-child(2){animation-delay:.14s}
+.pw-dots span:nth-child(3){animation-delay:.28s}
+.pw-muffin{
     position:absolute;
-    left:4px;
-    top:12px;
-    width:31px;
-    height:18px;
+    left:2px;
+    bottom:0;
+    width:42px;
+    height:44px;
+    animation:pwBob 1.2s ease-in-out infinite;
+}
+.pw-muffin-top{
+    position:absolute;
+    top:0;
+    left:1px;
+    width:40px;
+    height:24px;
+    background:#d7a06a;
     border:2px solid #6b352c;
-    border-radius:16px 16px 8px 8px;
-    background:#d9a56e;
+    border-radius:48% 52% 35% 38% / 62% 62% 38% 38%;
     box-sizing:border-box;
 }
-.muffin-base{
+.pw-muffin-top:before,
+.pw-muffin-top:after{
+    content:"";
+    position:absolute;
+    bottom:-3px;
+    width:12px;
+    height:8px;
+    background:#d7a06a;
+    border-bottom:2px solid #6b352c;
+}
+.pw-muffin-top:before{left:2px;border-left:2px solid #6b352c;border-radius:0 0 0 8px}
+.pw-muffin-top:after{right:2px;border-right:2px solid #6b352c;border-radius:0 0 8px 0}
+.pw-wrapper{
     position:absolute;
     left:7px;
-    top:27px;
-    width:25px;
-    height:17px;
+    top:21px;
+    width:29px;
+    height:22px;
+    background:#f3c9c5;
     border:2px solid #6b352c;
     border-top:0;
     border-radius:2px 2px 7px 7px;
-    background:#f4d7c6;
     box-sizing:border-box;
 }
-.muffin-base:before,.muffin-base:after{
+.pw-wrapper:before,.pw-wrapper:after{
     content:"";
     position:absolute;
     top:3px;
     bottom:3px;
     width:1px;
-    background:#dfa9a2;
+    background:#d99d99;
 }
-.muffin-base:before{left:7px}
-.muffin-base:after{right:7px}
-.chip{
+.pw-wrapper:before{left:8px}.pw-wrapper:after{right:8px}
+.pw-chip{
     position:absolute;
-    width:4px;
-    height:4px;
-    border-radius:50%;
-    background:#6b352c;
+    width:4px;height:4px;border-radius:50%;background:#6b352c;
 }
-.chip-1{left:6px;top:5px}.chip-2{left:14px;top:2px}.chip-3{right:5px;top:7px}
-.eye{
-    position:absolute;
-    top:5px;
-    width:2px;
-    height:3px;
-    border-radius:50%;
-    background:#6b352c;
-    z-index:2;
+.pw-chip.c1{left:7px;top:8px}.pw-chip.c2{left:17px;top:4px}
+.pw-chip.c3{right:7px;top:9px}.pw-chip.c4{left:23px;top:14px}
+.pw-eye{
+    position:absolute;top:7px;width:2px;height:3px;border-radius:50%;background:#6b352c;z-index:2;
 }
-.eye-left{left:6px}.eye-right{right:6px}
-.smile{
-    position:absolute;
-    left:9px;
-    top:8px;
-    width:5px;
-    height:3px;
-    border-bottom:1.5px solid #6b352c;
-    border-radius:0 0 6px 6px;
-    z-index:2;
+.pw-eye.left{left:7px}.pw-eye.right{right:7px}
+.pw-mouth{
+    position:absolute;left:11px;top:11px;width:5px;height:3px;
+    border-bottom:1.5px solid #6b352c;border-radius:0 0 6px 6px;z-index:2;
 }
-@keyframes muffinDot{
+.pw-cheek{
+    position:absolute;top:11px;width:4px;height:2px;border-radius:50%;background:#e8aaa9;z-index:2;
+}
+.pw-cheek.left{left:3px}.pw-cheek.right{right:3px}
+@keyframes pwDot{
     0%,70%,100%{opacity:.3;transform:translateY(0)}
     35%{opacity:1;transform:translateY(-2px)}
 }
-@keyframes muffinBob{
-    0%,100%{transform:translateY(0)}
-    50%{transform:translateY(-2px)}
+@keyframes pwBob{
+    0%,100%{transform:translateY(0) rotate(0)}
+    50%{transform:translateY(-2px) rotate(-1deg)}
 }
 @media(prefers-reduced-motion:reduce){
-    .pink-whisk-thinking.muffin-loader,.muffin-thoughts span{animation:none!important}
+    .pw-dots span,.pw-muffin{animation:none!important}
 }
 
 </style>
@@ -1128,17 +1130,22 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         try:
             thinking_slot.markdown(
                 """
-                <div class="pink-whisk-thinking muffin-loader" aria-label="Assistant is responding">
-                    <div class="muffin-thoughts"><span></span><span></span><span></span></div>
-                    <div class="muffin-top">
-                        <i class="chip chip-1"></i>
-                        <i class="chip chip-2"></i>
-                        <i class="chip chip-3"></i>
-                    </div>
-                    <div class="muffin-base">
-                        <i class="eye eye-left"></i>
-                        <i class="eye eye-right"></i>
-                        <i class="smile"></i>
+                <div class="pw-muffin-loader" aria-label="Assistant is responding">
+                    <div class="pw-dots"><span></span><span></span><span></span></div>
+                    <div class="pw-muffin">
+                        <div class="pw-muffin-top">
+                            <i class="pw-chip c1"></i>
+                            <i class="pw-chip c2"></i>
+                            <i class="pw-chip c3"></i>
+                            <i class="pw-chip c4"></i>
+                        </div>
+                        <div class="pw-wrapper">
+                            <i class="pw-eye left"></i>
+                            <i class="pw-eye right"></i>
+                            <i class="pw-mouth"></i>
+                            <i class="pw-cheek left"></i>
+                            <i class="pw-cheek right"></i>
+                        </div>
                     </div>
                 </div>
                 """,
