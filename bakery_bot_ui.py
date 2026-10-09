@@ -1,4 +1,4 @@
-import streamlit as st
+]import streamlit as st
 import cohere
 import pandas as pd
 import json
@@ -604,111 +604,175 @@ html, body, .stApp {
 }
 
 
-/* Tiny Pink Whisk muffin loader — only shown while waiting for a reply */
-.pw-muffin-loader{
+/* Whole-cake loading mascot.
+   The placeholder itself only receives this markup while a message is waiting
+   for the AI response, so the cake is invisible at all other times. */
+.pw-cake-loader{
     position:relative;
-    width:46px;
-    height:56px;
-    margin:4px 0 3px 4px;
+    width:52px;
+    height:59px;
+    margin:4px 0 3px 3px;
     background:transparent;
 }
-.pw-dots{
+.pw-cake-dots{
     position:absolute;
     top:0;
-    left:10px;
-    width:28px;
+    left:11px;
+    width:30px;
     display:flex;
     justify-content:space-between;
+    align-items:center;
 }
-.pw-dots span{
+.pw-cake-dots span{
     width:5px;
     height:5px;
     border-radius:50%;
     background:#e8aaa9;
-    animation:pwDot 1s ease-in-out infinite;
+    animation:pwCakeDot 1s ease-in-out infinite;
 }
-.pw-dots span:nth-child(2){animation-delay:.14s}
-.pw-dots span:nth-child(3){animation-delay:.28s}
-.pw-muffin{
+.pw-cake-dots span:nth-child(2){animation-delay:.14s}
+.pw-cake-dots span:nth-child(3){animation-delay:.28s}
+
+.pw-whole-cake{
     position:absolute;
     left:2px;
     bottom:0;
-    width:42px;
-    height:44px;
-    animation:pwBob 1.2s ease-in-out infinite;
+    width:48px;
+    height:47px;
+    animation:pwCakeBob 1.2s ease-in-out infinite;
 }
-.pw-muffin-top{
+.pw-cake-body{
     position:absolute;
-    top:0;
-    left:1px;
-    width:40px;
-    height:24px;
-    background:#d7a06a;
-    border:2px solid #6b352c;
-    border-radius:48% 52% 35% 38% / 62% 62% 38% 38%;
+    left:6px;
+    top:18px;
+    width:36px;
+    height:25px;
     box-sizing:border-box;
+    background:#f4c7c2;
+    border:2px solid #6b352c;
+    border-radius:3px 3px 8px 8px;
 }
-.pw-muffin-top:before,
-.pw-muffin-top:after{
+.pw-cake-body:before{
     content:"";
     position:absolute;
-    bottom:-3px;
-    width:12px;
-    height:8px;
-    background:#d7a06a;
-    border-bottom:2px solid #6b352c;
+    left:0;
+    right:0;
+    top:8px;
+    height:2px;
+    background:#fff3e8;
 }
-.pw-muffin-top:before{left:2px;border-left:2px solid #6b352c;border-radius:0 0 0 8px}
-.pw-muffin-top:after{right:2px;border-right:2px solid #6b352c;border-radius:0 0 8px 0}
-.pw-wrapper{
+.pw-cake-top{
+    position:absolute;
+    left:4px;
+    top:11px;
+    width:40px;
+    height:12px;
+    box-sizing:border-box;
+    background:#fff1e6;
+    border:2px solid #6b352c;
+    border-radius:50% 50% 34% 34%;
+    z-index:3;
+}
+.pw-cake-icing{
     position:absolute;
     left:7px;
-    top:21px;
-    width:29px;
-    height:22px;
-    background:#f3c9c5;
-    border:2px solid #6b352c;
-    border-top:0;
-    border-radius:2px 2px 7px 7px;
-    box-sizing:border-box;
+    top:18px;
+    width:34px;
+    height:7px;
+    background:#f5aeb0;
+    z-index:4;
+    border-radius:0 0 8px 8px;
 }
-.pw-wrapper:before,.pw-wrapper:after{
+.pw-cake-icing:before,
+.pw-cake-icing:after{
     content:"";
     position:absolute;
     top:3px;
-    bottom:3px;
-    width:1px;
-    background:#d99d99;
+    width:7px;
+    height:6px;
+    border-radius:0 0 6px 6px;
+    background:#f5aeb0;
 }
-.pw-wrapper:before{left:8px}.pw-wrapper:after{right:8px}
-.pw-chip{
+.pw-cake-icing:before{left:5px}
+.pw-cake-icing:after{right:5px}
+
+.pw-cherry{
     position:absolute;
-    width:4px;height:4px;border-radius:50%;background:#6b352c;
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#d95f6b;
+    border:1px solid #6b352c;
+    top:-6px;
 }
-.pw-chip.c1{left:7px;top:8px}.pw-chip.c2{left:17px;top:4px}
-.pw-chip.c3{right:7px;top:9px}.pw-chip.c4{left:23px;top:14px}
-.pw-eye{
-    position:absolute;top:7px;width:2px;height:3px;border-radius:50%;background:#6b352c;z-index:2;
+.pw-cherry:before{
+    content:"";
+    position:absolute;
+    width:1px;
+    height:5px;
+    background:#6b352c;
+    left:3px;
+    top:-4px;
+    transform:rotate(15deg);
 }
-.pw-eye.left{left:7px}.pw-eye.right{right:7px}
-.pw-mouth{
-    position:absolute;left:11px;top:11px;width:5px;height:3px;
-    border-bottom:1.5px solid #6b352c;border-radius:0 0 6px 6px;z-index:2;
+.pw-cherry.ch1{left:7px}
+.pw-cherry.ch2{left:16px;top:-9px}
+.pw-cherry.ch3{right:7px}
+
+.pw-cake-eye{
+    position:absolute;
+    top:9px;
+    width:2px;
+    height:3px;
+    border-radius:50%;
+    background:#6b352c;
+    z-index:6;
 }
-.pw-cheek{
-    position:absolute;top:11px;width:4px;height:2px;border-radius:50%;background:#e8aaa9;z-index:2;
+.pw-cake-eye.left{left:9px}
+.pw-cake-eye.right{right:9px}
+.pw-cake-smile{
+    position:absolute;
+    left:14px;
+    top:13px;
+    width:6px;
+    height:4px;
+    border-bottom:1.5px solid #6b352c;
+    border-radius:0 0 8px 8px;
+    z-index:6;
 }
-.pw-cheek.left{left:3px}.pw-cheek.right{right:3px}
-@keyframes pwDot{
+.pw-cake-cheek{
+    position:absolute;
+    top:14px;
+    width:5px;
+    height:3px;
+    border-radius:50%;
+    background:#e98f96;
+    z-index:6;
+}
+.pw-cake-cheek.left{left:4px}
+.pw-cake-cheek.right{right:4px}
+.pw-cake-plate{
+    position:absolute;
+    left:3px;
+    bottom:0;
+    width:42px;
+    height:5px;
+    background:#ead9d0;
+    border:1.5px solid #6b352c;
+    border-radius:50%;
+    box-sizing:border-box;
+}
+
+@keyframes pwCakeDot{
     0%,70%,100%{opacity:.3;transform:translateY(0)}
     35%{opacity:1;transform:translateY(-2px)}
 }
-@keyframes pwBob{
-    0%,100%{transform:translateY(0) rotate(0)}
-    50%{transform:translateY(-2px) rotate(-1deg)}
+@keyframes pwCakeBob{
+    0%,100%{transform:translateY(0)}
+    50%{transform:translateY(-2px)}
 }
 @media(prefers-reduced-motion:reduce){
-    .pw-dots span,.pw-muffin{animation:none!important}
+    .pw-cake-dots span,.pw-whole-cake{animation:none!important}
 }
 
 </style>
@@ -1130,22 +1194,23 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         try:
             thinking_slot.markdown(
                 """
-                <div class="pw-muffin-loader" aria-label="Assistant is responding">
-                    <div class="pw-dots"><span></span><span></span><span></span></div>
-                    <div class="pw-muffin">
-                        <div class="pw-muffin-top">
-                            <i class="pw-chip c1"></i>
-                            <i class="pw-chip c2"></i>
-                            <i class="pw-chip c3"></i>
-                            <i class="pw-chip c4"></i>
+                <div class="pw-cake-loader" aria-label="Assistant is responding">
+                    <div class="pw-cake-dots"><span></span><span></span><span></span></div>
+                    <div class="pw-whole-cake">
+                        <div class="pw-cake-top">
+                            <i class="pw-cherry ch1"></i>
+                            <i class="pw-cherry ch2"></i>
+                            <i class="pw-cherry ch3"></i>
                         </div>
-                        <div class="pw-wrapper">
-                            <i class="pw-eye left"></i>
-                            <i class="pw-eye right"></i>
-                            <i class="pw-mouth"></i>
-                            <i class="pw-cheek left"></i>
-                            <i class="pw-cheek right"></i>
+                        <div class="pw-cake-icing"></div>
+                        <div class="pw-cake-body">
+                            <i class="pw-cake-eye left"></i>
+                            <i class="pw-cake-eye right"></i>
+                            <i class="pw-cake-smile"></i>
+                            <i class="pw-cake-cheek left"></i>
+                            <i class="pw-cake-cheek right"></i>
                         </div>
+                        <div class="pw-cake-plate"></div>
                     </div>
                 </div>
                 """,
