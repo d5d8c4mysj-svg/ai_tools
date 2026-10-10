@@ -26,908 +26,471 @@ mode = params.get("mode", "customer")  # defaults to customer view
 st.set_page_config(page_title="Loaf")
 
 # ---------------------------------------------------------
-# LOAF DESIGN — mobile-first storefront
+# LOAF DESIGN -- gingham, scalloped edges, sticker details
+# Palette: burgundy / cart red / gingham pink / paper / lilac
+# Type: Fraunces (display), Caveat (handwritten notes), DM Sans (body)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,700;0,900;1,600&family=Caveat:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap');
 
 :root {
-    --chocolate:#633229; --chocolate-dark:#35211D; --pink:#E9A9A8;
-    --sage:#B7B58A; --vanilla:#F4EBC8; --cream:#FFF9F3;
-    --white:#FFFFFF; --ink:#252321; --muted:#706B67; --border:#E8E0DB;
+    --burgundy:#7A1F2E;
+    --red:#C9363F;
+    --pink:#F2A7B5;
+    --blush:#FDE7EA;
+    --cream:#FFF8F0;
+    --paper:#FFFCF8;
+    --ink:#3A1F22;
+    --muted:#86656A;
+    --lilac:#CFCBF5;
 }
-html, body, [class*="css"] { font-family:"Inter",sans-serif; }
-.stApp { background:var(--cream); color:var(--ink); }
-.block-container { max-width:980px; padding-top:2rem; padding-bottom:4rem; }
+
+html, body, [class*="css"] { font-family:"DM Sans", sans-serif; }
+
+/* Gingham tablecloth behind everything */
+.stApp {
+    color:var(--ink);
+    background-color:var(--cream);
+    background-image:
+        linear-gradient(rgba(242,167,181,.24) 50%, transparent 50%),
+        linear-gradient(90deg, rgba(242,167,181,.24) 50%, transparent 50%);
+    background-size:34px 34px;
+}
+.block-container {
+    max-width:1000px;
+    padding:1.2rem 1rem 4rem !important;
+    overflow-x:hidden;
+}
+html, body, .stApp { max-width:100%; overflow-x:hidden !important; }
+
+/* Hide Streamlit chrome */
 #MainMenu, footer { visibility:hidden; }
+header[data-testid="stHeader"], .stApp > header { display:none !important; height:0 !important; }
+[data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display:none !important; }
+[data-testid="stSidebar"] { display:none; }
+[data-testid="stBottom"], [data-testid="stBottomBlockContainer"] { display:none !important; }
+[data-testid="stVerticalBlock"] { gap:.7rem; }
 
-.loaf-topbar { display:flex; align-items:center; justify-content:space-between; padding-bottom:9px; margin-bottom:14px; border-bottom:1px solid var(--border); }
-.loaf-wordmark { font-family:"Manrope",sans-serif; font-size:13px; font-weight:800; letter-spacing:.15em; color:var(--chocolate); }
-.loaf-topnote { font-size:12px; color:var(--muted); }
-.bakery-name { font-family:"Manrope",sans-serif; font-size:46px; font-weight:800; letter-spacing:-.045em; line-height:1.04; color:var(--ink); margin:0 0 10px; }
-.bakery-subtitle { max-width:650px; color:var(--muted); font-size:15px; line-height:1.5; margin:0 0 12px; }
-.brand-dot { width:42px; height:4px; border-radius:999px; background:var(--pink); margin-bottom:16px; }
+*:focus-visible { outline:3px solid var(--lilac); outline-offset:2px; }
 
-.assistant-intro { margin:12px 0 7px; padding-top:11px; border-top:1px solid var(--border); }
-.assistant-title { font-family:"Manrope",sans-serif; font-size:21px; font-weight:800; letter-spacing:-.025em; color:var(--ink); margin-bottom:5px; }
-.assistant-copy { color:var(--muted); font-size:13px; line-height:1.55; }
+/* ---------- Hero ---------- */
+.pw-hero {
+    position:relative;
+    background:var(--burgundy);
+    color:var(--cream);
+    border:2px solid var(--burgundy);
+    border-radius:20px 20px 0 0;
+    padding:22px 24px 34px;
+}
+.pw-hero-top { display:flex; align-items:center; gap:12px; }
+.loaf-wordmark {
+    font-family:"Fraunces", serif;
+    font-weight:900;
+    font-size:15px;
+    letter-spacing:.2em;
+    color:var(--pink);
+}
+.pw-pill {
+    background:var(--lilac);
+    color:var(--burgundy);
+    font-size:12px;
+    font-weight:700;
+    border-radius:999px;
+    padding:3px 11px;
+}
+.bakery-name {
+    font-family:"Fraunces", serif;
+    font-weight:900;
+    font-size:clamp(36px, 7vw, 72px);
+    line-height:1;
+    letter-spacing:-.025em;
+    color:var(--cream);
+    margin:18px 0 10px;
+}
+.bakery-subtitle {
+    max-width:540px;
+    color:#F4D4DA;
+    font-size:15px;
+    line-height:1.6;
+}
+.pw-script {
+    display:inline-block;
+    margin-top:10px;
+    font-family:"Caveat", cursive;
+    font-weight:700;
+    font-size:26px;
+    color:var(--pink);
+    transform:rotate(-2deg);
+}
+.pw-sticker {
+    position:absolute;
+    right:22px;
+    bottom:-30px;
+    width:98px;
+    height:98px;
+    border-radius:50%;
+    background:var(--pink);
+    color:var(--burgundy);
+    border:2px dashed var(--burgundy);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-family:"Caveat", cursive;
+    font-weight:700;
+    font-size:22px;
+    line-height:.95;
+    transform:rotate(11deg);
+    box-shadow:3px 3px 0 var(--red);
+    z-index:2;
+}
+.pw-scallop {
+    height:16px;
+    margin-bottom:8px;
+    background:radial-gradient(circle at 13px 0, var(--burgundy) 12px, transparent 13px) 0 0 / 26px 16px repeat-x;
+}
 
-.chat-row { display:flex; width:100%; margin:8px 0; }
+/* ---------- Assistant card ---------- */
+.assistant-intro {
+    position:relative;
+    background:var(--paper);
+    border:2px solid var(--burgundy);
+    border-radius:16px;
+    padding:22px 22px 18px;
+    margin:26px 0 10px;
+    box-shadow:5px 5px 0 var(--pink);
+}
+.assistant-intro::before {
+    content:"";
+    position:absolute;
+    top:-14px;
+    left:28px;
+    width:88px;
+    height:26px;
+    background:rgba(242,167,181,.88);
+    border-left:2px dotted rgba(122,31,46,.4);
+    border-right:2px dotted rgba(122,31,46,.4);
+    transform:rotate(-3deg);
+}
+.assistant-title {
+    font-family:"Fraunces", serif;
+    font-weight:900;
+    font-size:28px;
+    letter-spacing:-.015em;
+    color:var(--burgundy);
+    margin-bottom:6px;
+}
+.assistant-copy { color:var(--muted); font-size:14px; line-height:1.6; max-width:560px; }
+.pw-handnote {
+    display:inline-block;
+    margin-top:8px;
+    font-family:"Caveat", cursive;
+    font-weight:700;
+    font-size:23px;
+    color:var(--red);
+    transform:rotate(-1.5deg);
+}
+
+/* ---------- Chat ---------- */
+.chat-row { display:flex; width:100%; margin:12px 0; }
 .chat-row.user { justify-content:flex-end; }
 .chat-row.assistant { justify-content:flex-start; }
-.chat-wrap { max-width:74%; }
-.chat-name { font-size:10px; font-weight:700; color:var(--muted); margin:0 0 4px 2px; }
-.chat-row.user .chat-name { text-align:right; margin-right:2px; }
-.chat-bubble { font-family:"Inter",sans-serif; font-size:14px; line-height:1.55; padding:11px 14px; border-radius:15px; }
-.chat-row.assistant .chat-bubble { background:var(--white); color:var(--ink); border:1px solid var(--border); border-bottom-left-radius:5px; }
-.chat-row.user .chat-bubble { background:var(--chocolate); color:#fff; border:1px solid var(--chocolate); border-bottom-right-radius:5px; }
-
-[data-testid="stChatMessage"] { display:none; }
-[data-testid="stChatInput"] {
-    max-width:680px;
-    margin:0 auto 10px auto;
-    border:1px solid #E6C9C7;
-    border-radius:10px;
-    background:#FFFDFC;
-    box-shadow:0 5px 16px rgba(53,33,29,.045);
-}
-[data-testid="stChatInput"] textarea {
-    min-height:42px !important;
-    height:42px !important;
-    padding-top:10px !important;
-    padding-bottom:8px !important;
-    font-size:13px !important;
-}
-[data-testid="stChatInput"] button {
-    width:34px !important;
-    height:34px !important;
-    min-height:34px !important;
-    border-radius:8px !important;
-}
-[data-testid="stBottom"] {
-    background:rgba(255,249,243,.96) !important;
-    padding-top:8px !important;
-    padding-bottom:4px !important;
-}
-[data-testid="stBottomBlockContainer"] {
-    padding-top:0 !important;
-    padding-bottom:0 !important;
-}
-[data-testid="stExpander"] {
-    background:var(--white);
-    border:1px solid var(--border);
-    border-radius:10px;
-    box-shadow:none;
-    margin-bottom:5px;
-}
-[data-testid="stExpander"] summary {
-    min-height:38px !important;
-    padding-top:6px !important;
-    padding-bottom:6px !important;
-}
-
-.popular-title {
-    font-family:"Manrope",sans-serif;
+.chat-wrap { max-width:76%; }
+.chat-name {
+    font-family:"Caveat", cursive;
+    font-weight:700;
     font-size:18px;
-    font-weight:800;
-    letter-spacing:-.02em;
+    color:var(--burgundy);
+    margin:0 0 2px 6px;
+}
+.chat-row.user .chat-name { text-align:right; margin:0 6px 2px 0; }
+.chat-bubble {
+    font-size:15px;
+    line-height:1.55;
+    padding:12px 16px;
+    border:2px solid var(--burgundy);
+    border-radius:18px;
+}
+.chat-row.assistant .chat-bubble {
+    background:#fff;
     color:var(--ink);
-    margin:24px 0 14px;
+    border-bottom-left-radius:4px;
+    box-shadow:3px 3px 0 var(--pink);
 }
-.product-card-copy {
-    padding:8px 2px 16px;
+.chat-row.user .chat-bubble {
+    background:var(--red);
+    color:var(--cream);
+    border-bottom-right-radius:4px;
+    box-shadow:3px 3px 0 var(--burgundy);
 }
-.product-card-name {
-    font-family:"Manrope",sans-serif;
-    font-size:14px;
-    font-weight:700;
-    color:var(--ink);
-    margin-bottom:3px;
-}
-.product-card-desc {
-    font-size:11px;
-    line-height:1.45;
-    color:var(--muted);
-    min-height:28px;
-    display:-webkit-box;
-    -webkit-line-clamp:2;
-    -webkit-box-orient:vertical;
-    overflow:hidden;
-}
-.product-card-price {
-    margin-top:7px;
-    font-size:13px;
-    font-weight:700;
-    color:var(--chocolate);
-}
-[data-testid="stImage"] img {
-    width:100%;
-    height:170px;
-    max-height:170px;
-    object-fit:cover;
-    object-position:center;
-    border-radius:9px;
-}
-[data-testid="stVerticalBlock"] { gap:.55rem; }
-[data-testid="stExpander"] summary { font-family:"Inter",sans-serif; font-weight:600; }
-.stButton > button { border-radius:8px; border:1px solid var(--chocolate); background:var(--chocolate); color:white; font-weight:600; }
-.stButton > button:hover { background:var(--chocolate-dark); border-color:var(--chocolate-dark); color:white; }
-.loaf-footer { text-align:center; color:#9B918C; font-size:10px; margin-top:20px; }
-[data-testid="stSidebar"] { display:none; }
+[data-testid="stChatMessage"] { display:none; }
 
-[data-testid="stToolbar"] { visibility:hidden; height:0; }
-[data-testid="stDecoration"] { display:none; }
-[data-testid="stStatusWidget"] { visibility:hidden; }
-
-@media (max-width:768px) {
-    [data-testid="stImage"] img {
-        height:145px;
-        max-height:145px;
-    }
-
-    .block-container {
-        padding-top:.5rem;
-        padding-left:1rem;
-        padding-right:1rem;
-        padding-bottom:4rem;
-    }
-    .loaf-topbar {
-        margin-bottom:7px;
-        padding-bottom:7px;
-    }
-    .loaf-topnote { display:none; }
-    .bakery-name {
-        font-size:29px;
-        line-height:1.1;
-        letter-spacing:-.035em;
-        margin-bottom:7px;
-    }
-    .bakery-subtitle {
-        font-size:13px;
-        line-height:1.45;
-        margin-bottom:13px;
-        max-width:95%;
-    }
-    .brand-dot {
-        width:28px;
-        height:3px;
-        margin-bottom:11px;
-    }
-    .assistant-intro {
-        margin-top:9px;
-        padding-top:9px;
-    }
-    .assistant-title {
-        font-size:18px;
-        margin-bottom:3px;
-    }
-    .assistant-copy {
-        font-size:12px;
-        line-height:1.45;
-    }
-    .chat-row { margin:9px 0; }
-    .chat-wrap { max-width:90%; }
-    .chat-name { font-size:9px; }
-    .chat-bubble {
-        font-size:13px;
-        line-height:1.5;
-        padding:9px 12px;
-        border-radius:13px;
-    }
-    [data-testid="stExpander"] {
-        border-radius:8px;
-    }
-}
-
-/* Compact product imagery inside columns */
-[data-testid="stHorizontalBlock"] [data-testid="stImage"] img {
-    height:125px !important;
-    max-height:125px !important;
-    object-fit:cover !important;
-}
-
-/* Smaller fixed chat composer */
-[data-testid="stChatInput"] {
-    max-width:560px !important;
-    min-height:44px !important;
-    margin:0 auto 6px auto !important;
-}
-[data-testid="stChatInput"] textarea {
-    min-height:36px !important;
-    height:36px !important;
-    padding-top:8px !important;
-    padding-bottom:6px !important;
-    font-size:13px !important;
-}
-[data-testid="stChatInput"] button {
-    width:30px !important;
-    height:30px !important;
-    min-height:30px !important;
-}
-[data-testid="stBottom"] {
-    padding-top:5px !important;
-    padding-bottom:2px !important;
-}
-
-/* Compact the entire fixed composer, not only the input element */
-[data-testid="stBottom"] > div {
-    max-width:520px !important;
-    margin-left:auto !important;
-    margin-right:auto !important;
-}
-[data-testid="stBottomBlockContainer"] {
-    max-width:520px !important;
-    width:calc(100% - 32px) !important;
-    margin:0 auto !important;
-    padding:4px 0 6px !important;
-}
-[data-testid="stChatInput"] {
-    width:100% !important;
-    max-width:520px !important;
-    min-height:34px !important;
-    margin:0 !important;
-    border-radius:9px !important;
-}
-[data-testid="stChatInput"] textarea {
-    min-height:34px !important;
-    height:34px !important;
-    padding:7px 42px 5px 12px !important;
-    font-size:11px !important;
-    line-height:20px !important;
-}
-[data-testid="stChatInput"] button {
-    width:28px !important;
-    height:28px !important;
-    min-height:28px !important;
-    margin:3px 4px 3px 0 !important;
-}
-
-
-@media (max-width:768px) {
-    [data-testid="stBottom"] > div,
-    [data-testid="stBottomBlockContainer"] {
-        max-width:100% !important;
-    }
-    [data-testid="stBottomBlockContainer"] {
-        width:calc(100% - 20px) !important;
-        padding:3px 0 5px !important;
-    }
-}
-
-
-/* Inline message composer */
+/* ---------- Message composer ---------- */
 [data-testid="stForm"] {
-    max-width:700px;
-    margin:20px auto 10px auto;
+    width:100% !important;
+    max-width:760px !important;
+    margin:16px 0 8px !important;
     padding:0 !important;
     border:0 !important;
     background:transparent !important;
 }
 [data-testid="stForm"] [data-testid="stHorizontalBlock"] {
-    align-items:center;
-    gap:6px;
-}
-[data-testid="stForm"] .stTextInput input {
-    height:44px !important;
-    min-height:44px !important;
-    border:1px solid #E6C9C7 !important;
-    border-radius:9px !important;
-    background:#FFFDFC !important;
-    font-size:12px !important;
-    padding:0 12px !important;
-    box-shadow:none !important;
-}
-[data-testid="stForm"] .stButton > button,
-[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
-    height:44px !important;
-    min-height:44px !important;
-    width:44px !important;
-    padding:0 !important;
-    border-radius:9px !important;
-    background:var(--chocolate) !important;
-    border-color:var(--chocolate) !important;
-    color:white !important;
-    font-size:16px !important;
-}
-[data-testid="stBottom"],
-[data-testid="stBottomBlockContainer"] {
-    display:none !important;
-}
-@media (max-width:768px) {
-    [data-testid="stForm"] {
-        max-width:100%;
-        margin:12px 0 6px 0;
-    }
-    [data-testid="stForm"] .stTextInput input {
-        height:40px !important;
-        min-height:40px !important;
-        font-size:12px !important;
-    }
-    [data-testid="stForm"] .stButton > button,
-    [data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
-        height:40px !important;
-        min-height:40px !important;
-        width:40px !important;
-    }
-}
-
-
-/* Remove Streamlit's reserved top chrome so the storefront starts higher */
-header[data-testid="stHeader"] {
-    display: none !important;
-    height: 0 !important;
-}
-[data-testid="stToolbar"],
-[data-testid="stDecoration"] {
-    display: none !important;
-}
-.stApp > header {
-    display: none !important;
-}
-.block-container {
-    padding-top: 1rem !important;
-}
-@media (max-width:768px) {
-    .block-container {
-        padding-top: .75rem !important;
-    }
-}
-
-
-/* AI ordering is the primary action */
-.assistant-intro {
-    background:#FFFDFC;
-    border:1px solid #E8D9D3;
-    border-left:4px solid var(--pink);
-    border-radius:12px;
-    padding:16px 18px !important;
-    margin:18px 0 10px !important;
-}
-.assistant-title { font-size:20px !important; }
-.assistant-copy { max-width:700px; }
-
-@media (max-width:768px) {
-    .assistant-intro {
-        padding:13px 14px !important;
-        margin:14px 0 8px !important;
-    }
-    .assistant-title { font-size:18px !important; }
-    [data-testid="stForm"] [data-testid="stHorizontalBlock"] {
-        flex-wrap:nowrap !important;
-    }
-    [data-testid="stForm"] [data-testid="column"]:first-child {
-        width:calc(100% - 44px) !important;
-        flex:1 1 auto !important;
-    }
-    [data-testid="stForm"] [data-testid="column"]:last-child {
-        width:40px !important;
-        flex:0 0 40px !important;
-    }
-}
-
-
-/* Final mobile polish: no horizontal overflow + compact one-row composer */
-html, body, .stApp {
-    max-width:100%;
-    overflow-x:hidden !important;
-}
-.block-container {
-    overflow-x:hidden !important;
-}
-[data-testid="stForm"] {
-    width:100% !important;
-    max-width:700px !important;
-    margin:14px 0 10px 0 !important;
-}
-[data-testid="stForm"] [data-testid="stHorizontalBlock"] {
     display:grid !important;
-    grid-template-columns:minmax(0, 1fr) 44px !important;
-    gap:8px !important;
-    width:100% !important;
+    grid-template-columns:minmax(0, 1fr) 54px !important;
+    gap:10px !important;
     align-items:center !important;
+    width:100% !important;
 }
+[data-testid="stForm"] [data-testid="stColumn"],
 [data-testid="stForm"] [data-testid="column"] {
     width:auto !important;
     min-width:0 !important;
     flex:none !important;
 }
-[data-testid="stForm"] .stTextInput {
-    width:100% !important;
-    min-width:0 !important;
+[data-testid="stForm"] [data-baseweb="input"] {
+    background:#fff !important;
+    border:2px solid var(--burgundy) !important;
+    border-radius:999px !important;
+    box-shadow:3px 3px 0 var(--pink);
+    min-height:54px;
+}
+[data-testid="stForm"] [data-baseweb="input"]:focus-within {
+    border-color:var(--red) !important;
+    box-shadow:3px 3px 0 var(--red);
+}
+[data-testid="stForm"] [data-baseweb="base-input"] {
+    background:transparent !important;
+    border:0 !important;
 }
 [data-testid="stForm"] .stTextInput input {
-    width:100% !important;
-    box-sizing:border-box !important;
-}
-[data-testid="stForm"] [data-testid="stFormSubmitButton"] {
-    width:44px !important;
-}
-[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
-    width:44px !important;
-    min-width:44px !important;
-    max-width:44px !important;
-    margin:0 !important;
-}
-@media (max-width:768px) {
-    [data-testid="stForm"] {
-        max-width:100% !important;
-        margin:10px 0 8px 0 !important;
-    }
-    [data-testid="stForm"] [data-testid="stHorizontalBlock"] {
-        grid-template-columns:minmax(0, 1fr) 40px !important;
-        gap:6px !important;
-    }
-    [data-testid="stForm"] [data-testid="stFormSubmitButton"],
-    [data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
-        width:40px !important;
-        min-width:40px !important;
-        max-width:40px !important;
-    }
-    .assistant-intro {
-        padding:11px 13px !important;
-        margin:12px 0 7px !important;
-    }
-    .assistant-copy {
-        line-height:1.4 !important;
-    }
-}
-
-
-/* Boutique storefront polish */
-:root{--pw-ink:#38231f;--pw-chocolate:#6b352c;--pw-pink:#e8aaa9;--pw-pink-soft:#f6dedd;--pw-card:#fffdf9;--pw-border:#eadbd2;--pw-muted:#786a64;}
-.bakery-name{color:var(--pw-ink)!important;font-size:44px!important;margin-bottom:6px!important}
-.bakery-subtitle{color:var(--pw-muted)!important;font-size:15px!important;margin-bottom:10px!important}
-.assistant-intro{background:var(--pw-pink-soft)!important;border:0!important;border-radius:16px!important;padding:18px 20px!important;margin:18px 0 10px!important}
-.assistant-title{color:var(--pw-ink)!important;font-size:22px!important}
-.assistant-copy{color:#6d5752!important}
-.popular-title{font-size:22px!important;margin:24px 0 12px!important;color:var(--pw-ink)!important}
-.product-card-shell{background:var(--pw-card);border:1px solid var(--pw-border);border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:0 5px 18px rgba(56,35,31,.045)}
-.product-card-photo{
-    width:100% !important;
-    height:auto !important;
-    aspect-ratio:16 / 10 !important;
-    object-fit:cover !important;
-    object-position:center !important;
-    display:block !important;
-    margin:0 !important;
-}
-.product-card-copy{padding:12px 13px 14px!important}
-.product-card-topline{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-.product-card-name{font-size:15px!important;color:var(--pw-ink)!important}
-.product-card-price{margin-top:0!important;font-size:14px!important;color:var(--pw-chocolate)!important;white-space:nowrap}
-.product-card-desc{font-size:11px!important;line-height:1.45!important;min-height:0!important;margin-top:6px;color:var(--pw-muted)!important}
-@media(max-width:768px){.bakery-name{font-size:34px!important}.assistant-intro{padding:14px 15px!important;border-radius:13px!important}.assistant-title{font-size:19px!important}.product-card-photo{aspect-ratio:16 / 10 !important}}
-
-
-.product-card-shell > .product-card-photo {
-    border-radius:0 !important;
-}
-.product-card-shell {
-    padding:0 !important;
-}
-
-
-/* Pink Whisk thinking state */
-.pink-whisk-thinking {
-    display:inline-flex;
-    align-items:center;
-    gap:9px;
-    background:#fffdf9;
-    border:1px solid #eadbd2;
-    border-radius:14px;
-    padding:9px 13px;
-    margin:8px 0 10px;
-    box-shadow:0 4px 14px rgba(56,35,31,.04);
-}
-.thinking-cake {
-    font-size:19px;
-    line-height:1;
-    animation:cakeBob 1.15s ease-in-out infinite;
-}
-.thinking-copy {
-    display:flex;
-    align-items:center;
-    gap:7px;
-    font-size:12px;
-    font-weight:600;
-    color:#6b514b;
-}
-.thinking-dots {
-    display:inline-flex;
-    align-items:center;
-    gap:3px;
-}
-.thinking-dots i {
-    width:4px;
-    height:4px;
-    border-radius:50%;
-    background:#e8aaa9;
-    display:block;
-    animation:dotBounce 1.15s infinite ease-in-out;
-}
-.thinking-dots i:nth-child(2) { animation-delay:.15s; }
-.thinking-dots i:nth-child(3) { animation-delay:.30s; }
-
-@keyframes cakeBob {
-    0%,100% { transform:translateY(0) rotate(0deg); }
-    50% { transform:translateY(-3px) rotate(-3deg); }
-}
-@keyframes dotBounce {
-    0%,60%,100% { transform:translateY(0); opacity:.45; }
-    30% { transform:translateY(-3px); opacity:1; }
-}
-@media (prefers-reduced-motion: reduce) {
-    .thinking-cake, .thinking-dots i { animation:none !important; }
-}
-
-
-/* Refined assistant thinking indicator */
-.pink-whisk-thinking {
-    display:inline-flex !important;
-    align-items:center !important;
-    gap:9px !important;
-    background:#fffdf9 !important;
-    border:1px solid #eadbd2 !important;
-    border-radius:12px !important;
-    padding:8px 11px !important;
-    margin:6px 0 10px !important;
+    height:50px !important;
+    padding:0 22px !important;
+    font-size:15px !important;
+    color:var(--ink) !important;
+    background:transparent !important;
+    border:0 !important;
     box-shadow:none !important;
 }
-.thinking-mark {
+[data-testid="stForm"] .stTextInput input::placeholder { color:#B79498; }
+[data-testid="InputInstructions"], [data-testid="stInputInstructions"], .stTextInput small { display:none !important; }
+[data-testid="stFormSubmitButton"] button {
+    width:54px !important;
+    min-width:54px !important;
+    height:54px !important;
+    padding:0 !important;
+    border-radius:50% !important;
+    background:var(--red) !important;
+    color:var(--cream) !important;
+    border:2px solid var(--burgundy) !important;
+    box-shadow:3px 3px 0 var(--burgundy);
+    font-size:22px !important;
+    font-weight:700 !important;
+}
+[data-testid="stFormSubmitButton"] button:active {
+    transform:translate(2px, 2px);
+    box-shadow:1px 1px 0 var(--burgundy);
+}
+
+/* ---------- Section headers + dividers ---------- */
+.pw-dots {
+    height:24px;
+    margin:30px 0 4px;
+    background:radial-gradient(circle, var(--red) 7px, transparent 8px) 0 50% / 28px 24px repeat-x;
+}
+.pw-section-head {
     display:flex;
-    align-items:center;
-    gap:3px;
-    height:14px;
+    align-items:baseline;
+    gap:14px;
+    flex-wrap:wrap;
+    margin:4px 0 20px;
 }
-.thinking-mark span {
-    display:block;
-    width:5px;
-    height:5px;
-    border-radius:50%;
-    background:#d98f91;
-    animation:pwPulse 1.05s infinite ease-in-out;
-}
-.thinking-mark span:nth-child(2){animation-delay:.14s}
-.thinking-mark span:nth-child(3){animation-delay:.28s}
-.pink-whisk-thinking .thinking-copy {
-    font-size:11px !important;
-    font-weight:600 !important;
-    color:#6b514b !important;
-}
-@keyframes pwPulse {
-    0%,70%,100% { opacity:.35; transform:translateY(0); }
-    35% { opacity:1; transform:translateY(-2px); }
-}
-@media (prefers-reduced-motion:reduce) {
-    .thinking-mark span { animation:none !important; }
-}
-
-
-/* Whole-cake loading mascot.
-   The placeholder itself only receives this markup while a message is waiting
-   for the AI response, so the cake is invisible at all other times. */
-.pw-cake-loader{
-    position:relative;
-    width:52px;
-    height:59px;
-    margin:4px 0 3px 3px;
-    background:transparent;
-}
-.pw-cake-dots{
-    position:absolute;
-    top:0;
-    left:11px;
-    width:30px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-.pw-cake-dots span{
-    width:5px;
-    height:5px;
-    border-radius:50%;
-    background:#e8aaa9;
-    animation:pwCakeDot 1s ease-in-out infinite;
-}
-.pw-cake-dots span:nth-child(2){animation-delay:.14s}
-.pw-cake-dots span:nth-child(3){animation-delay:.28s}
-
-.pw-whole-cake{
-    position:absolute;
-    left:2px;
-    bottom:0;
-    width:48px;
-    height:47px;
-    animation:pwCakeBob 1.2s ease-in-out infinite;
-}
-.pw-cake-body{
-    position:absolute;
-    left:6px;
-    top:18px;
-    width:36px;
-    height:25px;
-    box-sizing:border-box;
-    background:#f4c7c2;
-    border:2px solid #6b352c;
-    border-radius:3px 3px 8px 8px;
-}
-.pw-cake-body:before{
-    content:"";
-    position:absolute;
-    left:0;
-    right:0;
-    top:8px;
-    height:2px;
-    background:#fff3e8;
-}
-.pw-cake-top{
-    position:absolute;
-    left:4px;
-    top:11px;
-    width:40px;
-    height:12px;
-    box-sizing:border-box;
-    background:#fff1e6;
-    border:2px solid #6b352c;
-    border-radius:50% 50% 34% 34%;
-    z-index:3;
-}
-.pw-cake-icing{
-    position:absolute;
-    left:7px;
-    top:18px;
-    width:34px;
-    height:7px;
-    background:#f5aeb0;
-    z-index:4;
-    border-radius:0 0 8px 8px;
-}
-.pw-cake-icing:before,
-.pw-cake-icing:after{
-    content:"";
-    position:absolute;
-    top:3px;
-    width:7px;
-    height:6px;
-    border-radius:0 0 6px 6px;
-    background:#f5aeb0;
-}
-.pw-cake-icing:before{left:5px}
-.pw-cake-icing:after{right:5px}
-
-.pw-cherry{
-    position:absolute;
-    width:7px;
-    height:7px;
-    border-radius:50%;
-    background:#d95f6b;
-    border:1px solid #6b352c;
-    top:-6px;
-}
-.pw-cherry:before{
-    content:"";
-    position:absolute;
-    width:1px;
-    height:5px;
-    background:#6b352c;
-    left:3px;
-    top:-4px;
-    transform:rotate(15deg);
-}
-.pw-cherry.ch1{left:7px}
-.pw-cherry.ch2{left:16px;top:-9px}
-.pw-cherry.ch3{right:7px}
-
-.pw-cake-eye{
-    position:absolute;
-    top:9px;
-    width:2px;
-    height:3px;
-    border-radius:50%;
-    background:#6b352c;
-    z-index:6;
-}
-.pw-cake-eye.left{left:9px}
-.pw-cake-eye.right{right:9px}
-.pw-cake-smile{
-    position:absolute;
-    left:14px;
-    top:13px;
-    width:6px;
-    height:4px;
-    border-bottom:1.5px solid #6b352c;
-    border-radius:0 0 8px 8px;
-    z-index:6;
-}
-.pw-cake-cheek{
-    position:absolute;
-    top:14px;
-    width:5px;
-    height:3px;
-    border-radius:50%;
-    background:#e98f96;
-    z-index:6;
-}
-.pw-cake-cheek.left{left:4px}
-.pw-cake-cheek.right{right:4px}
-.pw-cake-plate{
-    position:absolute;
-    left:3px;
-    bottom:0;
-    width:42px;
-    height:5px;
-    background:#ead9d0;
-    border:1.5px solid #6b352c;
-    border-radius:50%;
-    box-sizing:border-box;
-}
-
-@keyframes pwCakeDot{
-    0%,70%,100%{opacity:.3;transform:translateY(0)}
-    35%{opacity:1;transform:translateY(-2px)}
-}
-@keyframes pwCakeBob{
-    0%,100%{transform:translateY(0)}
-    50%{transform:translateY(-2px)}
-}
-@media(prefers-reduced-motion:reduce){
-    .pw-cake-dots span,.pw-whole-cake{animation:none!important}
-}
-
-
-/* =========================================================
-   PINK WHISK — restrained premium palette
-   Keep personality, reduce the overly pink/cute feeling.
-   ========================================================= */
-:root {
-    --premium-ink:#332824;
-    --premium-chocolate:#694238;
-    --premium-cream:#FBF7F1;
-    --premium-card:#FFFCF8;
-    --premium-border:#E6DDD5;
-    --premium-muted:#746B66;
-    --premium-blush:#D9A2A0;
-    --premium-blush-soft:#F7ECE9;
-    --premium-sage:#A8AA8B;
-}
-
-.stApp {
-    background:var(--premium-cream) !important;
-    color:var(--premium-ink) !important;
-}
-
-/* Brand */
-.loaf-wordmark {
-    color:var(--premium-chocolate) !important;
-}
-.bakery-name {
-    color:var(--premium-ink) !important;
-}
-.bakery-subtitle {
-    color:var(--premium-muted) !important;
-}
-.brand-dot {
-    background:var(--premium-blush) !important;
-}
-
-/* AI area: ivory card + one blush accent instead of a large pink block */
-.assistant-intro {
-    background:var(--premium-card) !important;
-    border:1px solid var(--premium-border) !important;
-    border-left:4px solid var(--premium-blush) !important;
-    border-radius:12px !important;
-    box-shadow:0 5px 18px rgba(51,40,36,.035) !important;
-}
-.assistant-title {
-    color:var(--premium-ink) !important;
-}
-.assistant-copy {
-    color:var(--premium-muted) !important;
-}
-
-/* Conversation */
-.chat-row.assistant .chat-bubble {
-    background:var(--premium-card) !important;
-    border-color:var(--premium-border) !important;
-    color:var(--premium-ink) !important;
-}
-.chat-row.user .chat-bubble {
-    background:var(--premium-chocolate) !important;
-    border-color:var(--premium-chocolate) !important;
-    color:#fff !important;
-}
-
-/* Composer */
-[data-testid="stForm"] .stTextInput input {
-    background:#fff !important;
-    border-color:#DDD3CC !important;
-    color:var(--premium-ink) !important;
-}
-[data-testid="stForm"] .stTextInput input:focus {
-    border-color:var(--premium-blush) !important;
-    box-shadow:0 0 0 1px var(--premium-blush) !important;
-}
-[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
-    background:var(--premium-chocolate) !important;
-    border-color:var(--premium-chocolate) !important;
-}
-
-/* Product cards */
 .popular-title {
-    color:var(--premium-ink) !important;
+    font-family:"Fraunces", serif;
+    font-weight:900;
+    font-size:34px;
+    letter-spacing:-.02em;
+    color:var(--burgundy);
 }
+.script-note {
+    font-family:"Caveat", cursive;
+    font-weight:700;
+    font-size:25px;
+    color:var(--red);
+    transform:rotate(-2deg);
+    display:inline-block;
+}
+
+/* ---------- Product cards ---------- */
 .product-card-shell {
-    background:var(--premium-card) !important;
-    border-color:var(--premium-border) !important;
-    box-shadow:0 4px 14px rgba(51,40,36,.035) !important;
+    background:var(--paper);
+    border:2px solid var(--burgundy);
+    border-radius:16px;
+    overflow:hidden;
+    margin-bottom:20px;
+    box-shadow:5px 5px 0 var(--burgundy);
+    transform:rotate(var(--tilt, 0deg));
 }
+.product-card-media {
+    position:relative;
+    border-bottom:2px solid var(--burgundy);
+}
+.product-card-photo {
+    display:block;
+    width:100%;
+    aspect-ratio:4 / 3;
+    object-fit:cover;
+    object-position:center;
+    margin:0;
+}
+.product-card-photo.placeholder {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:"Fraunces", serif;
+    font-weight:900;
+    font-size:68px;
+    color:var(--burgundy);
+    background-color:var(--blush);
+    background-image:
+        linear-gradient(rgba(242,167,181,.5) 50%, transparent 50%),
+        linear-gradient(90deg, rgba(242,167,181,.5) 50%, transparent 50%);
+    background-size:22px 22px;
+}
+.price-sticker {
+    position:absolute;
+    top:12px;
+    right:12px;
+    background:var(--cream);
+    color:var(--red);
+    border:2px solid var(--burgundy);
+    border-radius:999px;
+    padding:4px 12px;
+    font-weight:700;
+    font-size:14px;
+    transform:rotate(5deg);
+    box-shadow:2px 2px 0 var(--burgundy);
+}
+.product-card-copy { padding:14px 16px 16px; }
 .product-card-name {
-    color:var(--premium-ink) !important;
-}
-.product-card-price {
-    color:var(--premium-chocolate) !important;
+    font-family:"Fraunces", serif;
+    font-weight:700;
+    font-size:20px;
+    line-height:1.2;
+    color:var(--burgundy);
 }
 .product-card-desc {
-    color:var(--premium-muted) !important;
+    margin-top:6px;
+    font-size:13px;
+    line-height:1.5;
+    color:var(--muted);
 }
 
-/* Menu + order */
+/* ---------- Expanders (menu + order) ---------- */
 [data-testid="stExpander"] {
-    background:var(--premium-card) !important;
-    border-color:var(--premium-border) !important;
+    background:transparent !important;
+    border:0 !important;
+    box-shadow:none !important;
+    margin-bottom:12px;
+}
+[data-testid="stExpander"] details {
+    background:var(--paper) !important;
+    border:2px solid var(--burgundy) !important;
+    border-radius:14px !important;
+    box-shadow:4px 4px 0 var(--pink);
+}
+[data-testid="stExpander"] summary {
+    font-family:"Fraunces", serif;
+    font-weight:700;
+    font-size:17px;
+    color:var(--burgundy);
+    padding-top:10px !important;
+    padding-bottom:10px !important;
+}
+[data-testid="stExpander"] summary:hover { background:var(--blush) !important; }
+[data-testid="stExpander"] img {
+    border:2px solid var(--burgundy);
+    border-radius:12px;
+}
+.order-empty {
+    font-family:"Caveat", cursive;
+    font-weight:700;
+    font-size:23px;
+    color:var(--muted);
 }
 
-/* Make the cake loader feel more editorial and less toy-like */
-.pw-cake-body {
-    background:#E8C5BC !important;
-    border-color:var(--premium-chocolate) !important;
+/* ---------- Buttons ---------- */
+.stButton > button {
+    background:var(--red);
+    color:var(--cream);
+    border:2px solid var(--burgundy);
+    border-radius:999px;
+    font-weight:700;
+    padding:.4rem 1.2rem;
+    box-shadow:3px 3px 0 var(--burgundy);
 }
-.pw-cake-top {
-    background:#F6EEE7 !important;
-    border-color:var(--premium-chocolate) !important;
-}
-.pw-cake-icing,
-.pw-cake-icing:before,
-.pw-cake-icing:after {
-    background:#DCA4A2 !important;
-}
-.pw-cherry {
-    background:#B96F70 !important;
-    border-color:var(--premium-chocolate) !important;
-}
-.pw-cake-dots span {
-    background:#C98D8D !important;
-}
-.pw-cake-cheek {
-    background:#D9A2A0 !important;
-}
+.stButton > button:hover { background:var(--burgundy); color:var(--cream); border-color:var(--burgundy); }
+.stButton > button:active { transform:translate(2px, 2px); box-shadow:1px 1px 0 var(--burgundy); }
 
-/* Slightly quieter footer */
+/* ---------- Footer ---------- */
 .loaf-footer {
-    color:#9B918B !important;
+    text-align:center;
+    font-family:"Caveat", cursive;
+    font-weight:700;
+    font-size:22px;
+    color:var(--burgundy);
+    margin-top:36px;
 }
 
-/* Balanced Pink Whisk palette */
-:root{--fp-cream:#FFF8F2;--fp-card:#FFFCF9;--fp-ink:#382622;--fp-brown:#71392F;--fp-pink:#DFA09F;--fp-soft:#F4D9D7;--fp-pale:#FBECEA;--fp-border:#E8D7D1;--fp-muted:#756965;}
-.stApp{background:var(--fp-cream)!important}
-.loaf-wordmark{color:var(--fp-brown)!important}.bakery-name{color:var(--fp-ink)!important}.bakery-subtitle{color:var(--fp-muted)!important}.brand-dot{background:var(--fp-pink)!important}
-.assistant-intro{background:var(--fp-soft)!important;border:1px solid #EAC5C2!important;border-left:5px solid var(--fp-pink)!important;border-radius:14px!important}
-.assistant-title{color:var(--fp-ink)!important}.assistant-copy{color:#715C57!important}
-.chat-row.assistant .chat-bubble{background:var(--fp-pale)!important;border:1px solid #EACFCB!important;color:var(--fp-ink)!important}
-.chat-row.user .chat-bubble{background:var(--fp-brown)!important;border-color:var(--fp-brown)!important;color:#fff!important}
-[data-testid="stForm"] .stTextInput input{background:#FFFDFB!important;border:1px solid #E9B8B6!important;color:var(--fp-ink)!important}
-[data-testid="stForm"] .stTextInput input:focus{border-color:var(--fp-pink)!important;box-shadow:0 0 0 1px var(--fp-pink)!important}
-[data-testid="stForm"] [data-testid="stFormSubmitButton"] button{background:var(--fp-brown)!important;border-color:var(--fp-brown)!important}
-[data-testid="InputInstructions"],[data-testid="stInputInstructions"],.stTextInput small{display:none!important}
-.popular-title,.product-card-name{color:var(--fp-ink)!important}.product-card-price{color:var(--fp-brown)!important}.product-card-desc{color:var(--fp-muted)!important}
-.product-card-shell{background:var(--fp-card)!important;border:1px solid var(--fp-border)!important}.product-card-copy{border-top:2px solid #F2D1CF!important}
-[data-testid="stExpander"]{background:var(--fp-card)!important;border-color:var(--fp-border)!important}
-[data-testid="stExpander"] summary:hover{background:#FBEDEA!important}
-.pw-cake-body{background:#EABDB9!important;border-color:var(--fp-brown)!important}.pw-cake-top{background:#FFF0E8!important;border-color:var(--fp-brown)!important}
-.pw-cake-icing,.pw-cake-icing:before,.pw-cake-icing:after{background:#E89FA1!important}.pw-cherry{background:#C96F76!important;border-color:var(--fp-brown)!important}.pw-cake-dots span{background:var(--fp-pink)!important}
-.loaf-topnote{color:#7E8068!important}
+/* ---------- Loading cake ---------- */
+.pw-cake-loader { position:relative; width:52px; height:59px; margin:4px 0 6px 3px; }
+.pw-cake-dots { position:absolute; top:0; left:11px; width:30px; display:flex; justify-content:space-between; align-items:center; }
+.pw-cake-dots span { width:5px; height:5px; border-radius:50%; background:var(--pink); animation:pwCakeDot 1s ease-in-out infinite; }
+.pw-cake-dots span:nth-child(2) { animation-delay:.14s; }
+.pw-cake-dots span:nth-child(3) { animation-delay:.28s; }
+.pw-whole-cake { position:absolute; left:2px; bottom:0; width:48px; height:47px; animation:pwCakeBob 1.2s ease-in-out infinite; }
+.pw-cake-body { position:absolute; left:6px; top:18px; width:36px; height:25px; box-sizing:border-box; background:#EABDB9; border:2px solid var(--burgundy); border-radius:3px 3px 8px 8px; }
+.pw-cake-body:before { content:""; position:absolute; left:0; right:0; top:8px; height:2px; background:#fff3e8; }
+.pw-cake-top { position:absolute; left:4px; top:11px; width:40px; height:12px; box-sizing:border-box; background:#FFF0E8; border:2px solid var(--burgundy); border-radius:50% 50% 34% 34%; z-index:3; }
+.pw-cake-icing { position:absolute; left:7px; top:18px; width:34px; height:7px; background:#E89FA1; z-index:4; border-radius:0 0 8px 8px; }
+.pw-cake-icing:before, .pw-cake-icing:after { content:""; position:absolute; top:3px; width:7px; height:6px; border-radius:0 0 6px 6px; background:#E89FA1; }
+.pw-cake-icing:before { left:5px; }
+.pw-cake-icing:after { right:5px; }
+.pw-cherry { position:absolute; width:7px; height:7px; border-radius:50%; background:#C96F76; border:1px solid var(--burgundy); top:-6px; }
+.pw-cherry:before { content:""; position:absolute; width:1px; height:5px; background:var(--burgundy); left:3px; top:-4px; transform:rotate(15deg); }
+.pw-cherry.ch1 { left:7px; }
+.pw-cherry.ch2 { left:16px; top:-9px; }
+.pw-cherry.ch3 { right:7px; }
+.pw-cake-eye { position:absolute; top:9px; width:2px; height:3px; border-radius:50%; background:var(--burgundy); z-index:6; }
+.pw-cake-eye.left { left:9px; }
+.pw-cake-eye.right { right:9px; }
+.pw-cake-smile { position:absolute; left:14px; top:13px; width:6px; height:4px; border-bottom:1.5px solid var(--burgundy); border-radius:0 0 8px 8px; z-index:6; }
+.pw-cake-cheek { position:absolute; top:14px; width:5px; height:3px; border-radius:50%; background:var(--pink); z-index:6; }
+.pw-cake-cheek.left { left:4px; }
+.pw-cake-cheek.right { right:4px; }
+.pw-cake-plate { position:absolute; left:3px; bottom:0; width:42px; height:5px; background:#ead9d0; border:1.5px solid var(--burgundy); border-radius:50%; box-sizing:border-box; }
+@keyframes pwCakeDot { 0%,70%,100% { opacity:.3; transform:translateY(0); } 35% { opacity:1; transform:translateY(-2px); } }
+@keyframes pwCakeBob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
+@media (prefers-reduced-motion:reduce) { .pw-cake-dots span, .pw-whole-cake { animation:none !important; } }
 
+/* ---------- Mobile ---------- */
+@media (max-width:768px) {
+    .block-container { padding:.7rem .8rem 3.5rem !important; }
+    .pw-hero { padding:18px 18px 30px; border-radius:16px 16px 0 0; }
+    .bakery-name { margin:14px 0 8px; }
+    .bakery-subtitle { font-size:14px; }
+    .pw-script { font-size:22px; max-width:62%; }
+    .pw-sticker { width:78px; height:78px; font-size:18px; right:14px; bottom:-26px; }
+    .assistant-intro { padding:18px 16px 14px; margin-top:24px; }
+    .assistant-title { font-size:23px; }
+    .chat-wrap { max-width:90%; }
+    .chat-bubble { font-size:14px; padding:10px 13px; }
+    .popular-title { font-size:28px; }
+    .script-note { font-size:22px; }
+    [data-testid="stForm"] [data-testid="stHorizontalBlock"] { grid-template-columns:minmax(0, 1fr) 50px !important; gap:8px !important; }
+    [data-testid="stFormSubmitButton"] button { width:50px !important; min-width:50px !important; height:50px !important; }
+    .product-card-shell { transform:none; }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1045,9 +608,8 @@ def hash_password(password):
 def get_business(slug):
     try:
         result = supabase.table("businesses").select("*").eq("slug", slug).execute()
-    except Exception as e:
+    except Exception:
         st.error("Something went wrong looking that up. Please try again in a moment.")
-        st.exception(e)  # TEMPORARY -- remove once we've found the root cause
         return None
     if result.data:
         return result.data[0]
@@ -1094,6 +656,27 @@ def send_order_email(order, business_name, business_email, order_number):
         server.send_message(msg)
 
 
+def short_business_name(name):
+    """Drop trailing words like 'Bakery' or 'Test' for friendlier labels."""
+    display_name = str(name)
+    for suffix in [" Bakery Test", " Bakery", " Test"]:
+        if display_name.endswith(suffix):
+            display_name = display_name[:-len(suffix)]
+    return display_name
+
+
+def fmt_price(price):
+    """Turn a stored price into a tidy label like ₹450, or '' if not set."""
+    if price in ("", None):
+        return ""
+    try:
+        value = float(price)
+    except (TypeError, ValueError):
+        return html.escape(str(price))
+    if value <= 0:
+        return ""
+    return f"₹{int(value)}" if value == int(value) else f"₹{value:.2f}"
+
 
 def render_chat_message(role, content, business_name):
     safe_content = html.escape(str(content)).replace("\n", "<br>")
@@ -1101,22 +684,14 @@ def render_chat_message(role, content, business_name):
         label = "You"
         css_role = "user"
     else:
-        display_name = str(business_name)
-        for suffix in [" Bakery Test", " Bakery", " Test"]:
-            if display_name.endswith(suffix):
-                display_name = display_name[:-len(suffix)]
-        label = f"{html.escape(display_name)} Assistant"
+        label = f"{html.escape(short_business_name(business_name))} Assistant"
         css_role = "assistant"
 
     st.markdown(
-        f"""
-        <div class="chat-row {css_role}">
-            <div class="chat-wrap">
-                <div class="chat-name">{label}</div>
-                <div class="chat-bubble">{safe_content}</div>
-            </div>
-        </div>
-        """,
+        f'<div class="chat-row {css_role}"><div class="chat-wrap">'
+        f'<div class="chat-name">{label}</div>'
+        f'<div class="chat-bubble">{safe_content}</div>'
+        f'</div></div>',
         unsafe_allow_html=True
     )
 
@@ -1135,10 +710,9 @@ def run_chatbot(business):
     menu_photo_urls = business.get("menu_photo_urls") or []
     menu = business["menu"]
 
-    display_business_name = str(business_name)
-    for suffix in [" Bakery Test", " Bakery", " Test"]:
-        if display_business_name.endswith(suffix):
-            display_business_name = display_business_name[:-len(suffix)]
+    display_business_name = short_business_name(business_name)
+    safe_business_name = html.escape(str(business_name))
+    safe_display_name = html.escape(display_business_name)
 
     if "messages" not in st.session_state:
         current_time_str = datetime.now().strftime("%A, %Y-%m-%d %I:%M %p")
@@ -1198,24 +772,26 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.order_number = None
         st.session_state.orders_this_session = 0
 
+    # ---------- Hero ----------
     st.markdown(
-        '<div class="loaf-topbar"><div class="loaf-wordmark">LOAF</div><div class="loaf-topnote">Online ordering</div></div>',
-        unsafe_allow_html=True
-    )
-    st.markdown('<div class="brand-dot"></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="bakery-name">{business_name}</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="bakery-subtitle">Browse today\'s bakes, ask about ingredients or custom orders, and place your order in one conversation.</div>',
+        '<div class="pw-hero">'
+        '<div class="pw-sticker">baked<br>fresh<br>daily</div>'
+        '<div class="pw-hero-top"><span class="loaf-wordmark">LOAF</span><span class="pw-pill">Online ordering</span></div>'
+        f'<div class="bakery-name">{safe_business_name}</div>'
+        '<div class="bakery-subtitle">Pick your bakes, ask about ingredients or custom cakes, and place your order in one chat.</div>'
+        '<div class="pw-script">start your order below</div>'
+        '</div>'
+        '<div class="pw-scallop"></div>',
         unsafe_allow_html=True
     )
 
+    # ---------- Assistant card ----------
     st.markdown(
-        f"""
-        <div class="assistant-intro">
-            <div class="assistant-title">Order with {display_business_name}</div>
-            <div class="assistant-copy">Tell us what you are craving. Get recommendations, ask about ingredients, or place your order here.</div>
-        </div>
-        """,
+        '<div class="assistant-intro">'
+        f'<div class="assistant-title">Order with {safe_display_name}</div>'
+        '<div class="assistant-copy">Tell us what you are craving. Ask about ingredients, get recommendations, or place your order right here.</div>'
+        '<div class="pw-handnote">type a message to begin</div>'
+        '</div>',
         unsafe_allow_html=True
     )
 
@@ -1229,7 +805,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     for message in st.session_state.get("display_messages", []):
         render_chat_message(message["role"], message["content"], business_name)
 
-    # Loading state appears directly above the "Ask The Pink Whisk anything..." box.
+    # Loading state appears directly above the message box.
     thinking_slot = st.empty()
 
     with st.form("chat_form", clear_on_submit=True):
@@ -1246,38 +822,56 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     if not send_message:
         user_input = None
 
-
-    # Image-led product cards rendered as HTML to avoid Streamlit's fullscreen image viewer.
+    # ---------- Favourites (image-led cards rendered as HTML) ----------
     visible_menu_items = [item for item in menu if item.get("Item")][:6]
     if visible_menu_items:
-        st.markdown('<div class="popular-title">Our favourites</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="pw-dots"></div>'
+            '<div class="pw-section-head"><span class="popular-title">Our favourites</span>'
+            '<span class="script-note">fresh out of the oven</span></div>',
+            unsafe_allow_html=True
+        )
+        tilts = ["-1.2deg", "0.8deg", "-0.5deg"]
         card_cols = st.columns(3)
         for idx, item in enumerate(visible_menu_items):
-            item_name = html.escape(str(item.get("Item", "")))
-            price = item.get("Price", "")
+            raw_name = str(item.get("Item", ""))
+            item_name = html.escape(raw_name)
+            price_text = fmt_price(item.get("Price", ""))
             ingredients = str(item.get("Ingredients", ""))
             photo_url = item.get("PhotoURL") or (menu_photo_urls[idx] if idx < len(menu_photo_urls) else None)
-            price_text = f"₹{price}" if price not in ("", None, 0) else ""
             parts = [p.strip() for p in ingredients.split(",") if p.strip()]
-            short_desc = html.escape(" · ".join(parts[:4]) if parts else ingredients)
-            safe_photo = html.escape(str(photo_url), quote=True) if photo_url else ""
-            photo_html = f'<img class="product-card-photo" src="{safe_photo}" alt="{item_name}">' if safe_photo else ""
-            with card_cols[idx % 3]:
-                st.markdown(f"""<div class="product-card-shell">{photo_html}<div class="product-card-copy"><div class="product-card-topline"><div class="product-card-name">{item_name}</div><div class="product-card-price">{price_text}</div></div><div class="product-card-desc">{short_desc}</div></div></div>""",unsafe_allow_html=True)
+            short_desc = html.escape(", ".join(parts[:4]) if parts else ingredients)
 
-    # Popular Picks already shows the first six products.
-    # Only show View menu when there are additional products.
+            if photo_url:
+                safe_photo = html.escape(str(photo_url), quote=True)
+                photo_html = f'<img class="product-card-photo" src="{safe_photo}" alt="{item_name}">'
+            else:
+                initial = html.escape(raw_name[:1].upper())
+                photo_html = f'<div class="product-card-photo placeholder">{initial}</div>'
+            sticker_html = f'<span class="price-sticker">{price_text}</span>' if price_text else ""
+
+            with card_cols[idx % 3]:
+                st.markdown(
+                    f'<div class="product-card-shell" style="--tilt:{tilts[idx % 3]}">'
+                    f'<div class="product-card-media">{photo_html}{sticker_html}</div>'
+                    f'<div class="product-card-copy"><div class="product-card-name">{item_name}</div>'
+                    f'<div class="product-card-desc">{short_desc}</div></div></div>',
+                    unsafe_allow_html=True
+                )
+
+    # The favourites above already show the first six products.
+    # Only show the full menu when there are additional products.
     full_menu_items = [item for item in menu if item.get("Item")]
     remaining_menu_items = full_menu_items[6:]
 
     if remaining_menu_items:
-        with st.expander(f"View full menu · {len(remaining_menu_items)} more", expanded=False):
+        with st.expander(f"See the full menu ({len(remaining_menu_items)} more)", expanded=False):
             menu_cols = st.columns(3)
             for display_idx, item in enumerate(remaining_menu_items):
                 original_idx = display_idx + 6
-                item_name = item.get("Item", "")
-                price = item.get("Price", "")
-                ingredients = item.get("Ingredients", "")
+                item_name = html.escape(str(item.get("Item", "")))
+                ingredients = html.escape(str(item.get("Ingredients", "")))
+                price_text = fmt_price(item.get("Price", ""))
                 photo_url = item.get("PhotoURL") or (
                     menu_photo_urls[original_idx]
                     if original_idx < len(menu_photo_urls)
@@ -1287,26 +881,23 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 with menu_cols[display_idx % 3]:
                     if photo_url:
                         st.image(photo_url, use_container_width=True)
-
-                    price_text = f"₹{price}" if price not in ("", None, 0) else ""
+                    price_html = f'<div class="product-card-name" style="font-size:15px;color:var(--red)">{price_text}</div>' if price_text else ""
                     st.markdown(
-                        f"""
-                        <div class="product-card-copy">
-                            <div class="product-card-name">{item_name}</div>
-                            <div class="product-card-desc">{ingredients}</div>
-                            <div class="product-card-price">{price_text}</div>
-                        </div>
-                        """,
+                        f'<div class="product-card-copy" style="padding:8px 2px 14px">'
+                        f'<div class="product-card-name">{item_name}</div>'
+                        f'<div class="product-card-desc">{ingredients}</div>'
+                        f'{price_html}</div>',
                         unsafe_allow_html=True
                     )
 
+    # ---------- Order summary ----------
     order = st.session_state.get("current_order")
     order_count = len(order.get("items", [])) if order and order.get("items") else 0
-    with st.expander(f"Your order · {order_count} item{'s' if order_count != 1 else ''}", expanded=bool(order_count)):
+    order_label = f"Your order ({order_count} item{'s' if order_count != 1 else ''})"
+    with st.expander(order_label, expanded=bool(order_count)):
         if order_count:
             for item in order["items"]:
-                line = f"**{item.get('quantity', 1)} × {item.get('item', 'Unknown')}**"
-                st.markdown(line)
+                st.markdown(f"**{item.get('quantity', 1)} × {item.get('item', 'Unknown')}**")
                 if item.get("customizations"):
                     st.caption(item["customizations"])
             st.divider()
@@ -1318,10 +909,10 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             else:
                 st.info("Order in progress")
         else:
-            st.markdown('<div class="order-empty">Your items will appear here as you order.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="order-empty">Your items will show up here as you order.</div>', unsafe_allow_html=True)
 
         if order_count > 0:
-            if st.button("Start New Order", key="top_start_new_order"):
+            if st.button("Start new order", key="top_start_new_order"):
                 for key in [
                     "messages", "display_messages", "current_order",
                     "order_email_sent", "order_number"
@@ -1329,7 +920,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
-
 
     message_count = len(st.session_state.get("display_messages", []))
     if message_count >= MAX_MESSAGES_PER_SESSION:
@@ -1343,30 +933,16 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.messages.append({"role": "user", "content": user_input})
         st.session_state.display_messages.append({"role": "user", "content": user_input})
 
-
         try:
             thinking_slot.markdown(
-                """
-                <div class="pw-cake-loader" aria-label="Assistant is responding">
-                    <div class="pw-cake-dots"><span></span><span></span><span></span></div>
-                    <div class="pw-whole-cake">
-                        <div class="pw-cake-top">
-                            <i class="pw-cherry ch1"></i>
-                            <i class="pw-cherry ch2"></i>
-                            <i class="pw-cherry ch3"></i>
-                        </div>
-                        <div class="pw-cake-icing"></div>
-                        <div class="pw-cake-body">
-                            <i class="pw-cake-eye left"></i>
-                            <i class="pw-cake-eye right"></i>
-                            <i class="pw-cake-smile"></i>
-                            <i class="pw-cake-cheek left"></i>
-                            <i class="pw-cake-cheek right"></i>
-                        </div>
-                        <div class="pw-cake-plate"></div>
-                    </div>
-                </div>
-                """,
+                '<div class="pw-cake-loader" aria-label="Assistant is responding">'
+                '<div class="pw-cake-dots"><span></span><span></span><span></span></div>'
+                '<div class="pw-whole-cake">'
+                '<div class="pw-cake-top"><i class="pw-cherry ch1"></i><i class="pw-cherry ch2"></i><i class="pw-cherry ch3"></i></div>'
+                '<div class="pw-cake-icing"></div>'
+                '<div class="pw-cake-body"><i class="pw-cake-eye left"></i><i class="pw-cake-eye right"></i><i class="pw-cake-smile"></i><i class="pw-cake-cheek left"></i><i class="pw-cake-cheek right"></i></div>'
+                '<div class="pw-cake-plate"></div>'
+                '</div></div>',
                 unsafe_allow_html=True
             )
             try:
@@ -1403,7 +979,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 # math in real Python, rather than trusting the AI's own
                 # arithmetic. If the AI wrongly confirmed an order that's
                 # actually too soon, correct it here before it ever reaches
-                # the sidebar or triggers an email.
+                # the order summary or triggers an email.
                 notice_check = check_advance_notice(
                     parsed_order.get("requested_datetime_iso"),
                     advance_notice
@@ -1440,26 +1016,25 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
                     st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
 
-                    display_reply += f"\n\n**Your order #{st.session_state.order_number} is confirmed! We'll be in touch shortly.**"
+                    display_reply += f"\n\nYour order #{st.session_state.order_number} is confirmed! We'll be in touch shortly."
                 elif notice_warning:
                     display_reply += f"\n\n{notice_warning}"
 
             except json.JSONDecodeError:
                 pass
 
-
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
         st.session_state.display_messages.append({"role": "assistant", "content": display_reply})
         st.rerun()
 
-    st.markdown('<div class="loaf-footer">Powered by Loaf</div>', unsafe_allow_html=True)
+    st.markdown('<div class="loaf-footer">made with love, powered by Loaf</div>', unsafe_allow_html=True)
 
 
 def customer_view():
     if slug_from_url:
         slug_input = slug_from_url
     else:
-        st.markdown('<div class="loaf-wordmark">LOAF</div>', unsafe_allow_html=True)
+        st.markdown('<div class="loaf-wordmark" style="color:var(--burgundy)">LOAF</div>', unsafe_allow_html=True)
         st.title("Order from your bakery")
         slug_input = st.text_input("Bakery link name", placeholder="e.g. sweettreats")
         if not slug_input:
@@ -1477,6 +1052,7 @@ def customer_view():
         return
 
     run_chatbot(business)
+
 
 # ---------------------------------------------------------------------------
 # QUICK UPDATE VIEW -- a fast, lightweight way for an owner to mark items
