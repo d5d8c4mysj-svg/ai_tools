@@ -38,28 +38,28 @@ st.markdown("""
     --burgundy:#7A1F2E;
     --red:#C9363F;
     --pink:#F2A7B5;
-    --blush:#FDE7EA;
-    --cream:#FFF8F0;
-    --paper:#FFFCF8;
+    --blush:#FDEEF0;
+    --cream:#FFF9F3;
+    --paper:#FFFDFA;
     --ink:#3A1F22;
     --muted:#86656A;
-    --lilac:#CFCBF5;
+    --line:#EAD3D5;
 }
 
 html, body, [class*="css"] { font-family:"DM Sans", sans-serif; }
 
-/* Gingham tablecloth behind everything */
+/* A whisper of gingham, not a tablecloth */
 .stApp {
     color:var(--ink);
     background-color:var(--cream);
     background-image:
-        linear-gradient(rgba(242,167,181,.24) 50%, transparent 50%),
-        linear-gradient(90deg, rgba(242,167,181,.24) 50%, transparent 50%);
-    background-size:34px 34px;
+        linear-gradient(rgba(242,167,181,.11) 50%, transparent 50%),
+        linear-gradient(90deg, rgba(242,167,181,.11) 50%, transparent 50%);
+    background-size:40px 40px;
 }
 .block-container {
-    max-width:1000px;
-    padding:1.2rem 1rem 4rem !important;
+    max-width:860px;
+    padding:1.2rem 1rem 3.5rem !important;
     overflow-x:hidden;
 }
 html, body, .stApp { max-width:100%; overflow-x:hidden !important; }
@@ -70,175 +70,107 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
 [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display:none !important; }
 [data-testid="stSidebar"] { display:none; }
 [data-testid="stBottom"], [data-testid="stBottomBlockContainer"] { display:none !important; }
-[data-testid="stVerticalBlock"] { gap:.7rem; }
+[data-testid="stVerticalBlock"] { gap:.6rem; }
 
-*:focus-visible { outline:3px solid var(--lilac); outline-offset:2px; }
+*:focus-visible { outline:3px solid #CFCBF5; outline-offset:2px; }
 
-/* ---------- Hero ---------- */
-.pw-hero {
-    position:relative;
+/* ---------- Header: slim burgundy bar with a scalloped edge ---------- */
+.pw-topbar {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
     background:var(--burgundy);
-    color:var(--cream);
-    border:2px solid var(--burgundy);
-    border-radius:20px 20px 0 0;
-    padding:22px 24px 34px;
+    border-radius:12px 12px 0 0;
+    padding:10px 18px;
 }
-.pw-hero-top { display:flex; align-items:center; gap:12px; }
 .loaf-wordmark {
     font-family:"Fraunces", serif;
     font-weight:900;
-    font-size:15px;
-    letter-spacing:.2em;
+    font-size:13px;
+    letter-spacing:.18em;
     color:var(--pink);
 }
-.pw-pill {
-    background:var(--lilac);
-    color:var(--burgundy);
-    font-size:12px;
-    font-weight:700;
-    border-radius:999px;
-    padding:3px 11px;
+.pw-topnote { font-size:12px; color:#F0CBD1; }
+.pw-scallop {
+    height:12px;
+    margin-bottom:22px;
+    background:radial-gradient(circle at 10px 0, var(--burgundy) 9px, transparent 10px) 0 0 / 20px 12px repeat-x;
 }
 .bakery-name {
     font-family:"Fraunces", serif;
     font-weight:900;
-    font-size:clamp(36px, 7vw, 72px);
-    line-height:1;
-    letter-spacing:-.025em;
-    color:var(--cream);
-    margin:18px 0 10px;
+    font-size:clamp(32px, 5.5vw, 48px);
+    line-height:1.05;
+    letter-spacing:-.02em;
+    color:var(--burgundy);
+    margin:0 0 8px;
 }
 .bakery-subtitle {
-    max-width:540px;
-    color:#F4D4DA;
+    max-width:520px;
+    color:var(--muted);
     font-size:15px;
     line-height:1.6;
-}
-.pw-script {
-    display:inline-block;
-    margin-top:10px;
-    font-family:"Caveat", cursive;
-    font-weight:700;
-    font-size:26px;
-    color:var(--pink);
-    transform:rotate(-2deg);
-}
-.pw-sticker {
-    position:absolute;
-    right:22px;
-    bottom:-30px;
-    width:98px;
-    height:98px;
-    border-radius:50%;
-    background:var(--pink);
-    color:var(--burgundy);
-    border:2px dashed var(--burgundy);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    font-family:"Caveat", cursive;
-    font-weight:700;
-    font-size:22px;
-    line-height:.95;
-    transform:rotate(11deg);
-    box-shadow:3px 3px 0 var(--red);
-    z-index:2;
-}
-.pw-scallop {
-    height:16px;
-    margin-bottom:8px;
-    background:radial-gradient(circle at 13px 0, var(--burgundy) 12px, transparent 13px) 0 0 / 26px 16px repeat-x;
 }
 
 /* ---------- Assistant card ---------- */
 .assistant-intro {
-    position:relative;
     background:var(--paper);
-    border:2px solid var(--burgundy);
-    border-radius:16px;
-    padding:22px 22px 18px;
-    margin:26px 0 10px;
-    box-shadow:5px 5px 0 var(--pink);
-}
-.assistant-intro::before {
-    content:"";
-    position:absolute;
-    top:-14px;
-    left:28px;
-    width:88px;
-    height:26px;
-    background:rgba(242,167,181,.88);
-    border-left:2px dotted rgba(122,31,46,.4);
-    border-right:2px dotted rgba(122,31,46,.4);
-    transform:rotate(-3deg);
+    border:1.5px solid var(--line);
+    border-left:4px solid var(--pink);
+    border-radius:14px;
+    padding:18px 20px;
+    margin:22px 0 8px;
 }
 .assistant-title {
     font-family:"Fraunces", serif;
-    font-weight:900;
-    font-size:28px;
-    letter-spacing:-.015em;
-    color:var(--burgundy);
-    margin-bottom:6px;
-}
-.assistant-copy { color:var(--muted); font-size:14px; line-height:1.6; max-width:560px; }
-.pw-handnote {
-    display:inline-block;
-    margin-top:8px;
-    font-family:"Caveat", cursive;
     font-weight:700;
-    font-size:23px;
-    color:var(--red);
-    transform:rotate(-1.5deg);
+    font-size:22px;
+    color:var(--burgundy);
+    margin-bottom:4px;
 }
+.assistant-copy { color:var(--muted); font-size:14px; line-height:1.6; max-width:520px; }
 
 /* ---------- Chat ---------- */
-.chat-row { display:flex; width:100%; margin:12px 0; }
+.chat-row { display:flex; width:100%; margin:10px 0; }
 .chat-row.user { justify-content:flex-end; }
 .chat-row.assistant { justify-content:flex-start; }
-.chat-wrap { max-width:76%; }
-.chat-name {
-    font-family:"Caveat", cursive;
-    font-weight:700;
-    font-size:18px;
-    color:var(--burgundy);
-    margin:0 0 2px 6px;
-}
-.chat-row.user .chat-name { text-align:right; margin:0 6px 2px 0; }
+.chat-wrap { max-width:78%; }
+.chat-name { font-size:12px; font-weight:700; color:var(--muted); margin:0 0 3px 4px; }
+.chat-row.user .chat-name { text-align:right; margin:0 4px 3px 0; }
 .chat-bubble {
     font-size:15px;
     line-height:1.55;
-    padding:12px 16px;
-    border:2px solid var(--burgundy);
-    border-radius:18px;
+    padding:11px 15px;
+    border-radius:16px;
 }
 .chat-row.assistant .chat-bubble {
     background:#fff;
     color:var(--ink);
+    border:1.5px solid var(--line);
     border-bottom-left-radius:4px;
-    box-shadow:3px 3px 0 var(--pink);
 }
 .chat-row.user .chat-bubble {
-    background:var(--red);
+    background:var(--burgundy);
     color:var(--cream);
+    border:1.5px solid var(--burgundy);
     border-bottom-right-radius:4px;
-    box-shadow:3px 3px 0 var(--burgundy);
 }
 [data-testid="stChatMessage"] { display:none; }
 
-/* ---------- Message composer ---------- */
+/* ---------- Message composer: the form itself is the pill ---------- */
 [data-testid="stForm"] {
     width:100% !important;
-    max-width:760px !important;
-    margin:16px 0 8px !important;
-    padding:0 !important;
-    border:0 !important;
-    background:transparent !important;
+    margin:14px 0 6px !important;
+    padding:6px !important;
+    border:1.5px solid var(--burgundy) !important;
+    border-radius:999px !important;
+    background:#fff !important;
 }
+[data-testid="stForm"]:focus-within { border-color:var(--red) !important; }
 [data-testid="stForm"] [data-testid="stHorizontalBlock"] {
     display:grid !important;
-    grid-template-columns:minmax(0, 1fr) 54px !important;
-    gap:10px !important;
+    grid-template-columns:minmax(0, 1fr) 42px !important;
+    gap:6px !important;
     align-items:center !important;
     width:100% !important;
 }
@@ -248,93 +180,67 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     min-width:0 !important;
     flex:none !important;
 }
-[data-testid="stForm"] [data-baseweb="input"] {
-    background:#fff !important;
-    border:2px solid var(--burgundy) !important;
-    border-radius:999px !important;
-    box-shadow:3px 3px 0 var(--pink);
-    min-height:54px;
-}
-[data-testid="stForm"] [data-baseweb="input"]:focus-within {
-    border-color:var(--red) !important;
-    box-shadow:3px 3px 0 var(--red);
-}
-[data-testid="stForm"] [data-baseweb="base-input"] {
-    background:transparent !important;
-    border:0 !important;
-}
-[data-testid="stForm"] .stTextInput input {
-    height:50px !important;
-    padding:0 22px !important;
-    font-size:15px !important;
-    color:var(--ink) !important;
+[data-testid="stForm"] [data-baseweb],
+[data-testid="stForm"] [data-testid="stTextInputRootElement"] {
     background:transparent !important;
     border:0 !important;
     box-shadow:none !important;
 }
-[data-testid="stForm"] .stTextInput input::placeholder { color:#B79498; }
+[data-testid="stForm"] input {
+    background:transparent !important;
+    border:0 !important;
+    box-shadow:none !important;
+    height:42px !important;
+    padding:0 16px !important;
+    font-size:15px !important;
+    color:var(--ink) !important;
+}
+[data-testid="stForm"] input::placeholder { color:#B79498; }
 [data-testid="InputInstructions"], [data-testid="stInputInstructions"], .stTextInput small { display:none !important; }
 [data-testid="stFormSubmitButton"] button {
-    width:54px !important;
-    min-width:54px !important;
-    height:54px !important;
+    width:42px !important;
+    min-width:42px !important;
+    height:42px !important;
     padding:0 !important;
     border-radius:50% !important;
-    background:var(--red) !important;
+    background:var(--burgundy) !important;
     color:var(--cream) !important;
-    border:2px solid var(--burgundy) !important;
-    box-shadow:3px 3px 0 var(--burgundy);
-    font-size:22px !important;
-    font-weight:700 !important;
+    border:0 !important;
+    box-shadow:none !important;
+    font-size:18px !important;
 }
-[data-testid="stFormSubmitButton"] button:active {
-    transform:translate(2px, 2px);
-    box-shadow:1px 1px 0 var(--burgundy);
-}
+[data-testid="stFormSubmitButton"] button:hover { background:var(--red) !important; }
 
-/* ---------- Section headers + dividers ---------- */
-.pw-dots {
-    height:24px;
-    margin:30px 0 4px;
-    background:radial-gradient(circle, var(--red) 7px, transparent 8px) 0 50% / 28px 24px repeat-x;
-}
+/* ---------- Favourites ---------- */
 .pw-section-head {
     display:flex;
     align-items:baseline;
-    gap:14px;
+    gap:12px;
     flex-wrap:wrap;
-    margin:4px 0 20px;
+    margin:30px 0 16px;
 }
 .popular-title {
     font-family:"Fraunces", serif;
     font-weight:900;
-    font-size:34px;
-    letter-spacing:-.02em;
+    font-size:28px;
+    letter-spacing:-.015em;
     color:var(--burgundy);
 }
 .script-note {
     font-family:"Caveat", cursive;
     font-weight:700;
-    font-size:25px;
+    font-size:22px;
     color:var(--red);
-    transform:rotate(-2deg);
-    display:inline-block;
 }
-
-/* ---------- Product cards ---------- */
 .product-card-shell {
     background:var(--paper);
-    border:2px solid var(--burgundy);
-    border-radius:16px;
+    border:1.5px solid var(--line);
+    border-radius:14px;
     overflow:hidden;
-    margin-bottom:20px;
-    box-shadow:5px 5px 0 var(--burgundy);
-    transform:rotate(var(--tilt, 0deg));
+    margin-bottom:16px;
+    box-shadow:0 2px 10px rgba(122,31,46,.07);
 }
-.product-card-media {
-    position:relative;
-    border-bottom:2px solid var(--burgundy);
-}
+.product-card-media { position:relative; }
 .product-card-photo {
     display:block;
     width:100%;
@@ -349,98 +255,71 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     justify-content:center;
     font-family:"Fraunces", serif;
     font-weight:900;
-    font-size:68px;
+    font-size:56px;
     color:var(--burgundy);
     background-color:var(--blush);
     background-image:
-        linear-gradient(rgba(242,167,181,.5) 50%, transparent 50%),
-        linear-gradient(90deg, rgba(242,167,181,.5) 50%, transparent 50%);
+        linear-gradient(rgba(242,167,181,.35) 50%, transparent 50%),
+        linear-gradient(90deg, rgba(242,167,181,.35) 50%, transparent 50%);
     background-size:22px 22px;
 }
 .price-sticker {
     position:absolute;
-    top:12px;
-    right:12px;
+    top:10px;
+    right:10px;
     background:var(--cream);
-    color:var(--red);
-    border:2px solid var(--burgundy);
+    color:var(--burgundy);
+    border:1.5px solid var(--burgundy);
     border-radius:999px;
-    padding:4px 12px;
+    padding:3px 11px;
     font-weight:700;
-    font-size:14px;
-    transform:rotate(5deg);
-    box-shadow:2px 2px 0 var(--burgundy);
+    font-size:13px;
 }
-.product-card-copy { padding:14px 16px 16px; }
+.product-card-copy { padding:12px 14px 14px; }
 .product-card-name {
     font-family:"Fraunces", serif;
     font-weight:700;
-    font-size:20px;
+    font-size:18px;
     line-height:1.2;
     color:var(--burgundy);
 }
-.product-card-desc {
-    margin-top:6px;
-    font-size:13px;
-    line-height:1.5;
-    color:var(--muted);
-}
+.product-card-desc { margin-top:5px; font-size:13px; line-height:1.5; color:var(--muted); }
 
 /* ---------- Expanders (menu + order) ---------- */
 [data-testid="stExpander"] {
     background:transparent !important;
     border:0 !important;
     box-shadow:none !important;
-    margin-bottom:12px;
+    margin-bottom:10px;
 }
 [data-testid="stExpander"] details {
     background:var(--paper) !important;
-    border:2px solid var(--burgundy) !important;
-    border-radius:14px !important;
-    box-shadow:4px 4px 0 var(--pink);
+    border:1.5px solid var(--line) !important;
+    border-radius:12px !important;
 }
 [data-testid="stExpander"] summary {
     font-family:"Fraunces", serif;
     font-weight:700;
-    font-size:17px;
+    font-size:16px;
     color:var(--burgundy);
-    padding-top:10px !important;
-    padding-bottom:10px !important;
 }
 [data-testid="stExpander"] summary:hover { background:var(--blush) !important; }
-[data-testid="stExpander"] img {
-    border:2px solid var(--burgundy);
-    border-radius:12px;
-}
-.order-empty {
-    font-family:"Caveat", cursive;
-    font-weight:700;
-    font-size:23px;
-    color:var(--muted);
-}
+[data-testid="stExpander"] img { border-radius:10px; }
+.order-empty { color:var(--muted); font-size:14px; }
 
 /* ---------- Buttons ---------- */
 .stButton > button {
-    background:var(--red);
+    background:var(--burgundy);
     color:var(--cream);
-    border:2px solid var(--burgundy);
+    border:1.5px solid var(--burgundy);
     border-radius:999px;
     font-weight:700;
     padding:.4rem 1.2rem;
-    box-shadow:3px 3px 0 var(--burgundy);
 }
-.stButton > button:hover { background:var(--burgundy); color:var(--cream); border-color:var(--burgundy); }
-.stButton > button:active { transform:translate(2px, 2px); box-shadow:1px 1px 0 var(--burgundy); }
+.stButton > button:hover { background:var(--red); border-color:var(--red); color:var(--cream); }
 
 /* ---------- Footer ---------- */
-.loaf-footer {
-    text-align:center;
-    font-family:"Caveat", cursive;
-    font-weight:700;
-    font-size:22px;
-    color:var(--burgundy);
-    margin-top:36px;
-}
+.loaf-footer { text-align:center; color:#A58A8E; font-size:12px; margin-top:30px; }
 
 /* ---------- Loading cake ---------- */
 .pw-cake-loader { position:relative; width:52px; height:59px; margin:4px 0 6px 3px; }
@@ -473,24 +352,21 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
 @keyframes pwCakeBob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
 @media (prefers-reduced-motion:reduce) { .pw-cake-dots span, .pw-whole-cake { animation:none !important; } }
 
+
+
 /* ---------- Mobile ---------- */
 @media (max-width:768px) {
-    .block-container { padding:.7rem .8rem 3.5rem !important; }
-    .pw-hero { padding:18px 18px 30px; border-radius:16px 16px 0 0; }
-    .bakery-name { margin:14px 0 8px; }
+    .block-container { padding:.7rem .8rem 3rem !important; }
+    .pw-topbar { padding:9px 14px; }
     .bakery-subtitle { font-size:14px; }
-    .pw-script { font-size:22px; max-width:62%; }
-    .pw-sticker { width:78px; height:78px; font-size:18px; right:14px; bottom:-26px; }
-    .assistant-intro { padding:18px 16px 14px; margin-top:24px; }
-    .assistant-title { font-size:23px; }
+    .assistant-intro { padding:15px 16px; margin-top:18px; }
+    .assistant-title { font-size:20px; }
     .chat-wrap { max-width:90%; }
     .chat-bubble { font-size:14px; padding:10px 13px; }
-    .popular-title { font-size:28px; }
-    .script-note { font-size:22px; }
-    [data-testid="stForm"] [data-testid="stHorizontalBlock"] { grid-template-columns:minmax(0, 1fr) 50px !important; gap:8px !important; }
-    [data-testid="stFormSubmitButton"] button { width:50px !important; min-width:50px !important; height:50px !important; }
-    .product-card-shell { transform:none; }
+    .popular-title { font-size:24px; }
+    .script-note { font-size:20px; }
 }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -772,16 +648,12 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.order_number = None
         st.session_state.orders_this_session = 0
 
-    # ---------- Hero ----------
+    # ---------- Header ----------
     st.markdown(
-        '<div class="pw-hero">'
-        '<div class="pw-sticker">baked<br>fresh<br>daily</div>'
-        '<div class="pw-hero-top"><span class="loaf-wordmark">LOAF</span><span class="pw-pill">Online ordering</span></div>'
+        '<div class="pw-topbar"><span class="loaf-wordmark">LOAF</span><span class="pw-topnote">Online ordering</span></div>'
+        '<div class="pw-scallop"></div>'
         f'<div class="bakery-name">{safe_business_name}</div>'
-        '<div class="bakery-subtitle">Pick your bakes, ask about ingredients or custom cakes, and place your order in one chat.</div>'
-        '<div class="pw-script">start your order below</div>'
-        '</div>'
-        '<div class="pw-scallop"></div>',
+        '<div class="bakery-subtitle">Pick your bakes, ask about ingredients or custom cakes, and place your order in one chat.</div>',
         unsafe_allow_html=True
     )
 
@@ -790,7 +662,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         '<div class="assistant-intro">'
         f'<div class="assistant-title">Order with {safe_display_name}</div>'
         '<div class="assistant-copy">Tell us what you are craving. Ask about ingredients, get recommendations, or place your order right here.</div>'
-        '<div class="pw-handnote">type a message to begin</div>'
         '</div>',
         unsafe_allow_html=True
     )
@@ -826,7 +697,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     visible_menu_items = [item for item in menu if item.get("Item")][:6]
     if visible_menu_items:
         st.markdown(
-            '<div class="pw-dots"></div>'
             '<div class="pw-section-head"><span class="popular-title">Our favourites</span>'
             '<span class="script-note">fresh out of the oven</span></div>',
             unsafe_allow_html=True
@@ -1027,7 +897,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.display_messages.append({"role": "assistant", "content": display_reply})
         st.rerun()
 
-    st.markdown('<div class="loaf-footer">made with love, powered by Loaf</div>', unsafe_allow_html=True)
+    st.markdown('<div class="loaf-footer">Powered by Loaf</div>', unsafe_allow_html=True)
 
 
 def customer_view():
