@@ -60,9 +60,10 @@ html, body, [class*="css"] { font-family:"Jost", sans-serif; }
     background:var(--ivory);
     border-radius:6px;
     box-shadow:0 10px 30px rgba(52,72,94,.18);
-    overflow:hidden;
+    overflow:visible !important;
+    height:auto !important;
+    min-height:0 !important;
 }
-html, body, .stApp { max-width:100%; overflow-x:hidden !important; }
 
 /* Hide Streamlit chrome */
 #MainMenu, footer { visibility:hidden; }
@@ -79,6 +80,7 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     position:relative;
     height:88px;
     margin:0 -30px 44px;
+    border-radius:6px 6px 0 0;
     background:repeating-linear-gradient(90deg, var(--blue-soft) 0 16px, #F5F8FB 16px 32px);
 }
 .pw-stripes .loaf-wordmark {
