@@ -32,38 +32,68 @@ st.set_page_config(page_title="Loaf")
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Jost:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Figtree:wght@400;500;600;700&family=Young+Serif&display=swap');
 
 :root {
-    --blue:#A9BBCD;
-    --blue-soft:#C9D6E2;
-    --slate:#4A6178;
-    --ivory:#FBF7EF;
-    --paper:#FFFDF8;
-    --ink:#2F3A45;
-    --muted:#6F7C89;
-    --line:#D9E0E7;
-    --pink:#EBB7C3;
-    --pink-soft:#F8E4E9;
-    --burgundy:#4A6178; /* alias: the loading cake outlines use this name */
+    --periwinkle:#C3CBE6;
+    --cream:#FFF4EA;
+    --paper:#FFFAF5;
+    --olive:#BCC048;
+    --pink:#EFB8C8;
+    --pink-soft:#F9E1E6;
+    --red:#A52A2D;
+    --ink:#3A2626;
+    --muted:#7A6663;
+    --line:#EBD8D2;
+    --burgundy:#3A2626; /* alias: the loading cake outlines use this name */
 }
 
-html, body, [class*="css"] { font-family:"Jost", sans-serif; }
+html, body, [class*="css"] { font-family:"Figtree", sans-serif; }
 
-.stApp { background-color:var(--blue); color:var(--ink); }
+.stApp { background-color:var(--periwinkle); color:var(--ink); }
 
-/* The page is a sheet of ivory paper resting on dusty blue */
+/* A cream sheet with scalloped edges, resting on periwinkle */
 .block-container {
+    position:relative;
     max-width:820px;
     margin:26px auto !important;
     padding:0 30px 3rem !important;
-    background:var(--ivory);
-    border-radius:6px;
-    box-shadow:0 10px 30px rgba(52,72,94,.18);
+    background:var(--cream);
+    border-radius:8px;
     overflow:visible !important;
     height:auto !important;
     min-height:0 !important;
 }
+.block-container::before,
+.block-container::after {
+    content:"";
+    position:absolute;
+    top:0;
+    bottom:0;
+    width:14px;
+    z-index:3;
+    pointer-events:none;
+}
+.block-container::before {
+    left:0;
+    background:radial-gradient(circle at 0 20px, var(--periwinkle) 13px, transparent 13.5px) 0 0 / 14px 40px repeat-y;
+}
+.block-container::after {
+    right:0;
+    background:radial-gradient(circle at 100% 20px, var(--periwinkle) 13px, transparent 13.5px) 0 0 / 14px 40px repeat-y;
+}
+
+/* Two small sparkles in the margins (wide screens only) */
+.stApp::before, .stApp::after {
+    content:"";
+    position:fixed;
+    background:var(--pink);
+    clip-path:polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+    pointer-events:none;
+}
+.stApp::before { width:46px; height:46px; left:calc(50% - 520px); top:34%; }
+.stApp::after { width:30px; height:30px; right:calc(50% - 510px); top:62%; }
+@media (max-width:1100px) { .stApp::before, .stApp::after { display:none; } }
 
 /* Hide Streamlit chrome */
 #MainMenu, footer { visibility:hidden; }
@@ -73,100 +103,100 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
 [data-testid="stBottom"], [data-testid="stBottomBlockContainer"] { display:none !important; }
 [data-testid="stVerticalBlock"] { gap:.6rem; }
 
-*:focus-visible { outline:2px solid var(--slate); outline-offset:2px; }
+*:focus-visible { outline:2px solid var(--red); outline-offset:2px; }
 
-/* ---------- Header: striped banner, name, heart rule ---------- */
-.pw-stripes {
-    position:relative;
-    height:88px;
-    margin:0 -30px 44px;
-    border-radius:6px 6px 0 0;
-    background:repeating-linear-gradient(90deg, var(--blue-soft) 0 16px, #F5F8FB 16px 32px);
-}
-.pw-stripes .loaf-wordmark {
-    position:absolute;
-    left:50%;
-    bottom:-16px;
-    transform:translateX(-50%);
-    background:var(--ivory);
-    border:1px solid var(--line);
-    padding:6px 22px;
-    font-family:"Cormorant Garamond", serif;
+.loaf-wordmark { font-family:"Young Serif", serif; font-size:18px; color:var(--red); }
+
+/* ---------- Header: olive strip, pink gingham, label card ---------- */
+.pw-strip {
+    margin:0 -30px;
+    background:var(--olive);
+    color:var(--ink);
+    text-align:center;
+    font-size:13px;
     font-weight:600;
-    font-size:15px;
-    letter-spacing:.32em;
-    color:var(--slate);
+    padding:9px 16px;
+    border-radius:8px 8px 0 0;
+}
+.pw-gingham {
+    margin:0 -30px 8px;
+    padding:38px 30px;
+    background-color:var(--pink-soft);
+    background-image:
+        linear-gradient(rgba(239,184,200,.75) 50%, transparent 50%),
+        linear-gradient(90deg, rgba(239,184,200,.75) 50%, transparent 50%);
+    background-size:28px 28px;
+}
+.pw-label {
+    max-width:540px;
+    margin:0 auto;
+    padding:26px 28px 24px;
+    background:var(--paper);
+    border:1.5px solid var(--ink);
+    border-radius:8px;
+    text-align:center;
 }
 .bakery-name {
-    text-align:center;
-    font-family:"Cormorant Garamond", serif;
-    font-weight:600;
-    font-size:clamp(40px, 7vw, 62px);
-    line-height:1.02;
-    letter-spacing:-.01em;
-    color:var(--slate);
+    font-family:"Young Serif", serif;
+    font-weight:400;
+    font-size:clamp(34px, 6vw, 50px);
+    line-height:1.05;
+    color:var(--red);
     margin:0 0 10px;
 }
 .bakery-subtitle {
-    max-width:460px;
+    max-width:420px;
     margin:0 auto;
-    text-align:center;
     color:var(--muted);
     font-size:15px;
-    font-weight:300;
-    line-height:1.7;
+    line-height:1.65;
 }
-.pw-rule { display:flex; align-items:center; gap:14px; margin:26px 0 10px; }
+.pw-rule { display:flex; align-items:center; gap:14px; margin:22px 0 10px; }
 .pw-rule i { flex:1; height:1px; background:var(--line); }
-.pw-heart {
+.pw-spark {
     display:block;
-    width:24px;
+    width:22px;
     height:22px;
-    background-color:var(--pink-soft);
-    background-image:
-        linear-gradient(rgba(235,183,195,.95) 50%, transparent 50%),
-        linear-gradient(90deg, rgba(235,183,195,.95) 50%, transparent 50%);
-    background-size:6px 6px;
-    clip-path:path("M12 21S4 15.8 4 10a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z");
+    background:var(--pink);
+    clip-path:polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
 }
 
-/* ---------- Assistant card: stationery with a double rule ---------- */
+/* ---------- Assistant card ---------- */
 .assistant-intro {
     background:var(--paper);
     border:1px solid var(--line);
-    border-radius:6px;
-    padding:24px 26px;
-    margin:16px 0 8px;
-    box-shadow:inset 0 0 0 5px var(--paper), inset 0 0 0 6px var(--line);
+    border-left:5px solid var(--olive);
+    border-radius:10px;
+    padding:20px 22px;
+    margin:14px 0 8px;
 }
 .assistant-title {
-    font-family:"Cormorant Garamond", serif;
-    font-weight:600;
-    font-size:28px;
-    color:var(--slate);
-    margin-bottom:4px;
+    font-family:"Young Serif", serif;
+    font-size:24px;
+    color:var(--ink);
+    margin-bottom:5px;
 }
-.assistant-copy { color:var(--muted); font-size:14px; font-weight:300; line-height:1.7; max-width:500px; }
+.assistant-copy { color:var(--muted); font-size:14px; line-height:1.65; max-width:500px; }
 
 /* ---------- Chat ---------- */
 .chat-row { display:flex; width:100%; margin:10px 0; }
 .chat-row.user { justify-content:flex-end; }
 .chat-row.assistant { justify-content:flex-start; }
 .chat-wrap { max-width:80%; }
-.chat-name { font-size:12px; font-weight:500; letter-spacing:.04em; color:var(--muted); margin:0 0 3px 4px; }
-.chat-row.user .chat-name { text-align:right; margin:0 4px 3px 0; }
-.chat-bubble { font-size:15px; font-weight:400; line-height:1.6; padding:11px 16px; border-radius:14px; }
+.chat-name { font-family:"DM Mono", monospace; font-size:11px; color:var(--muted); margin:0 0 4px 4px; }
+.chat-row.user .chat-name { text-align:right; margin:0 4px 4px 0; }
+.chat-bubble { font-size:15px; line-height:1.6; padding:11px 16px; border-radius:16px; }
 .chat-row.assistant .chat-bubble {
-    background:#fff;
+    background:var(--pink-soft);
     color:var(--ink);
-    border:1px solid var(--line);
-    border-bottom-left-radius:3px;
+    border:1px solid #F1CBD4;
+    border-bottom-left-radius:4px;
 }
 .chat-row.user .chat-bubble {
-    background:var(--slate);
-    color:#fff;
-    border:1px solid var(--slate);
-    border-bottom-right-radius:3px;
+    background:var(--red);
+    color:#FFF4EA;
+    border:1px solid var(--red);
+    border-bottom-right-radius:4px;
 }
 [data-testid="stChatMessage"] { display:none; }
 
@@ -175,7 +205,7 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     width:100% !important;
     margin:14px 0 6px !important;
     padding:6px !important;
-    border:1px solid var(--slate) !important;
+    border:1.5px solid var(--ink) !important;
     border-radius:999px !important;
     background:#fff !important;
 }
@@ -208,7 +238,7 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     font-size:15px !important;
     color:var(--ink) !important;
 }
-[data-testid="stForm"] input::placeholder { color:#9AA7B4; }
+[data-testid="stForm"] input::placeholder { color:#A9918D; }
 [data-testid="InputInstructions"], [data-testid="stInputInstructions"], .stTextInput small { display:none !important; }
 [data-testid="stFormSubmitButton"] button {
     width:42px !important;
@@ -216,8 +246,8 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     height:42px !important;
     padding:0 !important;
     border-radius:50% !important;
-    background:var(--slate) !important;
-    color:#fff !important;
+    background:var(--red) !important;
+    color:#FFF4EA !important;
     border:0 !important;
     box-shadow:none !important;
     font-size:18px !important;
@@ -227,28 +257,25 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
 /* ---------- Favourites ---------- */
 .pw-section-head {
     display:flex;
-    align-items:baseline;
+    align-items:center;
     justify-content:center;
-    gap:14px;
+    gap:12px;
     flex-wrap:wrap;
     margin:6px 0 20px;
 }
-.popular-title {
-    font-family:"Cormorant Garamond", serif;
-    font-weight:600;
-    font-size:36px;
-    color:var(--slate);
-}
+.popular-title { font-family:"Young Serif", serif; font-size:32px; color:var(--red); }
 .script-note {
-    font-family:"Cormorant Garamond", serif;
-    font-style:italic;
-    font-size:19px;
-    color:#B27A8A;
+    background:var(--olive);
+    color:var(--ink);
+    font-size:12px;
+    font-weight:600;
+    padding:4px 12px;
+    border-radius:999px;
 }
 .product-card-shell {
     background:var(--paper);
     border:1px solid var(--line);
-    border-radius:6px;
+    border-radius:12px;
     overflow:hidden;
     margin-bottom:16px;
 }
@@ -260,40 +287,26 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     object-fit:cover;
     object-position:center;
     margin:0;
-    border-radius:3px;
+    border-radius:8px;
 }
 .product-card-photo.placeholder {
     display:flex;
     align-items:center;
     justify-content:center;
-    font-family:"Cormorant Garamond", serif;
-    font-style:italic;
-    font-weight:600;
-    font-size:60px;
-    color:var(--slate);
+    font-family:"Young Serif", serif;
+    font-size:54px;
+    color:var(--red);
     background-color:var(--pink-soft);
     background-image:
-        linear-gradient(rgba(235,183,195,.55) 50%, transparent 50%),
-        linear-gradient(90deg, rgba(235,183,195,.55) 50%, transparent 50%);
+        linear-gradient(rgba(239,184,200,.7) 50%, transparent 50%),
+        linear-gradient(90deg, rgba(239,184,200,.7) 50%, transparent 50%);
     background-size:20px 20px;
 }
 .product-card-copy { padding:12px 14px 14px; }
 .product-card-topline { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
-.product-card-name {
-    font-family:"Cormorant Garamond", serif;
-    font-weight:600;
-    font-size:21px;
-    line-height:1.15;
-    color:var(--slate);
-}
-.product-card-price {
-    font-family:"Cormorant Garamond", serif;
-    font-weight:700;
-    font-size:19px;
-    color:#B27A8A;
-    white-space:nowrap;
-}
-.product-card-desc { margin-top:5px; font-size:13px; font-weight:300; line-height:1.55; color:var(--muted); }
+.product-card-name { font-family:"Young Serif", serif; font-size:18px; line-height:1.2; color:var(--ink); }
+.product-card-price { font-family:"DM Mono", monospace; font-weight:500; font-size:14px; color:var(--red); white-space:nowrap; }
+.product-card-desc { margin-top:6px; font-size:13px; line-height:1.55; color:var(--muted); }
 
 /* ---------- Expanders (menu + order) ---------- */
 [data-testid="stExpander"] {
@@ -305,31 +318,26 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
 [data-testid="stExpander"] details {
     background:var(--paper) !important;
     border:1px solid var(--line) !important;
-    border-radius:6px !important;
+    border-radius:10px !important;
 }
-[data-testid="stExpander"] summary {
-    font-family:"Cormorant Garamond", serif;
-    font-weight:600;
-    font-size:19px;
-    color:var(--slate);
-}
+[data-testid="stExpander"] summary { font-family:"Young Serif", serif; font-size:16px; color:var(--ink); }
 [data-testid="stExpander"] summary:hover { background:var(--pink-soft) !important; }
-[data-testid="stExpander"] img { border-radius:4px; }
-.order-empty { color:var(--muted); font-size:14px; font-weight:300; }
+[data-testid="stExpander"] img { border-radius:8px; }
+.order-empty { color:var(--muted); font-size:14px; }
 
 /* ---------- Buttons ---------- */
 .stButton > button {
-    background:var(--slate);
-    color:#fff;
-    border:1px solid var(--slate);
+    background:var(--red);
+    color:#FFF4EA;
+    border:1px solid var(--red);
     border-radius:999px;
-    font-weight:500;
+    font-weight:600;
     padding:.4rem 1.3rem;
 }
-.stButton > button:hover { background:var(--ink); border-color:var(--ink); color:#fff; }
+.stButton > button:hover { background:var(--ink); border-color:var(--ink); color:#FFF4EA; }
 
 /* ---------- Footer ---------- */
-.loaf-footer { text-align:center; color:#9AA7B4; font-size:12px; letter-spacing:.04em; margin-top:32px; }
+.loaf-footer { text-align:center; color:#A9918D; font-family:"DM Mono", monospace; font-size:11px; margin-top:32px; }
 
 /* ---------- Loading cake ---------- */
 .pw-cake-loader { position:relative; width:52px; height:59px; margin:4px 0 6px 3px; }
@@ -366,16 +374,20 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
 
 
 
+
+
 /* ---------- Mobile ---------- */
 @media (max-width:768px) {
     .block-container { margin:8px auto !important; padding:0 18px 2.2rem !important; max-width:calc(100% - 16px); }
-    .pw-stripes { height:64px; margin:0 -18px 40px; }
+    .pw-strip { margin:0 -18px; font-size:12px; }
+    .pw-gingham { margin:0 -18px 8px; padding:26px 18px; }
+    .pw-label { padding:20px 18px; }
     .bakery-subtitle { font-size:14px; }
-    .assistant-intro { padding:18px 18px; }
-    .assistant-title { font-size:24px; }
+    .assistant-intro { padding:16px 16px; }
+    .assistant-title { font-size:21px; }
     .chat-wrap { max-width:92%; }
     .chat-bubble { font-size:14px; padding:10px 13px; }
-    .popular-title { font-size:30px; }
+    .popular-title { font-size:27px; }
 }
 
 </style>
@@ -661,10 +673,12 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
     # ---------- Header ----------
     st.markdown(
-        '<div class="pw-stripes"><span class="loaf-wordmark">LOAF</span></div>'
+        '<div class="pw-strip">Online ordering with Loaf</div>'
+        '<div class="pw-gingham"><div class="pw-label">'
         f'<div class="bakery-name">{safe_business_name}</div>'
         '<div class="bakery-subtitle">Pick your bakes, ask about ingredients or custom cakes, and place your order in one chat.</div>'
-        '<div class="pw-rule"><i></i><b class="pw-heart"></b><i></i></div>',
+        '</div></div>'
+        '<div class="pw-rule"><i></i><b class="pw-spark"></b><i></i></div>',
         unsafe_allow_html=True
     )
 
@@ -708,9 +722,9 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     visible_menu_items = [item for item in menu if item.get("Item")][:6]
     if visible_menu_items:
         st.markdown(
-            '<div class="pw-rule"><i></i><b class="pw-heart"></b><i></i></div>'
+            '<div class="pw-rule"><i></i><b class="pw-spark"></b><i></i></div>'
             '<div class="pw-section-head"><span class="popular-title">Our favourites</span>'
-            '<span class="script-note">fresh from the oven</span></div>',
+            '<span class="script-note">fresh today</span></div>',
             unsafe_allow_html=True
         )
         tilts = ["-1.2deg", "0.8deg", "-0.5deg"]
