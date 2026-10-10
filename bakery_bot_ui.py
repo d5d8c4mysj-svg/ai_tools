@@ -127,6 +127,23 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     .chat-wrap { max-width:92%; }
     .popular-title { font-size:32px; }
 }
+
+:root { --blue:#AEB9DE; --green:#1F3D2E; --red:#A52A2D; }
+.loaf-top { display:flex; justify-content:space-between; align-items:baseline; padding:20px 0 14px; border-bottom:1px solid var(--ink); font-size:13px; color:var(--muted); }
+.loaf-top-mark { font-weight:800; font-size:16px; letter-spacing:.08em; color:var(--green); }
+.pw-gingham { background:var(--blue) !important; margin-top:0 !important; }
+.product-card-photo.placeholder { background:var(--blue) !important; }
+.product-card-price { color:var(--red) !important; }
+.script-note { display:none !important; }
+.assistant-intro { background:#fff; border:1px solid var(--ink); padding:18px 20px; }
+.assistant-title { color:var(--green); }
+.popular-title { color:var(--green); }
+.stButton > button, .stButton > button:hover,
+[data-testid="stFormSubmitButton"] button, [data-testid="stFormSubmitButton"] button:hover { background:var(--green) !important; border-color:var(--green) !important; color:#fff !important; }
+[data-testid="stForm"] { border-color:var(--green) !important; }
+.chat-row.assistant .chat-bubble { border-color:var(--green); }
+.product-card-shell { border-color:var(--green); }
+.product-card-photo { border-bottom-color:var(--green); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -387,7 +404,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
     # Header
     st.markdown(
-        '<div class="pw-strip">Online ordering with Loaf</div>'
+        '<div class="loaf-top"><span class="loaf-top-mark">LOAF</span><span>Online ordering</span></div>'
         '<div class="pw-gingham"><div class="pw-label">'
         f'<div class="bakery-name">{safe_business_name}</div>'
         '<div class="bakery-subtitle">Pick your bakes, ask about ingredients or custom cakes, and place your order in one chat.</div>'
@@ -434,7 +451,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             '<span class="script-note">fresh today</span></div>',
             unsafe_allow_html=True
         )
-        card_cols = st.columns(2)
+        card_cols = st.columns(3)
         for idx, item in enumerate(visible_menu_items):
             raw_name = str(item.get("Item", ""))
             item_name = html.escape(raw_name)
@@ -442,7 +459,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             ingredients = str(item.get("Ingredients", ""))
             photo_url = item.get("PhotoURL") or (menu_photo_urls[idx] if idx < len(menu_photo_urls) else None)
             parts = [p.strip() for p in ingredients.split(",") if p.strip()]
-            short_desc = html.escape(", ".join(parts[:4]) if parts else ingredients)
+            short_desc = html.escape(" · ".join(parts[:4]) if parts else ingredients)
 
             if photo_url:
                 safe_photo = html.escape(str(photo_url), quote=True)
@@ -451,7 +468,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 photo_html = f'<div class="product-card-photo placeholder">{html.escape(raw_name[:1].upper())}</div>'
             price_html_card = f'<div class="product-card-price">{price_text}</div>' if price_text else ""
 
-            with card_cols[idx % 2]:
+            with card_cols[idx % 3]:
                 st.markdown(
                     f'<div class="product-card-shell">'
                     f'<div class="product-card-media">{photo_html}</div>'
@@ -463,7 +480,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     remaining_menu_items = [item for item in menu if item.get("Item")][6:]
     if remaining_menu_items:
         with st.expander(f"See the full menu ({len(remaining_menu_items)} more)", expanded=False):
-            menu_cols = st.columns(2)
+            menu_cols = st.columns(3)
             for display_idx, item in enumerate(remaining_menu_items):
                 original_idx = display_idx + 6
                 item_name = html.escape(str(item.get("Item", "")))
@@ -472,7 +489,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 photo_url = item.get("PhotoURL") or (
                     menu_photo_urls[original_idx] if original_idx < len(menu_photo_urls) else None
                 )
-                with menu_cols[display_idx % 2]:
+                with menu_cols[display_idx % 3]:
                     if photo_url:
                         st.image(photo_url, use_container_width=True)
                     price_html = f'<div class="product-card-price">{price_text}</div>' if price_text else ""
