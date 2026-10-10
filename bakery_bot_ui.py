@@ -32,35 +32,35 @@ st.set_page_config(page_title="Loaf")
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,700;0,900;1,600&family=Caveat:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Jost:wght@300;400;500;600&display=swap');
 
 :root {
-    --burgundy:#7A1F2E;
-    --red:#C9363F;
-    --pink:#F2A7B5;
-    --blush:#FDEEF0;
-    --cream:#FFF9F3;
-    --paper:#FFFDFA;
-    --ink:#3A1F22;
-    --muted:#86656A;
-    --line:#EAD3D5;
+    --blue:#A9BBCD;
+    --blue-soft:#C9D6E2;
+    --slate:#4A6178;
+    --ivory:#FBF7EF;
+    --paper:#FFFDF8;
+    --ink:#2F3A45;
+    --muted:#6F7C89;
+    --line:#D9E0E7;
+    --pink:#EBB7C3;
+    --pink-soft:#F8E4E9;
+    --burgundy:#4A6178; /* alias: the loading cake outlines use this name */
 }
 
-html, body, [class*="css"] { font-family:"DM Sans", sans-serif; }
+html, body, [class*="css"] { font-family:"Jost", sans-serif; }
 
-/* A whisper of gingham, not a tablecloth */
-.stApp {
-    color:var(--ink);
-    background-color:var(--cream);
-    background-image:
-        linear-gradient(rgba(242,167,181,.11) 50%, transparent 50%),
-        linear-gradient(90deg, rgba(242,167,181,.11) 50%, transparent 50%);
-    background-size:40px 40px;
-}
+.stApp { background-color:var(--blue); color:var(--ink); }
+
+/* The page is a sheet of ivory paper resting on dusty blue */
 .block-container {
-    max-width:860px;
-    padding:1.2rem 1rem 3.5rem !important;
-    overflow-x:hidden;
+    max-width:820px;
+    margin:26px auto !important;
+    padding:0 30px 3rem !important;
+    background:var(--ivory);
+    border-radius:6px;
+    box-shadow:0 10px 30px rgba(52,72,94,.18);
+    overflow:hidden;
 }
 html, body, .stApp { max-width:100%; overflow-x:hidden !important; }
 
@@ -72,88 +72,99 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
 [data-testid="stBottom"], [data-testid="stBottomBlockContainer"] { display:none !important; }
 [data-testid="stVerticalBlock"] { gap:.6rem; }
 
-*:focus-visible { outline:3px solid #CFCBF5; outline-offset:2px; }
+*:focus-visible { outline:2px solid var(--slate); outline-offset:2px; }
 
-/* ---------- Header: slim burgundy bar with a scalloped edge ---------- */
-.pw-topbar {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    background:var(--burgundy);
-    border-radius:12px 12px 0 0;
-    padding:10px 18px;
+/* ---------- Header: striped banner, name, heart rule ---------- */
+.pw-stripes {
+    position:relative;
+    height:88px;
+    margin:0 -30px 44px;
+    background:repeating-linear-gradient(90deg, var(--blue-soft) 0 16px, #F5F8FB 16px 32px);
 }
-.loaf-wordmark {
-    font-family:"Fraunces", serif;
-    font-weight:900;
-    font-size:13px;
-    letter-spacing:.18em;
-    color:var(--pink);
-}
-.pw-topnote { font-size:12px; color:#F0CBD1; }
-.pw-scallop {
-    height:12px;
-    margin-bottom:22px;
-    background:radial-gradient(circle at 10px 0, var(--burgundy) 9px, transparent 10px) 0 0 / 20px 12px repeat-x;
+.pw-stripes .loaf-wordmark {
+    position:absolute;
+    left:50%;
+    bottom:-16px;
+    transform:translateX(-50%);
+    background:var(--ivory);
+    border:1px solid var(--line);
+    padding:6px 22px;
+    font-family:"Cormorant Garamond", serif;
+    font-weight:600;
+    font-size:15px;
+    letter-spacing:.32em;
+    color:var(--slate);
 }
 .bakery-name {
-    font-family:"Fraunces", serif;
-    font-weight:900;
-    font-size:clamp(32px, 5.5vw, 48px);
-    line-height:1.05;
-    letter-spacing:-.02em;
-    color:var(--burgundy);
-    margin:0 0 8px;
+    text-align:center;
+    font-family:"Cormorant Garamond", serif;
+    font-weight:600;
+    font-size:clamp(40px, 7vw, 62px);
+    line-height:1.02;
+    letter-spacing:-.01em;
+    color:var(--slate);
+    margin:0 0 10px;
 }
 .bakery-subtitle {
-    max-width:520px;
+    max-width:460px;
+    margin:0 auto;
+    text-align:center;
     color:var(--muted);
     font-size:15px;
-    line-height:1.6;
+    font-weight:300;
+    line-height:1.7;
+}
+.pw-rule { display:flex; align-items:center; gap:14px; margin:26px 0 10px; }
+.pw-rule i { flex:1; height:1px; background:var(--line); }
+.pw-heart {
+    display:block;
+    width:24px;
+    height:22px;
+    background-color:var(--pink-soft);
+    background-image:
+        linear-gradient(rgba(235,183,195,.95) 50%, transparent 50%),
+        linear-gradient(90deg, rgba(235,183,195,.95) 50%, transparent 50%);
+    background-size:6px 6px;
+    clip-path:path("M12 21S4 15.8 4 10a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z");
 }
 
-/* ---------- Assistant card ---------- */
+/* ---------- Assistant card: stationery with a double rule ---------- */
 .assistant-intro {
     background:var(--paper);
-    border:1.5px solid var(--line);
-    border-left:4px solid var(--pink);
-    border-radius:14px;
-    padding:18px 20px;
-    margin:22px 0 8px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:24px 26px;
+    margin:16px 0 8px;
+    box-shadow:inset 0 0 0 5px var(--paper), inset 0 0 0 6px var(--line);
 }
 .assistant-title {
-    font-family:"Fraunces", serif;
-    font-weight:700;
-    font-size:22px;
-    color:var(--burgundy);
+    font-family:"Cormorant Garamond", serif;
+    font-weight:600;
+    font-size:28px;
+    color:var(--slate);
     margin-bottom:4px;
 }
-.assistant-copy { color:var(--muted); font-size:14px; line-height:1.6; max-width:520px; }
+.assistant-copy { color:var(--muted); font-size:14px; font-weight:300; line-height:1.7; max-width:500px; }
 
 /* ---------- Chat ---------- */
 .chat-row { display:flex; width:100%; margin:10px 0; }
 .chat-row.user { justify-content:flex-end; }
 .chat-row.assistant { justify-content:flex-start; }
-.chat-wrap { max-width:78%; }
-.chat-name { font-size:12px; font-weight:700; color:var(--muted); margin:0 0 3px 4px; }
+.chat-wrap { max-width:80%; }
+.chat-name { font-size:12px; font-weight:500; letter-spacing:.04em; color:var(--muted); margin:0 0 3px 4px; }
 .chat-row.user .chat-name { text-align:right; margin:0 4px 3px 0; }
-.chat-bubble {
-    font-size:15px;
-    line-height:1.55;
-    padding:11px 15px;
-    border-radius:16px;
-}
+.chat-bubble { font-size:15px; font-weight:400; line-height:1.6; padding:11px 16px; border-radius:14px; }
 .chat-row.assistant .chat-bubble {
     background:#fff;
     color:var(--ink);
-    border:1.5px solid var(--line);
-    border-bottom-left-radius:4px;
+    border:1px solid var(--line);
+    border-bottom-left-radius:3px;
 }
 .chat-row.user .chat-bubble {
-    background:var(--burgundy);
-    color:var(--cream);
-    border:1.5px solid var(--burgundy);
-    border-bottom-right-radius:4px;
+    background:var(--slate);
+    color:#fff;
+    border:1px solid var(--slate);
+    border-bottom-right-radius:3px;
 }
 [data-testid="stChatMessage"] { display:none; }
 
@@ -162,11 +173,11 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     width:100% !important;
     margin:14px 0 6px !important;
     padding:6px !important;
-    border:1.5px solid var(--burgundy) !important;
+    border:1px solid var(--slate) !important;
     border-radius:999px !important;
     background:#fff !important;
 }
-[data-testid="stForm"]:focus-within { border-color:var(--red) !important; }
+[data-testid="stForm"]:focus-within { box-shadow:0 0 0 3px var(--pink-soft); }
 [data-testid="stForm"] [data-testid="stHorizontalBlock"] {
     display:grid !important;
     grid-template-columns:minmax(0, 1fr) 42px !important;
@@ -191,11 +202,11 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     border:0 !important;
     box-shadow:none !important;
     height:42px !important;
-    padding:0 16px !important;
+    padding:0 18px !important;
     font-size:15px !important;
     color:var(--ink) !important;
 }
-[data-testid="stForm"] input::placeholder { color:#B79498; }
+[data-testid="stForm"] input::placeholder { color:#9AA7B4; }
 [data-testid="InputInstructions"], [data-testid="stInputInstructions"], .stTextInput small { display:none !important; }
 [data-testid="stFormSubmitButton"] button {
     width:42px !important;
@@ -203,44 +214,43 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     height:42px !important;
     padding:0 !important;
     border-radius:50% !important;
-    background:var(--burgundy) !important;
-    color:var(--cream) !important;
+    background:var(--slate) !important;
+    color:#fff !important;
     border:0 !important;
     box-shadow:none !important;
     font-size:18px !important;
 }
-[data-testid="stFormSubmitButton"] button:hover { background:var(--red) !important; }
+[data-testid="stFormSubmitButton"] button:hover { background:var(--ink) !important; }
 
 /* ---------- Favourites ---------- */
 .pw-section-head {
     display:flex;
     align-items:baseline;
-    gap:12px;
+    justify-content:center;
+    gap:14px;
     flex-wrap:wrap;
-    margin:30px 0 16px;
+    margin:6px 0 20px;
 }
 .popular-title {
-    font-family:"Fraunces", serif;
-    font-weight:900;
-    font-size:28px;
-    letter-spacing:-.015em;
-    color:var(--burgundy);
+    font-family:"Cormorant Garamond", serif;
+    font-weight:600;
+    font-size:36px;
+    color:var(--slate);
 }
 .script-note {
-    font-family:"Caveat", cursive;
-    font-weight:700;
-    font-size:22px;
-    color:var(--red);
+    font-family:"Cormorant Garamond", serif;
+    font-style:italic;
+    font-size:19px;
+    color:#B27A8A;
 }
 .product-card-shell {
     background:var(--paper);
-    border:1.5px solid var(--line);
-    border-radius:14px;
+    border:1px solid var(--line);
+    border-radius:6px;
     overflow:hidden;
     margin-bottom:16px;
-    box-shadow:0 2px 10px rgba(122,31,46,.07);
 }
-.product-card-media { position:relative; }
+.product-card-media { padding:8px 8px 0; }
 .product-card-photo {
     display:block;
     width:100%;
@@ -248,42 +258,40 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     object-fit:cover;
     object-position:center;
     margin:0;
+    border-radius:3px;
 }
 .product-card-photo.placeholder {
     display:flex;
     align-items:center;
     justify-content:center;
-    font-family:"Fraunces", serif;
-    font-weight:900;
-    font-size:56px;
-    color:var(--burgundy);
-    background-color:var(--blush);
+    font-family:"Cormorant Garamond", serif;
+    font-style:italic;
+    font-weight:600;
+    font-size:60px;
+    color:var(--slate);
+    background-color:var(--pink-soft);
     background-image:
-        linear-gradient(rgba(242,167,181,.35) 50%, transparent 50%),
-        linear-gradient(90deg, rgba(242,167,181,.35) 50%, transparent 50%);
-    background-size:22px 22px;
-}
-.price-sticker {
-    position:absolute;
-    top:10px;
-    right:10px;
-    background:var(--cream);
-    color:var(--burgundy);
-    border:1.5px solid var(--burgundy);
-    border-radius:999px;
-    padding:3px 11px;
-    font-weight:700;
-    font-size:13px;
+        linear-gradient(rgba(235,183,195,.55) 50%, transparent 50%),
+        linear-gradient(90deg, rgba(235,183,195,.55) 50%, transparent 50%);
+    background-size:20px 20px;
 }
 .product-card-copy { padding:12px 14px 14px; }
+.product-card-topline { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
 .product-card-name {
-    font-family:"Fraunces", serif;
-    font-weight:700;
-    font-size:18px;
-    line-height:1.2;
-    color:var(--burgundy);
+    font-family:"Cormorant Garamond", serif;
+    font-weight:600;
+    font-size:21px;
+    line-height:1.15;
+    color:var(--slate);
 }
-.product-card-desc { margin-top:5px; font-size:13px; line-height:1.5; color:var(--muted); }
+.product-card-price {
+    font-family:"Cormorant Garamond", serif;
+    font-weight:700;
+    font-size:19px;
+    color:#B27A8A;
+    white-space:nowrap;
+}
+.product-card-desc { margin-top:5px; font-size:13px; font-weight:300; line-height:1.55; color:var(--muted); }
 
 /* ---------- Expanders (menu + order) ---------- */
 [data-testid="stExpander"] {
@@ -294,32 +302,32 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
 }
 [data-testid="stExpander"] details {
     background:var(--paper) !important;
-    border:1.5px solid var(--line) !important;
-    border-radius:12px !important;
+    border:1px solid var(--line) !important;
+    border-radius:6px !important;
 }
 [data-testid="stExpander"] summary {
-    font-family:"Fraunces", serif;
-    font-weight:700;
-    font-size:16px;
-    color:var(--burgundy);
+    font-family:"Cormorant Garamond", serif;
+    font-weight:600;
+    font-size:19px;
+    color:var(--slate);
 }
-[data-testid="stExpander"] summary:hover { background:var(--blush) !important; }
-[data-testid="stExpander"] img { border-radius:10px; }
-.order-empty { color:var(--muted); font-size:14px; }
+[data-testid="stExpander"] summary:hover { background:var(--pink-soft) !important; }
+[data-testid="stExpander"] img { border-radius:4px; }
+.order-empty { color:var(--muted); font-size:14px; font-weight:300; }
 
 /* ---------- Buttons ---------- */
 .stButton > button {
-    background:var(--burgundy);
-    color:var(--cream);
-    border:1.5px solid var(--burgundy);
+    background:var(--slate);
+    color:#fff;
+    border:1px solid var(--slate);
     border-radius:999px;
-    font-weight:700;
-    padding:.4rem 1.2rem;
+    font-weight:500;
+    padding:.4rem 1.3rem;
 }
-.stButton > button:hover { background:var(--red); border-color:var(--red); color:var(--cream); }
+.stButton > button:hover { background:var(--ink); border-color:var(--ink); color:#fff; }
 
 /* ---------- Footer ---------- */
-.loaf-footer { text-align:center; color:#A58A8E; font-size:12px; margin-top:30px; }
+.loaf-footer { text-align:center; color:#9AA7B4; font-size:12px; letter-spacing:.04em; margin-top:32px; }
 
 /* ---------- Loading cake ---------- */
 .pw-cake-loader { position:relative; width:52px; height:59px; margin:4px 0 6px 3px; }
@@ -354,17 +362,18 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
 
 
 
+
+
 /* ---------- Mobile ---------- */
 @media (max-width:768px) {
-    .block-container { padding:.7rem .8rem 3rem !important; }
-    .pw-topbar { padding:9px 14px; }
+    .block-container { margin:8px auto !important; padding:0 18px 2.2rem !important; max-width:calc(100% - 16px); }
+    .pw-stripes { height:64px; margin:0 -18px 40px; }
     .bakery-subtitle { font-size:14px; }
-    .assistant-intro { padding:15px 16px; margin-top:18px; }
-    .assistant-title { font-size:20px; }
-    .chat-wrap { max-width:90%; }
+    .assistant-intro { padding:18px 18px; }
+    .assistant-title { font-size:24px; }
+    .chat-wrap { max-width:92%; }
     .chat-bubble { font-size:14px; padding:10px 13px; }
-    .popular-title { font-size:24px; }
-    .script-note { font-size:20px; }
+    .popular-title { font-size:30px; }
 }
 
 </style>
@@ -650,10 +659,10 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
     # ---------- Header ----------
     st.markdown(
-        '<div class="pw-topbar"><span class="loaf-wordmark">LOAF</span><span class="pw-topnote">Online ordering</span></div>'
-        '<div class="pw-scallop"></div>'
+        '<div class="pw-stripes"><span class="loaf-wordmark">LOAF</span></div>'
         f'<div class="bakery-name">{safe_business_name}</div>'
-        '<div class="bakery-subtitle">Pick your bakes, ask about ingredients or custom cakes, and place your order in one chat.</div>',
+        '<div class="bakery-subtitle">Pick your bakes, ask about ingredients or custom cakes, and place your order in one chat.</div>'
+        '<div class="pw-rule"><i></i><b class="pw-heart"></b><i></i></div>',
         unsafe_allow_html=True
     )
 
@@ -697,8 +706,9 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     visible_menu_items = [item for item in menu if item.get("Item")][:6]
     if visible_menu_items:
         st.markdown(
+            '<div class="pw-rule"><i></i><b class="pw-heart"></b><i></i></div>'
             '<div class="pw-section-head"><span class="popular-title">Our favourites</span>'
-            '<span class="script-note">fresh out of the oven</span></div>',
+            '<span class="script-note">fresh from the oven</span></div>',
             unsafe_allow_html=True
         )
         tilts = ["-1.2deg", "0.8deg", "-0.5deg"]
@@ -718,13 +728,13 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             else:
                 initial = html.escape(raw_name[:1].upper())
                 photo_html = f'<div class="product-card-photo placeholder">{initial}</div>'
-            sticker_html = f'<span class="price-sticker">{price_text}</span>' if price_text else ""
+            price_html_card = f'<div class="product-card-price">{price_text}</div>' if price_text else ""
 
             with card_cols[idx % 3]:
                 st.markdown(
                     f'<div class="product-card-shell" style="--tilt:{tilts[idx % 3]}">'
-                    f'<div class="product-card-media">{photo_html}{sticker_html}</div>'
-                    f'<div class="product-card-copy"><div class="product-card-name">{item_name}</div>'
+                    f'<div class="product-card-media">{photo_html}</div>'
+                    f'<div class="product-card-copy"><div class="product-card-topline"><div class="product-card-name">{item_name}</div>{price_html_card}</div>'
                     f'<div class="product-card-desc">{short_desc}</div></div></div>',
                     unsafe_allow_html=True
                 )
