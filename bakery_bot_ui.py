@@ -787,6 +787,154 @@ header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [dat
   .product-card-desc{font-size:11px!important}
 }
 
+
+/* ===== THEME 2 V6: SPLIT EDITORIAL STOREFRONT ===== */
+:root{
+  --cream:#FFF7E6; --paper:#FFFDF7; --blue:#7189D8;
+  --blue-soft:#D7E3F4; --pink:#F3B7D0; --sage:#C8D18D;
+  --butter:#F3D978; --ink:#25231F; --muted:#716A63;
+}
+.stApp{background:var(--cream)!important}
+.block-container{max-width:980px!important}
+
+/* top bar */
+.loaf-top{
+  padding:16px 0 12px!important;margin:0 0 16px!important;
+  border-bottom:1px solid rgba(37,35,31,.18)!important;
+}
+.loaf-top-mark{
+  background:var(--blue)!important;color:white!important;
+  padding:5px 11px!important;border-radius:999px!important;
+}
+
+/* Hero becomes a split editorial composition */
+.pw-gingham{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.05fr) minmax(280px,.95fr)!important;
+  min-height:330px!important;
+  padding:0!important;margin:0 0 28px!important;
+  background:var(--paper)!important;border:0!important;
+  box-shadow:none!important;overflow:hidden!important;
+  border-radius:24px!important;
+}
+.pw-label{
+  max-width:none!important;padding:42px 38px!important;
+  display:flex!important;flex-direction:column!important;justify-content:center!important;
+  position:relative!important;
+}
+.pw-label:before{
+  content:"FRESH BAKES • MADE DAILY";
+  width:max-content;margin-bottom:18px;padding:5px 9px;
+  background:var(--butter);border-radius:999px;
+  font-family:"DM Mono",monospace;font-size:9px;letter-spacing:.04em;
+}
+.bakery-name{
+  font-size:clamp(44px,6vw,68px)!important;line-height:.92!important;
+  max-width:480px!important;margin-bottom:18px!important;
+}
+.bakery-subtitle{
+  max-width:430px!important;font-size:15px!important;line-height:1.55!important;
+}
+.pw-gingham:after{
+  display:block!important;
+  content:"";
+  position:static!important;
+  width:auto!important;height:auto!important;
+  background:
+    linear-gradient(rgba(113,137,216,.08),rgba(113,137,216,.08)),
+    url("https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80") center/cover no-repeat!important;
+  border-radius:0!important;transform:none!important;
+}
+.t2-half,.t2-squig{display:none!important}
+
+/* Remove the Theme-1-like order card entirely */
+.assistant-intro{
+  background:transparent!important;border:0!important;border-radius:0!important;
+  padding:0!important;margin:0 0 6px!important;
+}
+.assistant-intro:before{display:none!important}
+.assistant-title{
+  font-size:28px!important;margin:0 0 4px!important;
+}
+.assistant-title:before{
+  content:"What are you craving?";
+  font-size:28px;
+}
+.assistant-title{font-size:0!important}
+.assistant-copy{
+  font-size:14px!important;color:var(--muted)!important;max-width:620px!important;
+}
+
+/* chat feels like the action area */
+.chat-row{margin:10px 0!important}
+[data-testid="stForm"]{
+  margin:13px 0 22px!important;background:var(--paper)!important;
+  border:2px solid var(--blue)!important;border-radius:999px!important;
+  box-shadow:none!important;
+}
+
+/* editorial menu */
+.pw-section-head{
+  border:0!important;margin:38px 0 18px!important;padding:0!important;
+}
+.popular-title{font-size:32px!important}
+.script-note{background:var(--pink)!important}
+
+/* alternating image scale creates a magazine feel */
+.product-card-shell,.tile-0,.tile-1,.tile-2{
+  background:transparent!important;border:0!important;box-shadow:none!important;
+  border-radius:0!important;margin-bottom:30px!important;
+}
+.product-card-photo{
+  height:300px!important;border-radius:18px!important;
+  object-fit:cover!important;
+}
+.tile-1 .product-card-photo{height:245px!important;margin-top:42px!important}
+.tile-2 .product-card-photo{height:275px!important}
+.product-card-copy{padding:10px 3px 0!important}
+.product-card-name{font-size:19px!important;text-transform:none!important}
+.product-card-desc{font-size:12px!important}
+.product-card-price{font-size:12px!important}
+
+/* small labels remain playful */
+.tile-0 .product-card-media:after,
+.tile-1 .product-card-media:after,
+.tile-2 .product-card-media:after{
+  top:12px!important;left:12px!important;
+}
+
+/* Mobile: split hero becomes name then visual, menu stays compact */
+@media(max-width:768px){
+  .block-container{padding:0 14px 2rem!important}
+  .pw-gingham{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    min-height:0!important;border-radius:18px!important;
+    margin-bottom:20px!important;
+  }
+  .pw-label{padding:25px 20px 22px!important}
+  .pw-label:before{margin-bottom:13px!important}
+  .bakery-name{
+    font-size:clamp(34px,10vw,44px)!important;
+    max-width:100%!important;margin-bottom:10px!important;
+  }
+  .bakery-subtitle{font-size:13px!important;max-width:100%!important}
+  .pw-gingham:after{
+    height:190px!important;
+  }
+  .assistant-title:before{font-size:22px!important}
+  .assistant-copy{font-size:13px!important}
+  .popular-title{font-size:25px!important}
+  .product-card-photo,
+  .tile-1 .product-card-photo,
+  .tile-2 .product-card-photo{
+    height:190px!important;margin-top:0!important;border-radius:14px!important;
+  }
+  .product-card-shell{margin-bottom:20px!important}
+  .product-card-name{font-size:16px!important}
+  .product-card-desc{font-size:11px!important}
+}
+
 </style>
 """, unsafe_allow_html=True)
 
