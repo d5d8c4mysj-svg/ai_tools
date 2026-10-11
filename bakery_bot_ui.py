@@ -489,8 +489,26 @@ def upload_menu_photos(slug, uploaded_files):
     return urls
 
 
+def restore_owner_auth_session():
+    """Restore the Supabase Auth session after a Streamlit rerun."""
+    access_token = st.session_state.get("owner_access_token")
+    refresh_token = st.session_state.get("owner_refresh_token")
+    if not access_token or not refresh_token:
+        return False
+    try:
+        supabase.auth.set_session(access_token, refresh_token)
+        return True
+    except Exception:
+        for key in [
+            "owner_user_id", "owner_email",
+            "owner_access_token", "owner_refresh_token"
+        ]:
+            st.session_state.pop(key, None)
+        return False
+
+
 def auth_sign_in(email, password):
-    """Sign a bakery owner into Supabase Auth and keep the authenticated client session."""
+    """Sign in and persist the actual Supabase JWT/session for RLS."""
     try:
         result = supabase.auth.sign_in_with_password({
             "email": email.strip(),
@@ -498,19 +516,35 @@ def auth_sign_in(email, password):
         })
     except Exception:
         return None
-    return result.user if result and result.user else None
+
+    if not result or not result.user or not result.session:
+        return None
+
+    st.session_state.owner_user_id = str(result.user.id)
+    st.session_state.owner_email = result.user.email or email.strip()
+    st.session_state.owner_access_token = result.session.access_token
+    st.session_state.owner_refresh_token = result.session.refresh_token
+    return result.user
 
 
 def auth_sign_out():
+    restore_owner_auth_session()
     try:
         supabase.auth.sign_out()
     except Exception:
         pass
-    st.session_state.pop("owner_user_id", None)
-    st.session_state.pop("owner_email", None)
+    for key in [
+        "owner_user_id", "owner_email",
+        "owner_access_token", "owner_refresh_token"
+    ]:
+        st.session_state.pop(key, None)
 
 
 def current_owner_id():
+    if not st.session_state.get("owner_user_id"):
+        return None
+    if not restore_owner_auth_session():
+        return None
     return st.session_state.get("owner_user_id")
 
 
@@ -1025,8 +1059,6 @@ def owner_login_gate(title, caption):
         st.error("Incorrect email or password.")
         return False
 
-    st.session_state.owner_user_id = str(user.id)
-    st.session_state.owner_email = user.email or email.strip()
     st.rerun()
 
 
@@ -1276,6 +1308,10 @@ def owner_view():
                     f"https://bakery-bot.streamlit.app/?mode=quickupdate&slug={clean_slug}"
                 )
 
+
+# Restore the signed-in owner's Supabase JWT before any owner-side database request.
+if st.session_state.get("owner_access_token"):
+    restore_owner_auth_session()
 
 if mode == "owner":
     owner_view()
