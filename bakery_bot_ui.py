@@ -1575,6 +1575,209 @@ header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [dat
   }
 }
 
+
+/* ===== THEME 2 V10: BLUEY DAYS RETRO BOUTIQUE =====
+Palette from the new reference:
+Cloudy Valley #B1C7D4
+Tsunami #849AAD
+Weather Board #A1947F
+Volcanic Island #605246
+Red Oxide #5B1C23
+*/
+:root{
+  --cloud:#B1C7D4;
+  --blue:#849AAD;
+  --taupe:#A1947F;
+  --brown:#605246;
+  --oxide:#5B1C23;
+  --paper:#F7F3EA;
+  --ink:#2B2724;
+}
+.stApp{background:var(--paper)!important;color:var(--ink)!important}
+
+/* top navigation */
+.loaf-top{
+  color:var(--oxide)!important;
+  border-bottom:1px solid rgba(96,82,70,.24)!important;
+}
+.loaf-top-mark{color:var(--oxide)!important}
+
+/* Hero: muted blue, smaller heading, scallops attached to BOTTOM */
+.pw-gingham{
+  position:relative!important;
+  background:var(--cloud)!important;
+  padding:34px 38px 43px!important;
+  margin-top:18px!important;
+  overflow:visible!important;
+}
+.pw-gingham:before{display:none!important}
+.pw-label:before{display:none!important}
+.pw-gingham:after{
+  content:""!important;
+  display:block!important;
+  position:absolute!important;
+  left:0!important;right:0!important;
+  bottom:-15px!important;
+  width:100%!important;height:16px!important;
+  background:
+    radial-gradient(circle at 8px 0, var(--cloud) 8px, transparent 8.5px)
+    0 0/16px 16px repeat-x!important;
+  border:0!important;
+  transform:none!important;
+}
+.bakery-name{
+  color:var(--oxide)!important;
+  font-size:clamp(38px,5.6vw,58px)!important;
+  line-height:.96!important;
+  margin:0 0 12px!important;
+}
+.bakery-subtitle{
+  color:var(--brown)!important;
+  max-width:540px!important;
+}
+
+/* Ordering area: blue-led and more compact */
+.assistant-intro{
+  background:var(--blue)!important;
+  padding:18px 26px 4px!important;
+  margin-top:15px!important;
+}
+.assistant-title:before{
+  color:white!important;
+  font-size:22px!important;
+}
+.assistant-copy{
+  color:rgba(255,255,255,.82)!important;
+  font-size:12.5px!important;
+}
+
+/* Greeting is an intentional compact bubble within same blue zone */
+.chat-row.assistant{
+  background:var(--blue)!important;
+  padding:2px 26px 8px!important;
+}
+.chat-row.assistant .chat-name{
+  color:rgba(255,255,255,.72)!important;
+}
+.chat-row.assistant .chat-bubble{
+  width:max-content!important;
+  max-width:78%!important;
+  background:var(--paper)!important;
+  border:0!important;
+  border-radius:12px!important;
+  padding:8px 12px!important;
+}
+.chat-row.user .chat-bubble{
+  background:var(--taupe)!important;
+  color:white!important;
+  border-radius:12px!important;
+}
+
+/* Input integrated into ordering area */
+[data-testid="stForm"]{
+  background:var(--blue)!important;
+  padding:5px 26px 15px!important;
+  margin:0 0 12px!important;
+}
+[data-testid="stForm"] input{
+  background:var(--paper)!important;
+  border-radius:10px!important;
+}
+[data-testid="stFormSubmitButton"] button,
+[data-testid="stFormSubmitButton"] button:hover{
+  background:var(--oxide)!important;
+  color:white!important;
+  border-radius:10px!important;
+}
+
+/* Pull menu upward; no underline */
+.pw-section-head{
+  margin:14px 0 12px!important;
+  padding:0!important;
+  border-bottom:0!important;
+}
+.popular-title{
+  color:var(--oxide)!important;
+  font-size:29px!important;
+}
+.script-note{
+  background:var(--cloud)!important;
+  color:var(--oxide)!important;
+  border-radius:999px!important;
+}
+
+/* Smaller product imagery, cleaner captions */
+.product-card-photo,
+.tile-1 .product-card-photo,
+.tile-2 .product-card-photo{
+  height:175px!important;
+  object-fit:cover!important;
+  object-position:center!important;
+}
+.product-card-copy{
+  background:transparent!important;
+  border-left:2px solid var(--blue)!important;
+  padding:8px 8px 9px!important;
+}
+.tile-1 .product-card-copy{border-left-color:var(--oxide)!important}
+.tile-2 .product-card-copy{border-left-color:var(--taupe)!important}
+.product-card-name{
+  color:var(--oxide)!important;
+  font-size:17px!important;
+}
+.product-card-price{color:var(--brown)!important}
+.product-card-desc{color:var(--brown)!important}
+
+/* Secondary UI */
+[data-testid="stExpander"] details{
+  border-color:rgba(96,82,70,.22)!important;
+}
+[data-testid="stExpander"] summary{color:var(--oxide)!important}
+.stButton>button,.stButton>button:hover{
+  background:var(--oxide)!important;
+  color:white!important;
+}
+
+/* Mobile */
+@media(max-width:768px){
+  .pw-gingham{
+    padding:25px 18px 34px!important;
+    margin-top:10px!important;
+  }
+  .bakery-name{
+    font-size:clamp(31px,9vw,40px)!important;
+    margin-bottom:9px!important;
+  }
+  .bakery-subtitle{
+    font-size:12.5px!important;
+    max-width:100%!important;
+  }
+  .assistant-intro{
+    margin-top:15px!important;
+    padding:15px 15px 3px!important;
+  }
+  .assistant-title:before{font-size:19px!important}
+  .chat-row.assistant{padding:2px 15px 7px!important}
+  .chat-row.assistant .chat-bubble{max-width:92%!important}
+  [data-testid="stForm"]{
+    padding:5px 15px 12px!important;
+    margin-bottom:10px!important;
+  }
+  .pw-section-head{margin:12px 0 10px!important}
+  .popular-title{font-size:23px!important}
+  .product-card-photo,
+  .tile-1 .product-card-photo,
+  .tile-2 .product-card-photo{
+    height:145px!important;
+  }
+  .product-card-copy{
+    border-left-width:2px!important;
+    padding:7px 7px 8px!important;
+  }
+  .product-card-name{font-size:15px!important}
+  .product-card-desc{font-size:10.5px!important}
+}
+
 </style>
 """, unsafe_allow_html=True)
 
