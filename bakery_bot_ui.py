@@ -183,6 +183,7 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     .assistant-intro { padding:14px !important; }
     .popular-title { font-size:26px !important; }
     .product-card-name { font-size:20px !important; }
+    .product-card-photo { aspect-ratio:16 / 9 !important; width:100% !important; object-fit:cover !important; object-position:center !important; }
 }
 
 /* Cohesive menu: one card colour, photos fill the full card width, sage badge */
