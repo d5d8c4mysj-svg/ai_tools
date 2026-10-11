@@ -1998,6 +1998,35 @@ Red Oxide #5B1C23
   .pw-section-head{margin-top:15px!important}
 }
 
+
+/* ===== THEME 2 V13: MOBILE INPUT POLISH ===== */
+
+/* Readable, softer input colours */
+[data-testid="stForm"] input{
+  color:#2F3438!important;
+  -webkit-text-fill-color:#2F3438!important;
+  opacity:1!important;
+}
+[data-testid="stForm"] input::placeholder{
+  color:#667785!important;
+  -webkit-text-fill-color:#667785!important;
+  opacity:1!important;
+}
+
+/* Pull Popular right now closer to the composer */
+.pw-section-head{
+  margin-top:8px!important;
+}
+
+@media(max-width:768px){
+  [data-testid="stForm"]{
+    margin-bottom:4px!important;
+  }
+  .pw-section-head{
+    margin-top:6px!important;
+  }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
