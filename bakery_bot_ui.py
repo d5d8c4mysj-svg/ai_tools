@@ -160,6 +160,30 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
 .tile-2 { background:var(--rose); color:var(--paper); }
 [data-testid="stExpander"] details { background:var(--paper) !important; border:1.5px solid var(--ink) !important; }
 .order-empty, .loaf-footer { color:var(--muted); }
+
+/* Quieter, smaller, mobile friendly. Menu cards keep their stronger colours. */
+:root { --blush-lt:#FBE4E9; --sage-lt:#DCE3CB; }
+.loaf-top { padding:14px 0 10px !important; }
+.loaf-top-mark { font-size:22px !important; }
+.pw-gingham { margin:12px 0 0 !important; padding:22px 22px 20px !important; background:var(--blush-lt) !important; border:1px solid var(--ink) !important; }
+.bakery-name { font-size:clamp(32px, 7vw, 54px) !important; margin:0 0 8px !important; }
+.bakery-subtitle { font-size:14px !important; line-height:1.5 !important; max-width:none !important; }
+.pw-rule { margin:16px 0 12px !important; }
+.assistant-intro { background:var(--sage-lt) !important; border:1px solid var(--ink) !important; padding:16px 18px !important; margin:4px 0 !important; }
+.assistant-title { font-size:24px !important; margin-bottom:4px !important; }
+.assistant-copy { font-size:14px !important; line-height:1.5 !important; }
+.chat-bubble { border:1px solid var(--ink) !important; font-size:14px !important; padding:9px 13px !important; }
+.chat-row.assistant .chat-bubble { background:var(--blush-lt) !important; }
+.chat-row.user .chat-bubble { background:var(--sage-lt) !important; }
+[data-testid="stForm"] { border-width:1px !important; }
+.popular-title { font-size:30px !important; }
+.pw-section-head { margin:2px 0 14px !important; }
+@media (max-width:768px) {
+    .pw-gingham { padding:16px 16px 14px !important; }
+    .assistant-intro { padding:14px !important; }
+    .popular-title { font-size:26px !important; }
+    .product-card-name { font-size:20px !important; }
+}
 </style>
 """, unsafe_allow_html=True)
 
