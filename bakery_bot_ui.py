@@ -935,6 +935,233 @@ header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [dat
   .product-card-desc{font-size:11px!important}
 }
 
+
+/* ===== THEME 2 V7: CLEAN MODERN BLUE + CREAM ===== */
+:root{
+  --cream:#FFF7E6;
+  --paper:#FFFCF5;
+  --blue:#7189D8;
+  --blue-dark:#5F78CF;
+  --pink:#F3B7D0;
+  --ink:#25231F;
+  --muted:#716A63;
+}
+.stApp{background:var(--cream)!important}
+.block-container{max-width:940px!important;padding:0 24px 3rem!important}
+
+/* Simple top bar */
+.loaf-top{
+  padding:16px 0 12px!important;
+  margin:0!important;
+  border:0!important;
+  background:transparent!important;
+}
+.loaf-top-mark{
+  background:transparent!important;
+  color:var(--blue-dark)!important;
+  padding:0!important;
+  border-radius:0!important;
+  font-size:17px!important;
+  letter-spacing:.06em!important;
+}
+
+/* Strong blue hero: no stock image, no stickers, no shapes */
+.pw-gingham{
+  display:block!important;
+  min-height:0!important;
+  margin:8px 0 0!important;
+  padding:38px 36px 34px!important;
+  background:var(--blue)!important;
+  border:0!important;
+  border-radius:22px 22px 0 0!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+}
+.pw-gingham:after{display:none!important}
+.pw-label{
+  max-width:720px!important;
+  padding:0!important;
+  display:block!important;
+}
+.pw-label:before{display:none!important}
+.bakery-name{
+  color:white!important;
+  font-size:clamp(40px,6vw,62px)!important;
+  line-height:.96!important;
+  letter-spacing:-.045em!important;
+  margin:0 0 12px!important;
+  max-width:none!important;
+}
+.bakery-subtitle{
+  color:rgba(255,255,255,.88)!important;
+  font-size:14px!important;
+  line-height:1.5!important;
+  max-width:560px!important;
+}
+
+/* Hide the extra intro card so the ordering UI feels integrated */
+.assistant-intro{
+  background:var(--blue)!important;
+  border:0!important;
+  border-radius:0 0 22px 22px!important;
+  padding:0 36px 22px!important;
+  margin:0 0 10px!important;
+}
+.assistant-intro:before{display:none!important}
+.assistant-title{
+  color:white!important;
+  font-size:0!important;
+  margin:0!important;
+}
+.assistant-title:before{
+  content:"What are you craving?";
+  color:white!important;
+  font-size:20px!important;
+  font-weight:700!important;
+}
+.assistant-copy{
+  display:none!important;
+}
+
+/* Keep the initial assistant greeting subtle */
+.chat-row{margin:9px 0!important}
+.chat-name{color:var(--muted)!important}
+.chat-bubble{
+  box-shadow:none!important;
+  border:1px solid rgba(37,35,31,.13)!important;
+  border-radius:14px!important;
+}
+.chat-row.assistant .chat-bubble{background:var(--paper)!important}
+.chat-row.user .chat-bubble{background:var(--pink)!important}
+
+/* Main ordering field */
+[data-testid="stForm"]{
+  margin:10px 0 30px!important;
+  padding:5px!important;
+  background:var(--paper)!important;
+  border:1.5px solid var(--blue)!important;
+  border-radius:16px!important;
+  box-shadow:none!important;
+}
+[data-testid="stFormSubmitButton"] button,
+[data-testid="stFormSubmitButton"] button:hover{
+  background:var(--blue)!important;
+  color:white!important;
+  border:0!important;
+  border-radius:11px!important;
+}
+
+/* Clean menu strip */
+.pw-section-head{
+  margin:8px 0 15px!important;
+  padding:0!important;
+  border:0!important;
+}
+.popular-title{
+  font-size:29px!important;
+  font-weight:800!important;
+  text-transform:none!important;
+  letter-spacing:-.035em!important;
+}
+.script-note{
+  background:var(--pink)!important;
+  color:var(--ink)!important;
+  border:0!important;
+  border-radius:999px!important;
+  padding:4px 9px!important;
+  transform:none!important;
+}
+
+/* Real product photos do the visual work */
+.product-card-shell,.tile-0,.tile-1,.tile-2{
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  margin-bottom:24px!important;
+}
+.product-card-media:after{display:none!important}
+.product-card-photo,
+.tile-1 .product-card-photo,
+.tile-2 .product-card-photo{
+  display:block!important;
+  width:100%!important;
+  height:215px!important;
+  margin:0!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  border:0!important;
+  border-radius:14px!important;
+  box-shadow:none!important;
+}
+.product-card-copy{padding:9px 2px 0!important}
+.product-card-name{
+  font-size:17px!important;
+  font-weight:700!important;
+  text-transform:none!important;
+  letter-spacing:-.01em!important;
+}
+.product-card-price{
+  font-size:12px!important;
+  background:transparent!important;
+  border:0!important;
+  padding:0!important;
+}
+.product-card-desc{
+  margin-top:4px!important;
+  font-size:11px!important;
+  line-height:1.45!important;
+  color:var(--muted)!important;
+}
+
+/* Other controls */
+[data-testid="stExpander"] details{
+  background:var(--paper)!important;
+  border:1px solid rgba(37,35,31,.14)!important;
+  border-radius:12px!important;
+}
+.stButton>button,.stButton>button:hover{
+  background:var(--blue)!important;
+  color:white!important;
+  border:0!important;
+  border-radius:10px!important;
+}
+
+/* Mobile-first tightening */
+@media(max-width:768px){
+  .block-container{padding:0 14px 2rem!important}
+  .loaf-top{padding:10px 0 9px!important}
+  .pw-gingham{
+    margin-top:4px!important;
+    padding:25px 18px 20px!important;
+    border-radius:17px 17px 0 0!important;
+  }
+  .bakery-name{
+    font-size:clamp(32px,10vw,42px)!important;
+    margin-bottom:9px!important;
+  }
+  .bakery-subtitle{
+    font-size:12.5px!important;
+    max-width:100%!important;
+  }
+  .assistant-intro{
+    padding:0 18px 17px!important;
+    border-radius:0 0 17px 17px!important;
+  }
+  .assistant-title:before{font-size:18px!important}
+  [data-testid="stForm"]{margin-bottom:24px!important}
+  .popular-title{font-size:24px!important}
+  .script-note{font-size:9px!important}
+  .product-card-photo,
+  .tile-1 .product-card-photo,
+  .tile-2 .product-card-photo{
+    height:180px!important;
+    border-radius:12px!important;
+  }
+  .product-card-name{font-size:15px!important}
+  .product-card-desc{font-size:10.5px!important}
+}
+
 </style>
 """, unsafe_allow_html=True)
 
