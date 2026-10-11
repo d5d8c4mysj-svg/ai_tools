@@ -184,6 +184,17 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     .popular-title { font-size:26px !important; }
     .product-card-name { font-size:20px !important; }
 }
+
+/* Cohesive menu: one card colour, photos fill the full card width, sage badge */
+.tile-0 { background:var(--blush) !important; color:var(--ink) !important; }
+.tile-1 { background:var(--sage) !important; color:var(--ink) !important; }
+.tile-2 { background:var(--rose) !important; color:var(--paper) !important; }
+.product-card-shell { border:1px solid var(--ink) !important; overflow:hidden; }
+.product-card-media { padding:0 !important; }
+.product-card-photo { display:block !important; width:100% !important; aspect-ratio:4 / 3 !important; object-fit:cover !important; border:0 !important; border-bottom:1px solid var(--ink) !important; }
+.product-card-photo.placeholder { background:var(--blush-lt) !important; }
+.product-card-price, .product-card-desc, .product-card-name { color:inherit !important; }
+.script-note { display:inline-block !important; background:var(--sage) !important; color:var(--ink) !important; border:1px solid var(--ink) !important; font-family:"DM Mono", monospace !important; font-size:11px !important; font-weight:500 !important; padding:2px 9px !important; }
 </style>
 """, unsafe_allow_html=True)
 
