@@ -253,6 +253,118 @@ header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [dat
  .product-card-photo{height:245px!important}
 }
 
+
+/* ===== THEME 2 FINAL REFINEMENTS ===== */
+
+/* Match Theme 1 cream exactly */
+:root{
+  --cream:#FFF7E6;
+  --paper:#FFFDF7;
+}
+.stApp{background:#FFF7E6!important}
+
+/* Hero: remove random decorative shapes, keep purposeful blue offset */
+.t2-half,.t2-squig{display:none!important}
+.pw-gingham{
+  background:var(--paper)!important;
+  padding:38px 38px 34px!important;
+  min-height:0!important;
+  box-shadow:8px 8px 0 var(--blue)!important;
+}
+.pw-label{max-width:82%!important}
+
+/* Make ordering block slightly lighter/shorter */
+.assistant-intro{
+  padding:18px 22px!important;
+  background:#D7E5F2!important;
+}
+.assistant-intro:before{
+  content:"ORDER ASSISTANT"!important;
+}
+
+/* Modern section heading */
+.popular-title{
+  font-size:32px!important;
+  text-transform:uppercase!important;
+  letter-spacing:-.025em!important;
+}
+.script-note{
+  background:var(--butter)!important;
+  text-transform:uppercase!important;
+  letter-spacing:.04em!important;
+}
+
+/* Photography-led menu: no coloured card boxes */
+.product-card-shell,
+.tile-0,.tile-1,.tile-2{
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+  margin-bottom:24px!important;
+}
+.product-card-media{
+  background:transparent!important;
+  padding:0!important;
+}
+.product-card-photo{
+  width:100%!important;
+  height:270px!important;
+  aspect-ratio:auto!important;
+  object-fit:cover!important;
+  border-radius:14px!important;
+  border:0!important;
+  box-shadow:0 0 0 1px rgba(37,35,31,.12)!important;
+}
+.product-card-photo.placeholder{
+  background:var(--pink)!important;
+}
+.product-card-copy{
+  padding:11px 2px 0!important;
+  background:transparent!important;
+}
+.product-card-topline{
+  align-items:baseline!important;
+}
+.product-card-name{
+  font-size:18px!important;
+  text-transform:uppercase!important;
+  letter-spacing:-.01em!important;
+}
+.product-card-price{
+  font-size:12px!important;
+  font-weight:500!important;
+  color:var(--ink)!important;
+}
+.product-card-desc{
+  margin-top:5px!important;
+  color:#706861!important;
+}
+
+/* purposeful colour accents instead of random shapes */
+.pw-section-head:before{
+  content:"";
+  display:block;
+  width:34px;
+  height:8px;
+  background:var(--pink);
+  border-radius:999px;
+  margin-right:2px;
+}
+
+/* mobile */
+@media(max-width:768px){
+  .pw-gingham{
+    padding:28px 20px 26px!important;
+    box-shadow:5px 5px 0 var(--blue)!important;
+  }
+  .pw-label{max-width:100%!important}
+  .assistant-intro{padding:16px!important}
+  .product-card-photo{height:250px!important}
+  .popular-title{font-size:27px!important}
+}
+
 </style>
 """, unsafe_allow_html=True)
 
