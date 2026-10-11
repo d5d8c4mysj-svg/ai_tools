@@ -1883,6 +1883,121 @@ Red Oxide #5B1C23
   }
 }
 
+
+/* ===== THEME 2 V12: OPEN CHAT + FIXED COMPOSER ===== */
+
+/* Heading remains the blue anchor, but conversation no longer becomes a blue wall */
+.assistant-intro{
+  background:var(--blue)!important;
+  margin:15px 0 12px!important;
+  padding:17px 26px 15px!important;
+  border-radius:14px!important;
+}
+.assistant-title:before{
+  font-size:21px!important;
+}
+.assistant-copy{display:none!important}
+
+/* Conversation lives on the beige page */
+.chat-row,
+.chat-row.assistant,
+.chat-row.user{
+  background:transparent!important;
+  padding:0!important;
+  margin:12px 0!important;
+}
+.chat-wrap{
+  max-width:72%!important;
+}
+.chat-row.assistant .chat-name,
+.chat-row.user .chat-name{
+  color:var(--muted)!important;
+}
+.chat-row.assistant .chat-bubble{
+  background:var(--paper)!important;
+  color:var(--ink)!important;
+  border:1px solid rgba(96,82,70,.16)!important;
+  border-radius:12px!important;
+  max-width:560px!important;
+  padding:9px 13px!important;
+}
+.chat-row.user .chat-bubble{
+  background:var(--taupe)!important;
+  color:white!important;
+  border:0!important;
+  border-radius:12px!important;
+  padding:9px 13px!important;
+}
+
+/* Composer is its own compact blue footer */
+[data-testid="stForm"]{
+  background:var(--blue)!important;
+  margin:10px 0 18px!important;
+  padding:9px 12px!important;
+  border:0!important;
+  border-radius:14px!important;
+}
+[data-testid="stForm"] input{
+  background:var(--paper)!important;
+  border-radius:9px!important;
+}
+[data-testid="stFormSubmitButton"] button,
+[data-testid="stFormSubmitButton"] button:hover{
+  background:var(--oxide)!important;
+  color:white!important;
+  border-radius:9px!important;
+}
+
+/* Loader belongs directly above the composer, not inside a huge blue panel */
+.pw-cake-loader{
+  margin:2px 0 4px 8px!important;
+  width:46px!important;
+  height:53px!important;
+}
+.pw-whole-cake{
+  transform:scale(.9)!important;
+  transform-origin:left bottom!important;
+}
+.pw-cake-dots{
+  left:8px!important;
+}
+
+/* Keep menu close after the compact composer */
+.pw-section-head{
+  margin:18px 0 12px!important;
+}
+
+/* Mobile */
+@media(max-width:768px){
+  .assistant-intro{
+    margin-top:12px!important;
+    margin-bottom:10px!important;
+    padding:14px 15px 13px!important;
+    border-radius:12px!important;
+  }
+  .assistant-title:before{font-size:18px!important}
+  .chat-wrap{max-width:88%!important}
+  .chat-row{margin:9px 0!important}
+  .chat-row.assistant .chat-bubble{
+    max-width:100%!important;
+    padding:8px 11px!important;
+  }
+  .chat-row.user .chat-bubble{
+    padding:8px 11px!important;
+  }
+  [data-testid="stForm"]{
+    margin:8px 0 14px!important;
+    padding:7px 9px!important;
+    border-radius:12px!important;
+  }
+  .pw-cake-loader{
+    margin-left:4px!important;
+    transform:scale(.9)!important;
+    transform-origin:left bottom!important;
+  }
+  .pw-section-head{margin-top:15px!important}
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -2168,6 +2283,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     for message in st.session_state.get("display_messages", []):
         render_chat_message(message["role"], message["content"], business_name)
 
+    # Loader slot sits directly above the message composer.
     thinking_slot = st.empty()
 
     with st.form("chat_form", clear_on_submit=True):
