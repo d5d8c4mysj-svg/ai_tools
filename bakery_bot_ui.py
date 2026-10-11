@@ -109,6 +109,150 @@ header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [dat
 
 
 @media (max-width:768px) { .block-container { padding:0 12px 2.2rem !important; } .pw-label { max-width:76%; } .t2-half { width:96px; height:96px; right:-26px; } .bakery-name { font-size:clamp(30px, 9vw, 44px); } }
+
+/* ===== THEME 2 V2: PLAYFUL MODERN ===== */
+:root{
+ --ink:#25231F; --cream:#FFF8EA; --paper:#FFFDF7;
+ --blue:#7189D8; --pink:#F3B7D0; --sage:#C8D18D;
+ --butter:#F3D978; --sky:#C9DDF0; --muted:#716A63;
+}
+.stApp{background:var(--cream)!important;color:var(--ink)!important}
+.block-container{max-width:900px!important;padding:0 28px 3rem!important}
+
+/* top */
+.loaf-top{
+ background:transparent!important;border:0!important;
+ border-bottom:1px solid rgba(37,35,31,.25)!important;
+ padding:18px 0 12px!important;margin:0 0 18px!important;
+}
+.loaf-top-mark{
+ background:var(--butter)!important;padding:4px 10px!important;
+ border-radius:999px!important;font-size:15px!important;
+}
+
+/* hero */
+.pw-gingham{
+ position:relative!important;overflow:hidden!important;
+ background:var(--paper)!important;
+ border:1px solid rgba(37,35,31,.20)!important;
+ padding:38px 38px 36px!important;margin:0 0 24px!important;
+ box-shadow:8px 8px 0 var(--blue)!important;
+}
+.pw-label{max-width:68%!important}
+.bakery-name{
+ font-size:clamp(44px,8vw,76px)!important;line-height:.94!important;
+ letter-spacing:-.045em!important;margin:0 0 16px!important;
+}
+.bakery-subtitle{color:var(--muted)!important;max-width:520px!important}
+.t2-half{
+ right:28px!important;top:28px!important;width:112px!important;height:112px!important;
+ background:var(--pink)!important;border:0!important;
+}
+.t2-half:after{
+ content:"";position:absolute;width:66px;height:66px;right:-22px;bottom:-20px;
+ background:var(--sage);border-radius:18px;transform:rotate(13deg);
+}
+.t2-squig{right:88px!important;bottom:24px!important;width:108px!important;height:44px!important}
+
+/* ordering area */
+.assistant-intro{
+ background:var(--sky)!important;border:0!important;border-radius:20px!important;
+ padding:22px 24px!important;margin:10px 0 8px!important;
+}
+.assistant-intro:before{
+ content:"ASK + ORDER";display:inline-block;margin-bottom:8px;
+ font-family:"DM Mono",monospace;font-size:10px;
+ background:var(--paper);padding:4px 8px;border-radius:999px;
+}
+.assistant-title{font-size:25px!important;letter-spacing:-.025em!important}
+.assistant-copy{color:#52524D!important}
+
+/* chat */
+.chat-name{color:var(--muted)!important}
+.chat-bubble{
+ border:0!important;border-radius:15px!important;
+ box-shadow:0 0 0 1px rgba(37,35,31,.14)!important;
+ font-size:14px!important;
+}
+.chat-row.assistant .chat-bubble{background:var(--paper)!important}
+.chat-row.user .chat-bubble{background:var(--pink)!important}
+
+/* input */
+[data-testid="stForm"]{
+ background:var(--paper)!important;border:1px solid rgba(37,35,31,.22)!important;
+ border-radius:16px!important;box-shadow:0 5px 18px rgba(37,35,31,.04)!important;
+}
+[data-testid="stForm"]:focus-within{
+ border-color:var(--blue)!important;box-shadow:0 0 0 1px var(--blue)!important;
+}
+[data-testid="stFormSubmitButton"] button,
+[data-testid="stFormSubmitButton"] button:hover{
+ background:var(--blue)!important;color:white!important;border:0!important;
+ border-radius:12px!important;
+}
+
+/* menu */
+.pw-section-head{margin:30px 0 15px!important}
+.popular-title{
+ background:transparent!important;border:0!important;padding:0!important;
+ font-size:34px!important;letter-spacing:-.035em!important;
+}
+.script-note{
+ background:var(--butter)!important;border:0!important;
+ border-radius:999px!important;padding:5px 10px!important;
+}
+.product-card-shell{
+ border:0!important;border-radius:18px!important;
+ background:var(--paper)!important;
+ box-shadow:0 0 0 1px rgba(37,35,31,.13)!important;
+ overflow:hidden!important;
+}
+.tile-0{background:var(--paper)!important}
+.tile-1{background:#F7DCE8!important}
+.tile-2{background:#E6EACD!important}
+.product-card-photo{
+ width:100%!important;height:255px!important;aspect-ratio:auto!important;
+ object-fit:cover!important;border:0!important;
+}
+.product-card-copy{padding:14px 15px 16px!important}
+.product-card-name{font-size:19px!important;letter-spacing:-.02em!important}
+.product-card-price{
+ background:transparent!important;border:0!important;border-radius:0!important;
+ padding:0!important;font-size:12px!important;
+}
+.product-card-desc{color:#625D57!important;font-size:12px!important}
+
+/* controls */
+[data-testid="stExpander"] details{
+ background:var(--paper)!important;border:1px solid rgba(37,35,31,.18)!important;
+ border-radius:14px!important;
+}
+.stButton>button,.stButton>button:hover{
+ background:var(--blue)!important;color:white!important;border:0!important;
+ border-radius:12px!important;
+}
+.loaf-footer{color:#938A82!important}
+
+@media(max-width:768px){
+ .block-container{padding:0 16px 2.2rem!important}
+ .pw-gingham{
+   padding:27px 20px 76px!important;margin-top:12px!important;
+   box-shadow:5px 5px 0 var(--blue)!important;
+ }
+ .pw-label{max-width:100%!important}
+ .bakery-name{font-size:clamp(38px,12vw,54px)!important}
+ .bakery-subtitle{max-width:88%!important}
+ .t2-half{
+   width:74px!important;height:74px!important;right:16px!important;
+   top:auto!important;bottom:10px!important;
+ }
+ .t2-half:after{width:40px;height:40px;right:-10px;bottom:-8px;border-radius:11px}
+ .t2-squig{right:72px!important;bottom:14px!important;width:78px!important;height:32px!important}
+ .assistant-intro{padding:18px!important;border-radius:16px!important}
+ .popular-title{font-size:29px!important}
+ .product-card-photo{height:245px!important}
+}
+
 </style>
 """, unsafe_allow_html=True)
 
