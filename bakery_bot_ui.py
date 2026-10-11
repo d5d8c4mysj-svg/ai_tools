@@ -645,6 +645,148 @@ header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [dat
   }
 }
 
+
+/* ===== THEME 2 V5: BLUE + CREAM FINAL DIRECTION ===== */
+:root{
+  --cream:#FFF7E6;
+  --paper:#FFFDF7;
+  --blue:#7189D8;
+  --blue-soft:#D7E3F4;
+  --pink:#F3B7D0;
+  --sage:#C8D18D;
+  --butter:#F3D978;
+  --ink:#25231F;
+  --muted:#716A63;
+}
+.stApp{background:var(--cream)!important}
+
+/* Hero: open cream layout with a purposeful blue accent */
+.pw-gingham{
+  position:relative!important;
+  background:var(--paper)!important;
+  border:0!important;
+  border-radius:0!important;
+  padding:32px 34px 30px!important;
+  margin:8px 0 22px!important;
+  box-shadow:8px 8px 0 var(--blue)!important;
+  overflow:visible!important;
+}
+.pw-gingham:after{display:none!important}
+.pw-label{max-width:100%!important}
+.bakery-name{
+  max-width:720px!important;
+  font-size:clamp(40px,6vw,62px)!important;
+}
+.bakery-subtitle{max-width:560px!important}
+
+/* Blue/cream ordering area without the report-callout feeling */
+.assistant-intro{
+  background:var(--blue-soft)!important;
+  border:0!important;
+  border-radius:22px!important;
+  padding:18px 22px!important;
+  margin:8px 0 7px!important;
+  position:relative!important;
+}
+.assistant-intro:before{
+  display:block!important;
+  content:"START YOUR ORDER"!important;
+  width:max-content!important;
+  margin:0 0 8px!important;
+  padding:4px 9px!important;
+  background:var(--paper)!important;
+  border-radius:999px!important;
+  font-family:"DM Mono",monospace!important;
+  font-size:9px!important;
+  letter-spacing:.04em!important;
+}
+.assistant-title{font-size:25px!important}
+.assistant-copy{color:#51545B!important}
+
+/* Chat/input keep the blue as the action colour */
+.chat-row.user .chat-bubble{background:var(--pink)!important}
+[data-testid="stForm"]{
+  background:var(--paper)!important;
+  border:1.5px solid var(--blue)!important;
+  border-radius:999px!important;
+}
+[data-testid="stFormSubmitButton"] button,
+[data-testid="stFormSubmitButton"] button:hover{
+  background:var(--blue)!important;
+  color:white!important;
+  border:0!important;
+}
+
+/* Menu stays photography-first */
+.pw-section-head{
+  padding-bottom:8px!important;
+  border-bottom:3px solid var(--blue)!important;
+}
+.popular-title{
+  color:var(--ink)!important;
+  font-size:30px!important;
+}
+.script-note{
+  background:var(--pink)!important;
+  color:var(--ink)!important;
+  transform:none!important;
+}
+.product-card-shell,.tile-0,.tile-1,.tile-2{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+.product-card-photo{
+  height:225px!important;
+  border-radius:16px!important;
+}
+.tile-0 .product-card-media:after{content:"BAKED TODAY"!important;background:var(--butter)!important}
+.tile-1 .product-card-media:after{content:"FAVOURITE"!important;background:var(--pink)!important}
+.tile-2 .product-card-media:after{content:"OUR PICK"!important;background:var(--sage)!important}
+
+/* Small blue detail at the top, instead of random shapes */
+.loaf-top{
+  border-bottom:1px solid rgba(113,137,216,.45)!important;
+}
+.loaf-top-mark{
+  background:var(--blue)!important;
+  color:white!important;
+}
+
+/* Mobile */
+@media(max-width:768px){
+  .pw-gingham{
+    padding:22px 18px 20px!important;
+    margin:6px 0 17px!important;
+    box-shadow:5px 5px 0 var(--blue)!important;
+  }
+  .bakery-name{
+    font-size:clamp(32px,9vw,42px)!important;
+    margin-bottom:9px!important;
+  }
+  .bakery-subtitle{
+    font-size:13px!important;
+    max-width:100%!important;
+  }
+  .assistant-intro{
+    padding:14px 16px!important;
+    border-radius:16px!important;
+  }
+  .assistant-title{font-size:21px!important}
+  .assistant-copy{font-size:13px!important}
+  .popular-title{font-size:24px!important}
+  .pw-section-head{
+    margin-top:25px!important;
+    padding-bottom:7px!important;
+  }
+  .product-card-photo{
+    height:185px!important;
+    border-radius:13px!important;
+  }
+  .product-card-name{font-size:16px!important}
+  .product-card-desc{font-size:11px!important}
+}
+
 </style>
 """, unsafe_allow_html=True)
 
