@@ -429,9 +429,15 @@ Advance notice required for custom orders: {advance_notice}. When a customer req
 Items that are OUT OF STOCK today and must NOT be offered or confirmed: {sold_out_items if sold_out_items else "none"}.
 If asked about something outside this, direct customers to {contact}.
 Speak like a fast, friendly bakery ordering assistant, not a general chatbot.
-Keep visible replies SHORT by default:
-- For greetings, casual chat, simple menu questions, recommendations, and order follow-ups, use 1-3 short sentences.
-- Usually stay under 45 words unless the customer explicitly asks for detail.
+VISIBLE REPLY LENGTH IS A HARD RULE:
+- Greetings such as "hi", "hey", "heyyy": ONE short sentence only, maximum 15 words. Example: "Heyyy! What are you craving today?"
+- Unclear/random messages such as "blabla": ONE short sentence only, maximum 18 words. Example: "I didn't quite catch that. What are you looking for?"
+- Simple menu, price, ingredient, availability, or business questions: maximum 2 short sentences.
+- Recommendations: suggest at most 2 products, then ask ONE short question.
+- During an order: ask only for the NEXT missing detail. Do not ask several questions at once.
+- Normal visible replies should stay under 35 words.
+- Only exceed 35 words when necessary for allergen uncertainty, an important ordering constraint, or a final order summary.
+- Never add a second paragraph just to sound friendly.
 - Ask only ONE useful next question at a time.
 - Do not list the whole menu unless the customer asks to see the menu or several options are genuinely needed.
 - If recommending products, suggest at most 2 relevant menu items, include their prices when useful, and then ask one short follow-up such as whether they want one added.
@@ -481,6 +487,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.order_email_sent = False
         st.session_state.order_number = None
         st.session_state.orders_this_session = 0
+        st.session_state.awaiting_assistant = False
 
     # Header
     st.markdown(
@@ -521,6 +528,16 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
     if not send_message:
         user_input = None
+
+    # Stage 1: save the customer's message and rerun immediately.
+    # This makes the sent message visible before the Cohere request starts.
+    if user_input and not st.session_state.get("awaiting_assistant", False):
+        clean_user_input = user_input.strip()
+        if clean_user_input:
+            st.session_state.messages.append({"role": "user", "content": clean_user_input})
+            st.session_state.display_messages.append({"role": "user", "content": clean_user_input})
+            st.session_state.awaiting_assistant = True
+            st.rerun()
 
     # Favourites: two per row
     visible_menu_items = [item for item in menu if item.get("Item")][:6]
@@ -603,7 +620,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
         if order_count > 0:
             if st.button("Start new order", key="top_start_new_order"):
-                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_number"]:
+                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_number", "awaiting_assistant"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
@@ -613,39 +630,37 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             f"This chat has reached its message limit for one session. "
             f"Please contact {contact} directly, or start a new order."
         )
-        user_input = None
 
-    if user_input:
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        st.session_state.display_messages.append({"role": "user", "content": user_input})
+    # Stage 2: on the immediate rerun, the user's message is already visible.
+    # Now show the cake and request the assistant response exactly once.
+    if st.session_state.get("awaiting_assistant", False):
+        thinking_slot.markdown(
+            '<div class="pw-cake-loader" aria-label="Assistant is responding">'
+            '<div class="pw-cake-dots"><span></span><span></span><span></span></div>'
+            '<div class="pw-whole-cake">'
+            '<div class="pw-cake-top"><i class="pw-cherry ch1"></i><i class="pw-cherry ch2"></i><i class="pw-cherry ch3"></i></div>'
+            '<div class="pw-cake-icing"></div>'
+            '<div class="pw-cake-body"><i class="pw-cake-eye left"></i><i class="pw-cake-eye right"></i><i class="pw-cake-smile"></i></div>'
+            '<div class="pw-cake-plate"></div></div></div>',
+            unsafe_allow_html=True
+        )
 
         try:
-            thinking_slot.markdown(
-                '<div class="pw-cake-loader" aria-label="Assistant is responding">'
-                '<div class="pw-cake-dots"><span></span><span></span><span></span></div>'
-                '<div class="pw-whole-cake">'
-                '<div class="pw-cake-top"><i class="pw-cherry ch1"></i><i class="pw-cherry ch2"></i><i class="pw-cherry ch3"></i></div>'
-                '<div class="pw-cake-icing"></div>'
-                '<div class="pw-cake-body"><i class="pw-cake-eye left"></i><i class="pw-cake-eye right"></i><i class="pw-cake-smile"></i></div>'
-                '<div class="pw-cake-plate"></div></div></div>',
-                unsafe_allow_html=True
-            )
-            try:
-                response = co.chat(model="command-r-plus-08-2024", messages=st.session_state.messages)
-            finally:
-                thinking_slot.empty()
+            response = co.chat(model="command-r-plus-08-2024", messages=st.session_state.messages)
             bot_reply = response.message.content[0].text
         except Exception:
-            st.session_state.messages.pop()
-            st.session_state.display_messages.pop()
+            thinking_slot.empty()
+            st.session_state.awaiting_assistant = False
             st.session_state.display_messages.append({
                 "role": "assistant",
-                "content": "Sorry, I'm having trouble responding right now. Please try again in a moment, or contact the business directly."
+                "content": "Sorry, I'm having trouble responding right now. Please try again in a moment."
             })
             st.rerun()
 
+        thinking_slot.empty()
         order_match = re.search(r"ORDER_SUMMARY:\s*(\{.*\})", bot_reply, re.DOTALL)
         display_reply = bot_reply
+
         if order_match:
             display_reply = bot_reply[:order_match.start()].strip()
             try:
@@ -654,36 +669,59 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 if parsed_order.get("status") == "confirmed" and get_missing_order_fields(parsed_order):
                     parsed_order["status"] = "in_progress"
 
-                # Backstop: verify the advance notice in real Python, not AI arithmetic.
-                notice_check = check_advance_notice(parsed_order.get("requested_datetime_iso"), advance_notice)
+                notice_check = check_advance_notice(
+                    parsed_order.get("requested_datetime_iso"), advance_notice
+                )
                 notice_warning = None
-                if parsed_order.get("status") == "confirmed" and notice_check.get("checked") and not notice_check.get("ok"):
+                if (
+                    parsed_order.get("status") == "confirmed"
+                    and notice_check.get("checked")
+                    and not notice_check.get("ok")
+                ):
                     parsed_order["status"] = "in_progress"
                     notice_warning = (
-                        f"Let me double check that. It's only about {notice_check['actual_hours']:.1f} hours from now, "
-                        f"and we need {notice_check['required_hours']:.0f} hours' notice for this. "
-                        f"Could you choose a later date or time, or confirm you'd still like to proceed?"
+                        f"It's only about {notice_check['actual_hours']:.1f} hours from now, "
+                        f"and we need {notice_check['required_hours']:.0f} hours' notice. "
+                        f"Could you choose a later time, or confirm you'd still like to proceed?"
                     )
 
                 st.session_state.current_order = parsed_order
 
-                if parsed_order.get("status") == "confirmed" and not st.session_state.get("order_email_sent", False):
+                if (
+                    parsed_order.get("status") == "confirmed"
+                    and not st.session_state.get("order_email_sent", False)
+                ):
                     if not st.session_state.get("order_number"):
                         st.session_state.order_number = random.randint(1000, 9999)
                     try:
-                        send_order_email(parsed_order, business_name, contact, st.session_state.order_number)
+                        send_order_email(
+                            parsed_order,
+                            business_name,
+                            contact,
+                            st.session_state.order_number,
+                        )
                         st.session_state.order_email_sent = True
                     except Exception:
                         pass
-                    st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
-                    display_reply += f"\n\nYour order #{st.session_state.order_number} is confirmed. We'll be in touch shortly."
+
+                    st.session_state.orders_this_session = (
+                        st.session_state.get("orders_this_session", 0) + 1
+                    )
+                    display_reply += (
+                        f"\n\nOrder #{st.session_state.order_number} is confirmed. "
+                        f"We'll be in touch shortly."
+                    )
                 elif notice_warning:
                     display_reply += f"\n\n{notice_warning}"
+
             except json.JSONDecodeError:
                 pass
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-        st.session_state.display_messages.append({"role": "assistant", "content": display_reply})
+        st.session_state.display_messages.append(
+            {"role": "assistant", "content": display_reply}
+        )
+        st.session_state.awaiting_assistant = False
         st.rerun()
 
     st.markdown('<div class="loaf-footer">Powered by Loaf</div>', unsafe_allow_html=True)
