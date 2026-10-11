@@ -1999,32 +1999,117 @@ Red Oxide #5B1C23
 }
 
 
-/* ===== THEME 2 V13: MOBILE INPUT POLISH ===== */
+/* ===== THEME 2 V13: EDITORIAL CATALOGUE + MOBILE SWIPE ===== */
 
-/* Readable, softer input colours */
-[data-testid="stForm"] input{
-  color:#2F3438!important;
-  -webkit-text-fill-color:#2F3438!important;
-  opacity:1!important;
+/* Make ordering area more compact */
+.assistant-intro{
+  padding:13px 20px 11px!important;
+  margin:12px 0 9px!important;
 }
-[data-testid="stForm"] input::placeholder{
-  color:#667785!important;
-  -webkit-text-fill-color:#667785!important;
-  opacity:1!important;
+.assistant-title:before{font-size:19px!important}
+.chat-row{margin:8px 0!important}
+.chat-row.assistant .chat-bubble{
+  max-width:500px!important;
+  font-size:13px!important;
+}
+[data-testid="stForm"]{
+  margin:8px 0 14px!important;
+  padding:7px 9px!important;
 }
 
-/* Pull Popular right now closer to the composer */
+/* Catalogue-style heading */
 .pw-section-head{
-  margin-top:8px!important;
+  margin:16px 0 11px!important;
+  padding:0!important;
+  align-items:center!important;
+}
+.popular-title{
+  font-size:26px!important;
+  letter-spacing:-.025em!important;
+}
+.script-note{
+  font-size:9px!important;
+  padding:4px 8px!important;
 }
 
+/* Desktop: editorial product tiles with smaller photography */
+.product-card-shell,.tile-0,.tile-1,.tile-2{
+  margin-bottom:20px!important;
+}
+.product-card-photo,
+.tile-1 .product-card-photo,
+.tile-2 .product-card-photo{
+  height:160px!important;
+}
+.product-card-copy{
+  padding:8px 7px 8px!important;
+  border-left:0!important;
+  border-top:2px solid var(--blue)!important;
+}
+.tile-1 .product-card-copy{border-top-color:var(--oxide)!important}
+.tile-2 .product-card-copy{border-top-color:var(--taupe)!important}
+.product-card-name{font-size:16px!important}
+.product-card-desc{font-size:10.5px!important}
+
+/* MOBILE: turn Streamlit's product columns into a horizontal swipe rail */
 @media(max-width:768px){
+  .assistant-intro{
+    padding:12px 14px 10px!important;
+    margin:10px 0 8px!important;
+  }
+  .assistant-title:before{font-size:17px!important}
+  .chat-row{margin:7px 0!important}
   [data-testid="stForm"]{
-    margin-bottom:4px!important;
+    margin:7px 0 12px!important;
+    padding:6px 8px!important;
   }
+
   .pw-section-head{
-    margin-top:6px!important;
+    margin:14px 0 10px!important;
   }
+  .popular-title{font-size:22px!important}
+
+  /* The horizontal block immediately after the section heading is the favourites row */
+  .pw-section-head + div [data-testid="stHorizontalBlock"],
+  .pw-section-head + [data-testid="stHorizontalBlock"]{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    gap:12px!important;
+    scroll-snap-type:x mandatory!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding:0 2px 10px!important;
+    scrollbar-width:none!important;
+  }
+  .pw-section-head + div [data-testid="stHorizontalBlock"]::-webkit-scrollbar,
+  .pw-section-head + [data-testid="stHorizontalBlock"]::-webkit-scrollbar{
+    display:none!important;
+  }
+  .pw-section-head + div [data-testid="stColumn"],
+  .pw-section-head + div [data-testid="column"],
+  .pw-section-head + [data-testid="stHorizontalBlock"] > [data-testid="stColumn"],
+  .pw-section-head + [data-testid="stHorizontalBlock"] > [data-testid="column"]{
+    flex:0 0 76vw!important;
+    width:76vw!important;
+    min-width:76vw!important;
+    scroll-snap-align:start!important;
+  }
+
+  .product-card-shell{
+    margin-bottom:0!important;
+  }
+  .product-card-photo,
+  .tile-1 .product-card-photo,
+  .tile-2 .product-card-photo{
+    height:155px!important;
+  }
+  .product-card-copy{
+    padding:7px 5px 8px!important;
+    border-top-width:2px!important;
+  }
+  .product-card-name{font-size:15px!important}
+  .product-card-desc{font-size:10px!important}
 }
 
 </style>
