@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import cohere
 import pandas as pd
 import json
@@ -466,15 +465,49 @@ def get_missing_order_fields(order):
     return missing
 
 
-def deterministic_next_question(order):
+def mask_contact(value):
+    value = str(value or "")
+    if "@" in value:
+        name, domain = value.split("@", 1)
+        return (name[:2] + "***@" + domain) if name else "***@" + domain
+    digits = re.sub(r"\D", "", value)
+    if len(digits) >= 4:
+        return "••••••" + digits[-4:]
+    return "••••"
+
+def deterministic_checkout_reply(order):
+    """Python owns checkout progression after Cohere extracts structured state."""
     missing = get_missing_order_fields(order)
-    if "fulfillment method" in missing: return "Would you like pickup or delivery?"
-    if "delivery address" in missing: return "What's the delivery address?"
-    if "requested date/time" in missing: return "What date and time would you like?"
-    if "customer name" in missing and "customer contact" in missing: return "What's your name and contact number or email?"
-    if "customer name" in missing: return "What's your name?"
-    if "customer contact" in missing: return "What's your contact number or email?"
-    return None
+
+    if "fulfillment method" in missing:
+        return "Would you like pickup or delivery?", False
+
+    if "requested date/time" in missing:
+        return "What date and time would you like?", False
+
+    if "delivery address" in missing:
+        return "What's the delivery address?", False
+
+    # Ask name + contact together whenever either is missing.
+    if "customer name" in missing or "customer contact" in missing:
+        return "What's your name and contact number or email?", False
+
+    # All required fields exist. Python forces one final confirmation prompt.
+    items = order.get("items") or []
+    item_lines = []
+    for item in items:
+        qty = item.get("quantity", 1)
+        name = item.get("item", "Item")
+        item_lines.append(f"- {qty}x {name}")
+
+    when = order.get("requested_datetime") or "Requested time"
+    fulfillment = str(order.get("fulfillment") or "").title()
+    contact = mask_contact(order.get("customer_contact"))
+
+    summary = "Confirm this order?\\n" + "\\n".join(item_lines)
+    summary += f"\\n- {fulfillment}\\n- {when}\\n- Contact: {contact}"
+    return summary, True
+
 
 def normalize_and_validate_slug(raw_slug):
     slug = raw_slug.strip().lower()
@@ -688,12 +721,6 @@ def render_chat_message(role, content, business_name):
         unsafe_allow_html=True
     )
 
-
-def autofocus_chat_input():
-    components.html("""<script>
-    const f=()=>{try{const d=window.parent.document;const el=[...d.querySelectorAll('input')].find(x=>(x.getAttribute('placeholder')||'').toLowerCase().includes('pink whisk'));if(el){el.focus({preventScroll:true});const n=el.value.length;el.setSelectionRange(n,n);}}catch(e){}};
-    setTimeout(f,120);setTimeout(f,450);
-    </script>""",height=0,width=0)
 
 def run_chatbot(business):
     business_name = business["business_name"]
@@ -1034,9 +1061,9 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     )
 
                 st.session_state.current_order = parsed_order
-                next_required_question = deterministic_next_question(parsed_order)
-                if next_required_question and parsed_order.get("status") != "confirmed":
-                    display_reply = next_required_question
+                state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
+                if parsed_order.get("status") != "confirmed":
+                    display_reply = state_reply
 
                 if (
                     parsed_order.get("status") == "confirmed"
@@ -1072,43 +1099,13 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 pass
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-        # Deterministic checkout guard: the model may try to confirm before
-        # collecting customer details. Replace that with the next required question.
-        current_for_guard = st.session_state.get("current_order") or {}
-        missing_for_guard = get_missing_order_fields(current_for_guard)
-        if "Confirm this order?" in str(display_reply) and missing_for_guard:
-            if "fulfillment method" in missing_for_guard:
-                display_reply = "Would you like pickup or delivery?"
-            elif "delivery address" in missing_for_guard:
-                display_reply = "What's the delivery address?"
-            elif "requested date/time" in missing_for_guard:
-                display_reply = "What date and time would you like?"
-            elif "customer name" in missing_for_guard and "customer contact" in missing_for_guard:
-                display_reply = "What's your name and contact number or email?"
-            elif "customer name" in missing_for_guard:
-                display_reply = "What's your name?"
-            elif "customer contact" in missing_for_guard:
-                display_reply = "What's your contact number or email?"
-
-        # Cohere may sometimes return only hidden ORDER_SUMMARY JSON after
-        # extracting a reply such as "4 pm". Never show an empty assistant bubble.
+        # Never render an empty assistant bubble.
         if not str(display_reply).strip():
             current = st.session_state.get("current_order") or {}
-            missing_now = get_missing_order_fields(current)
-            if "fulfillment method" in missing_now:
-                display_reply = "Would you like pickup or delivery?"
-            elif "delivery address" in missing_now:
-                display_reply = "What's the delivery address?"
-            elif "requested date/time" in missing_now:
-                display_reply = "What date and time would you like?"
-            elif "customer name" in missing_now and "customer contact" in missing_now:
-                display_reply = "What's your name and contact number or email?"
-            elif "customer name" in missing_now:
-                display_reply = "What's your name?"
-            elif "customer contact" in missing_now:
-                display_reply = "What's your contact number or email?"
+            if current:
+                display_reply, _ = deterministic_checkout_reply(current)
             else:
-                display_reply = "Please confirm the order details to continue."
+                display_reply = "What would you like to order?"
 
         st.session_state.display_messages.append(
             {"role": "assistant", "content": display_reply}
@@ -1191,7 +1188,24 @@ def owner_login_gate(title, caption):
     st.rerun()
 
 
-    autofocus_chat_input()
+
+    st.markdown("""
+<script>
+(function(){
+  function focusLoafInput(){
+    const inputs = Array.from(document.querySelectorAll('input'));
+    const el = inputs.find(x => (x.placeholder || '').toLowerCase().includes('pink whisk'));
+    if(el && document.activeElement !== el){
+      el.focus({preventScroll:true});
+      try { el.setSelectionRange(el.value.length, el.value.length); } catch(e) {}
+    }
+  }
+  requestAnimationFrame(focusLoafInput);
+  setTimeout(focusLoafInput, 80);
+  setTimeout(focusLoafInput, 250);
+})();
+</script>
+""", unsafe_allow_html=True)
 
 def quick_update_view():
     if not owner_login_gate(
@@ -1450,3 +1464,4 @@ elif mode == "quickupdate":
     quick_update_view()
 else:
     customer_view()
+
