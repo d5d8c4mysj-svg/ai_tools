@@ -433,6 +433,9 @@ def check_advance_notice(requested_datetime_iso, advance_notice_text):
     }
 
 
+def is_custom_order(order):
+    return str(order.get("order_type") or "retail").lower() == "custom"
+
 def get_missing_order_fields(order):
     missing = []
     items = order.get("items", [])
@@ -704,6 +707,22 @@ def run_chatbot(business):
             fulfillment_instructions = f"""This business offers BOTH pickup and delivery. Ask the customer which they'd prefer. If pickup, no address is needed (pickup is at {address}). If delivery, ask for their delivery address."""
 
         prompt = f"""You are a friendly ordering assistant for {business_name}.
+CRITICAL ORDERING RULES:
+- Standard products already listed on the menu are RETAIL orders, even if named Cake, Cheesecake or Cupcake. Never invent a custom-cake rule for them.
+- order_type is "custom" ONLY when the customer explicitly requests a bespoke/custom cake or meaningful customization. Otherwise use "retail".
+- The bakery's advance-notice rule applies ONLY to custom orders. Standard menu orders can be requested without that custom-order notice restriction, subject to availability and business hours.
+- Never invent bakery policies, preparation requirements, availability, dates or times.
+- Never promise "I will check with the bakery/team and get back to you."
+- Never invent a pickup/delivery time. If the customer gives a date but no exact clock time, ask for the time and keep requested_datetime_iso null. If they give a time but no date, ask for the date.
+- "Morning", "afternoon", "evening", "later" and similar are too vague; ask for an exact time.
+- Do not proactively ask about customizations for a normal menu order.
+- Do not ask "anything else?" once required details are complete.
+- Use exactly ONE final confirmation step: show a concise summary and ask "Confirm this order?"
+- Do not set status to "confirmed" until the customer explicitly says yes/confirm after that summary.
+- Keep checkout replies short. Do not argue with the customer or repeat a policy.
+- In visible summaries, mask contact details; do not echo the full phone number/email.
+- After secure submission, say the order is RECEIVED, not accepted/confirmed by the bakery.
+
 You know the menu includes {menu}, including each item's price and ingredients. If a customer asks what something is made of or about allergens, answer using the ingredients listed.
 The business address is {address}.
 Delivery and pickup details: {delivery_info}
@@ -899,7 +918,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             st.write(f"**Estimated total:** {order.get('estimated_total', 'N/A')}")
             st.write(f"**Fulfillment:** {order.get('fulfillment', 'unspecified')}")
             if order.get("status") == "confirmed":
-                st.success(f"Order #{st.session_state.get('order_number')} confirmed")
+                st.success(f"Order #{st.session_state.get('order_number')} received")
             else:
                 st.info("Order in progress")
         else:
@@ -956,8 +975,10 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 if parsed_order.get("status") == "confirmed" and get_missing_order_fields(parsed_order):
                     parsed_order["status"] = "in_progress"
 
-                notice_check = check_advance_notice(
-                    parsed_order.get("requested_datetime_iso"), advance_notice
+                notice_check = (
+                    check_advance_notice(parsed_order.get("requested_datetime_iso"), advance_notice)
+                    if is_custom_order(parsed_order)
+                    else {"checked": False}
                 )
                 notice_warning = None
                 if (
@@ -996,7 +1017,11 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         st.session_state.order_number = db_order_number
                         st.session_state.order_saved = True
                         st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
-                        display_reply += f"\n\nOrder #{db_order_number} is confirmed. Final total: ₹{db_total}."
+                        display_reply = (
+                            f"Order received! #{db_order_number}\n\n"
+                            f"Final total: ₹{db_total}. "
+                            "The bakery will review and accept or decline it."
+                        )
                 elif notice_warning:
                     display_reply += f"\n\n{notice_warning}"
 
