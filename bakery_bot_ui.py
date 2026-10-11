@@ -24,184 +24,8 @@ mode = params.get("mode", "customer")
 
 st.set_page_config(page_title="Loaf")
 
-# Loaf design: flat pink block, big bold headline, thin black rules, square corners.
-THEME1_CSS = """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Archivo:wght@400;500;600;800&family=DM+Mono:wght@400;500&display=swap');
-:root { --pink:#F2C6D8; --pink-deep:#E7A6C1; --ink:#111111; --muted:#5C5558; --paper:#FFFFFF; --line:#111111; --red:#111111; --olive:#111111; --cream:#FFFFFF; }
-html, body, [class*="css"] { font-family:"Archivo", sans-serif; }
-*, *::before, *::after { transition:none !important; }
-.stApp { background:var(--paper); color:var(--ink); }
-.block-container { max-width:880px; padding:0 28px 3rem !important; margin:0 auto !important; background:transparent; }
-#MainMenu, footer { visibility:hidden; }
-header[data-testid="stHeader"], .stApp > header { display:none !important; height:0 !important; }
-[data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"],
-[data-testid="stSidebar"], [data-testid="stBottom"], [data-testid="stBottomBlockContainer"] { display:none !important; }
-[data-testid="stVerticalBlock"] { gap:.7rem; }
-*:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
-.loaf-wordmark { font-weight:800; font-size:18px; }
-
-/* Header: one flat pink block, big left-aligned name */
-.pw-strip { display:none; }
-.pw-gingham { margin:0 -28px 0; padding:56px 28px 44px; background:var(--pink); }
-.pw-label { max-width:none; margin:0; padding:0; background:transparent; border:0; text-align:left; }
-.bakery-name { font-weight:800; font-size:clamp(44px, 9vw, 92px); line-height:.98; letter-spacing:-.03em; color:var(--ink); margin:0 0 18px; }
-.bakery-subtitle { max-width:460px; margin:0; color:var(--ink); font-size:16px; line-height:1.55; }
-.pw-rule { height:1px; background:var(--ink); margin:28px 0 18px; }
-
-/* Assistant intro */
-.assistant-intro { background:transparent; border:0; padding:0; margin:8px 0 4px; }
-.assistant-title { font-weight:800; font-size:30px; letter-spacing:-.02em; margin-bottom:6px; }
-.assistant-copy { color:var(--muted); font-size:15px; line-height:1.6; max-width:480px; }
-
-/* Chat */
-.chat-row { display:flex; width:100%; margin:12px 0; }
-.chat-row.user { justify-content:flex-end; }
-.chat-wrap { max-width:82%; }
-.chat-name { font-family:"DM Mono", monospace; font-size:11px; color:var(--muted); margin:0 0 4px; }
-.chat-row.user .chat-name { text-align:right; }
-.chat-bubble { font-size:15px; line-height:1.6; padding:11px 15px; border:1px solid var(--ink); }
-.chat-row.assistant .chat-bubble { background:var(--paper); color:var(--ink); }
-.chat-row.user .chat-bubble { background:var(--pink); color:var(--ink); }
-[data-testid="stChatMessage"] { display:none; }
-
-/* Composer */
-[data-testid="stForm"] { width:100% !important; margin:16px 0 6px !important; padding:5px !important; border:1px solid var(--ink) !important; border-radius:0 !important; background:var(--paper) !important; }
-[data-testid="stForm"]:focus-within { outline:2px solid var(--ink); }
-[data-testid="stForm"] [data-testid="stHorizontalBlock"] { display:grid !important; grid-template-columns:minmax(0, 1fr) 44px !important; gap:6px !important; align-items:center !important; width:100% !important; }
-[data-testid="stForm"] [data-testid="stColumn"], [data-testid="stForm"] [data-testid="column"] { width:auto !important; min-width:0 !important; flex:none !important; }
-[data-testid="stForm"] [data-baseweb], [data-testid="stForm"] [data-testid="stTextInputRootElement"] { background:transparent !important; border:0 !important; box-shadow:none !important; }
-[data-testid="stForm"] input { background:transparent !important; border:0 !important; box-shadow:none !important; height:44px !important; padding:0 14px !important; font-size:15px !important; color:var(--ink) !important; }
-[data-testid="stForm"] input::placeholder { color:#8A8286; }
-[data-testid="InputInstructions"], [data-testid="stInputInstructions"], .stTextInput small { display:none !important; }
-[data-testid="stFormSubmitButton"] button { width:44px !important; min-width:44px !important; height:44px !important; padding:0 !important; border-radius:0 !important; background:var(--ink) !important; color:var(--paper) !important; border:0 !important; font-size:18px !important; }
-[data-testid="stFormSubmitButton"] button:hover { background:var(--ink) !important; }
-
-/* Favourites: flat cards, no tabs */
-.pw-section-head { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin:4px 0 20px; }
-.popular-title { font-weight:800; font-size:40px; letter-spacing:-.03em; }
-.script-note { font-family:"DM Mono", monospace; font-size:12px; color:var(--muted); }
-.product-card-shell { background:var(--paper); border:1px solid var(--ink); margin:0 0 18px; }
-.product-card-media { padding:0; }
-.product-card-photo { display:block; width:100%; aspect-ratio:4 / 3; object-fit:cover; border-bottom:1px solid var(--ink); }
-.product-card-photo.placeholder { display:flex; align-items:center; justify-content:center; font-weight:800; font-size:56px; color:var(--ink); background:var(--pink); }
-.product-card-copy { padding:12px 14px 14px; }
-.product-card-topline { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
-.product-card-name { font-weight:800; font-size:19px; line-height:1.2; letter-spacing:-.01em; }
-.product-card-price { font-family:"DM Mono", monospace; font-weight:500; font-size:14px; white-space:nowrap; }
-.product-card-desc { margin-top:6px; font-size:13px; line-height:1.55; color:var(--muted); }
-
-/* Expanders and buttons */
-[data-testid="stExpander"] { background:transparent !important; border:0 !important; box-shadow:none !important; margin-bottom:10px; }
-[data-testid="stExpander"] details { background:var(--paper) !important; border:1px solid var(--ink) !important; border-radius:0 !important; }
-[data-testid="stExpander"] summary { font-weight:800; font-size:16px; color:var(--ink); }
-.order-empty { color:var(--muted); font-size:14px; }
-.stButton > button { background:var(--ink); color:var(--paper); border:1px solid var(--ink); border-radius:0; font-weight:600; padding:.4rem 1.3rem; }
-.stButton > button:hover { background:var(--ink); color:var(--paper); border-color:var(--ink); }
-.loaf-footer { text-align:center; color:#8A8286; font-family:"DM Mono", monospace; font-size:11px; margin-top:36px; }
-
-/* Loading cake */
-.pw-cake-loader { position:relative; width:52px; height:59px; margin:4px 0 6px 3px; }
-.pw-cake-dots { position:absolute; top:0; left:11px; width:30px; display:flex; justify-content:space-between; align-items:center; }
-.pw-cake-dots span { width:5px; height:5px; border-radius:50%; background:var(--pink); animation:pwCakeDot 1s ease-in-out infinite; }
-.pw-cake-dots span:nth-child(2) { animation-delay:.14s; }
-.pw-cake-dots span:nth-child(3) { animation-delay:.28s; }
-.pw-whole-cake { position:absolute; left:2px; bottom:0; width:48px; height:47px; animation:pwCakeBob 1.2s ease-in-out infinite; }
-.pw-cake-body { position:absolute; left:6px; top:18px; width:36px; height:25px; box-sizing:border-box; background:#EABDB9; border:2px solid var(--ink); border-radius:3px 3px 8px 8px; }
-.pw-cake-body:before { content:""; position:absolute; left:0; right:0; top:8px; height:2px; background:#fff3e8; }
-.pw-cake-top { position:absolute; left:4px; top:11px; width:40px; height:12px; box-sizing:border-box; background:#FFF0E8; border:2px solid var(--ink); border-radius:50% 50% 34% 34%; z-index:3; }
-.pw-cake-icing { position:absolute; left:7px; top:18px; width:34px; height:7px; background:#E89FA1; z-index:4; border-radius:0 0 8px 8px; }
-.pw-cherry { position:absolute; width:7px; height:7px; border-radius:50%; background:#C96F76; border:1px solid var(--ink); top:-6px; }
-.pw-cherry.ch1 { left:7px; } .pw-cherry.ch2 { left:16px; top:-9px; } .pw-cherry.ch3 { right:7px; }
-.pw-cake-eye { position:absolute; top:9px; width:2px; height:3px; border-radius:50%; background:var(--ink); z-index:6; }
-.pw-cake-eye.left { left:9px; } .pw-cake-eye.right { right:9px; }
-.pw-cake-smile { position:absolute; left:14px; top:13px; width:6px; height:4px; border-bottom:1.5px solid var(--ink); border-radius:0 0 8px 8px; z-index:6; }
-.pw-cake-plate { position:absolute; left:3px; bottom:0; width:42px; height:5px; background:#ead9d0; border:1.5px solid var(--ink); border-radius:50%; box-sizing:border-box; }
-@keyframes pwCakeDot { 0%,70%,100% { opacity:.3; transform:translateY(0); } 35% { opacity:1; transform:translateY(-2px); } }
-@keyframes pwCakeBob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
-@media (prefers-reduced-motion:reduce) { .pw-cake-dots span, .pw-whole-cake { animation:none !important; } }
-
-@media (max-width:768px) {
-    .block-container { padding:0 16px 2.2rem !important; }
-    .pw-gingham { margin:0 -16px; padding:36px 16px 30px; }
-    .chat-wrap { max-width:92%; }
-    .popular-title { font-size:32px; }
-}
-
-
-:root { --ink:#6E2E34; --paper:#FFF7E6; --pink:#F7C8D3; --muted:#7A4650; --line:#6E2E34; --blush:#F7C8D3; --rose:#B46A72; --sage:#A8B58A; }
-.bakery-name, .assistant-title, .popular-title, .loaf-top-mark, .product-card-name,
-[data-testid="stExpander"] summary { font-family:"DM Serif Display", serif !important; font-style:italic; font-weight:400 !important; letter-spacing:0 !important; }
-.loaf-top { display:flex; justify-content:space-between; align-items:baseline; padding:20px 0 14px; border-bottom:1.5px solid var(--ink); font-size:13px; color:var(--ink); }
-.loaf-top-mark { font-size:26px; color:var(--ink); }
-.pw-gingham { margin:18px 0 0 !important; padding:44px 32px 38px !important; background:var(--blush) !important; border:1.5px solid var(--ink); }
-.bakery-name { font-size:clamp(56px, 11vw, 112px) !important; line-height:.95 !important; color:var(--ink) !important; }
-.bakery-subtitle { color:var(--ink); }
-.assistant-intro { background:var(--sage) !important; border:1.5px solid var(--ink) !important; padding:20px 22px !important; }
-.assistant-title { font-size:34px !important; color:var(--ink) !important; }
-.assistant-copy { color:var(--ink); }
-.chat-name { color:var(--muted); }
-.chat-bubble { border:1.5px solid var(--ink) !important; }
-.chat-row.assistant .chat-bubble { background:var(--blush); }
-.chat-row.user .chat-bubble { background:var(--sage); }
-[data-testid="stForm"] { background:var(--paper) !important; border:1.5px solid var(--ink) !important; }
-[data-testid="stFormSubmitButton"] button, [data-testid="stFormSubmitButton"] button:hover,
-.stButton > button, .stButton > button:hover { background:var(--ink) !important; color:var(--paper) !important; border:1.5px solid var(--ink) !important; }
-.popular-title { font-size:46px !important; color:var(--ink) !important; }
-.product-card-shell { border:1.5px solid var(--ink) !important; }
-.product-card-media { padding:10px 10px 0 !important; }
-.product-card-photo { border:1.5px solid var(--ink) !important; }
-.product-card-photo.placeholder { background:var(--paper) !important; color:var(--ink); }
-.product-card-name { font-size:23px !important; line-height:1.1 !important; }
-.product-card-price, .product-card-desc, .product-card-name { color:inherit !important; }
-.product-card-desc { font-size:13px; }
-.tile-0 { background:var(--blush); color:var(--ink); }
-.tile-1 { background:var(--sage); color:var(--ink); }
-.tile-2 { background:var(--rose); color:var(--paper); }
-[data-testid="stExpander"] details { background:var(--paper) !important; border:1.5px solid var(--ink) !important; }
-.order-empty, .loaf-footer { color:var(--muted); }
-
-/* Quieter, smaller, mobile friendly. Menu cards keep their stronger colours. */
-:root { --blush-lt:#FBE4E9; --sage-lt:#DCE3CB; }
-.loaf-top { padding:14px 0 10px !important; }
-.loaf-top-mark { font-size:22px !important; }
-.pw-gingham { margin:12px 0 0 !important; padding:22px 22px 20px !important; background:var(--blush-lt) !important; border:1px solid var(--ink) !important; }
-.bakery-name { font-size:clamp(32px, 7vw, 54px) !important; margin:0 0 8px !important; }
-.bakery-subtitle { font-size:14px !important; line-height:1.5 !important; max-width:none !important; }
-.pw-rule { margin:16px 0 12px !important; }
-.assistant-intro { background:var(--sage-lt) !important; border:1px solid var(--ink) !important; padding:16px 18px !important; margin:4px 0 !important; }
-.assistant-title { font-size:24px !important; margin-bottom:4px !important; }
-.assistant-copy { font-size:14px !important; line-height:1.5 !important; }
-.chat-bubble { border:1px solid var(--ink) !important; font-size:14px !important; padding:9px 13px !important; }
-.chat-row.assistant .chat-bubble { background:var(--blush-lt) !important; }
-.chat-row.user .chat-bubble { background:var(--sage-lt) !important; }
-[data-testid="stForm"] { border-width:1px !important; }
-.popular-title { font-size:30px !important; }
-.pw-section-head { margin:2px 0 14px !important; }
-@media (max-width:768px) {
-    .pw-gingham { padding:16px 16px 14px !important; }
-    .assistant-intro { padding:14px !important; }
-    .popular-title { font-size:26px !important; }
-    .product-card-name { font-size:20px !important; }
-}
-
-/* Cohesive menu: one card colour, photos fill the full card width, sage badge */
-.tile-0 { background:var(--blush) !important; color:var(--ink) !important; }
-.tile-1 { background:var(--sage) !important; color:var(--ink) !important; }
-.tile-2 { background:var(--rose) !important; color:var(--paper) !important; }
-.product-card-shell { border:1px solid var(--ink) !important; overflow:hidden; }
-.product-card-media { padding:0 !important; }
-.product-card-photo { display:block !important; width:100% !important; aspect-ratio:4 / 3 !important; object-fit:cover !important; border:0 !important; border-bottom:1px solid var(--ink) !important; }
-.product-card-photo.placeholder { background:var(--blush-lt) !important; }
-.product-card-price, .product-card-desc, .product-card-name { color:inherit !important; }
-.script-note { display:inline-block !important; background:var(--sage) !important; color:var(--ink) !important; border:1px solid var(--ink) !important; font-family:"DM Mono", monospace !important; font-size:11px !important; font-weight:500 !important; padding:2px 9px !important; }
-
-/* Final Theme 1 mobile image sizing */
-@media (max-width:768px) { .product-card-photo { width:100% !important; height:280px !important; aspect-ratio:auto !important; object-fit:cover !important; object-position:center !important; } }
-</style>
-"""
-
-THEME2_BASE = """
+# Loaf playful theme: periwinkle page, pink, lime and sky blocks, chunky outlines.
+st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=DM+Mono:wght@400;500&display=swap');
 :root { --blue:#6F86D6; --pink:#F2B8D6; --cream:#F6ECDF; --lime:#C8CE7C; --sky:#BFD6E8; --lav:#C9B8EA; --ink:#1B1B1B; --paper:#F6ECDF; }
@@ -262,22 +86,31 @@ header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [dat
 .order-empty { font-size:14px; }
 .stButton > button, .stButton > button:hover { background:var(--ink); color:var(--cream); border:2px solid var(--ink); border-radius:999px; font-weight:600; padding:.4rem 1.3rem; }
 .loaf-footer { text-align:center; font-family:"DM Mono", monospace; font-size:11px; margin-top:32px; }
-/*LOADER*/
+/* Loading cake */
+.pw-cake-loader { position:relative; width:52px; height:59px; margin:4px 0 6px 3px; }
+.pw-cake-dots { position:absolute; top:0; left:11px; width:30px; display:flex; justify-content:space-between; align-items:center; }
+.pw-cake-dots span { width:5px; height:5px; border-radius:50%; background:var(--pink); animation:pwCakeDot 1s ease-in-out infinite; }
+.pw-cake-dots span:nth-child(2) { animation-delay:.14s; }
+.pw-cake-dots span:nth-child(3) { animation-delay:.28s; }
+.pw-whole-cake { position:absolute; left:2px; bottom:0; width:48px; height:47px; animation:pwCakeBob 1.2s ease-in-out infinite; }
+.pw-cake-body { position:absolute; left:6px; top:18px; width:36px; height:25px; box-sizing:border-box; background:#EABDB9; border:2px solid var(--ink); border-radius:3px 3px 8px 8px; }
+.pw-cake-body:before { content:""; position:absolute; left:0; right:0; top:8px; height:2px; background:#fff3e8; }
+.pw-cake-top { position:absolute; left:4px; top:11px; width:40px; height:12px; box-sizing:border-box; background:#FFF0E8; border:2px solid var(--ink); border-radius:50% 50% 34% 34%; z-index:3; }
+.pw-cake-icing { position:absolute; left:7px; top:18px; width:34px; height:7px; background:#E89FA1; z-index:4; border-radius:0 0 8px 8px; }
+.pw-cherry { position:absolute; width:7px; height:7px; border-radius:50%; background:#C96F76; border:1px solid var(--ink); top:-6px; }
+.pw-cherry.ch1 { left:7px; } .pw-cherry.ch2 { left:16px; top:-9px; } .pw-cherry.ch3 { right:7px; }
+.pw-cake-eye { position:absolute; top:9px; width:2px; height:3px; border-radius:50%; background:var(--ink); z-index:6; }
+.pw-cake-eye.left { left:9px; } .pw-cake-eye.right { right:9px; }
+.pw-cake-smile { position:absolute; left:14px; top:13px; width:6px; height:4px; border-bottom:1.5px solid var(--ink); border-radius:0 0 8px 8px; z-index:6; }
+.pw-cake-plate { position:absolute; left:3px; bottom:0; width:42px; height:5px; background:#ead9d0; border:1.5px solid var(--ink); border-radius:50%; box-sizing:border-box; }
+@keyframes pwCakeDot { 0%,70%,100% { opacity:.3; transform:translateY(0); } 35% { opacity:1; transform:translateY(-2px); } }
+@keyframes pwCakeBob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
+@media (prefers-reduced-motion:reduce) { .pw-cake-dots span, .pw-whole-cake { animation:none !important; } }
+
+
 @media (max-width:768px) { .block-container { padding:0 12px 2.2rem !important; } .pw-label { max-width:76%; } .t2-half { width:96px; height:96px; right:-26px; } .bakery-name { font-size:clamp(30px, 9vw, 44px); } }
 </style>
-"""
-THEME2_CSS = THEME2_BASE.replace("/*LOADER*/", THEME1_CSS[THEME1_CSS.index("/* Loading cake */"):THEME1_CSS.index("@media (max-width:768px) {")])
-
-_theme_applied = False
-
-
-def apply_theme(theme):
-    """Emit one theme's CSS per run. theme1 is the classic look, theme2 the playful one."""
-    global _theme_applied
-    if _theme_applied:
-        return
-    _theme_applied = True
-    st.markdown(THEME2_CSS if theme == "theme2" else THEME1_CSS, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 
 MAX_MESSAGES_PER_SESSION = 40  # caps Cohere API spend per customer session
@@ -472,12 +305,8 @@ def run_chatbot(business):
     menu_photo_urls = business.get("menu_photo_urls") or []
     menu = business["menu"]
 
-    theme = params.get("theme") or business.get("theme") or "theme1"
-    if theme not in ("theme1", "theme2"):
-        theme = "theme1"
-    apply_theme(theme)
-    n_cols = 2 if theme == "theme2" else 3
-    deco = '<span class="t2-half"></span><span class="t2-squig"></span>' if theme == "theme2" else ""
+    n_cols = 2
+    deco = '<span class="t2-half"></span><span class="t2-squig"></span>'
 
     display_business_name = short_business_name(business_name)
     safe_business_name = html.escape(str(business_name))
@@ -858,7 +687,6 @@ def owner_view():
         "Out of stock today (comma separated, leave blank if none)",
         placeholder="e.g. Red velvet cake, Croissants"
     )
-    theme_choice = st.selectbox("Chatbot look", ["Keep as is", "Classic", "Playful"])
     menu_photos = st.file_uploader(
         "Product photos (optional, upload in the same order as your menu items)",
         accept_multiple_files=True,
@@ -906,13 +734,6 @@ def owner_view():
                 elif idx < len(existing_menu) and existing_menu[idx].get("PhotoURL"):
                     item["PhotoURL"] = existing_menu[idx].get("PhotoURL")
 
-            if theme_choice == "Classic":
-                theme_value = "theme1"
-            elif theme_choice == "Playful":
-                theme_value = "theme2"
-            else:
-                theme_value = (existing_business or {}).get("theme") or "theme1"
-
             business_data = {
                 "slug": clean_slug,
                 "business_name": business_name,
@@ -927,16 +748,10 @@ def owner_view():
                 "social_link": social_link,
                 "menu": menu_records,
                 "menu_photo_urls": menu_photo_urls,
-                "admin_password": password_hash,
-                "theme": theme_value
+                "admin_password": password_hash
             }
             try:
-                try:
-                    supabase.table("businesses").upsert(business_data, on_conflict="slug").execute()
-                except Exception:
-                    business_data.pop("theme", None)
-                    supabase.table("businesses").upsert(business_data, on_conflict="slug").execute()
-                    st.warning("Saved, but the look was not stored. Add a text column named theme to your businesses table in Supabase.")
+                supabase.table("businesses").upsert(business_data, on_conflict="slug").execute()
             except Exception:
                 st.error("Something went wrong saving your bot. Please try again in a moment.")
             else:
@@ -947,11 +762,8 @@ def owner_view():
 
 
 if mode == "owner":
-    apply_theme("theme1")
     owner_view()
 elif mode == "quickupdate":
-    apply_theme("theme1")
     quick_update_view()
 else:
     customer_view()
-    apply_theme("theme1")
