@@ -207,6 +207,18 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     object-position:center !important;
   }
 }
+
+/* Keep Loaf visually stable while Streamlit is processing a chat request. */
+[data-testid="stStatusWidget"],
+[data-testid="stStatusWidget"] *,
+.stApp[data-test-script-state="running"],
+.stApp[data-test-script-state="running"] > *,
+[data-stale="true"],
+[data-stale="true"] * {
+    opacity: 1 !important;
+    filter: none !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
