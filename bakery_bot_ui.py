@@ -533,8 +533,15 @@ def get_owned_business(slug):
 
 
 def get_business(slug):
+    """Customer storefront lookup. Never reads private owner/admin columns."""
     try:
-        result = supabase.table("businesses").select("*").eq("slug", slug).execute()
+        result = (
+            supabase.table("public_bakeries")
+            .select("id,slug,business_name,address,fulfillment_options,delivery_info,faq_info,business_hours,advance_notice,sold_out_items,social_link,menu,menu_photo_urls")
+            .eq("slug", slug)
+            .limit(1)
+            .execute()
+        )
     except Exception:
         st.error("Something went wrong looking that up. Please try again in a moment.")
         return None
@@ -613,7 +620,7 @@ def render_chat_message(role, content, business_name):
 
 def run_chatbot(business):
     business_name = business["business_name"]
-    contact = business["contact_email"]
+    contact = "the bakery directly"
     address = business["address"]
     fulfillment_options = business["fulfillment_options"]
     delivery_info = business["delivery_info"]
