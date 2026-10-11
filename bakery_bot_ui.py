@@ -218,6 +218,86 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     filter: none !important;
 }
 
+
+/* ===== NORMAL LOAF OWNER LOGIN ===== */
+.owner-login-shell{
+  max-width:520px;
+  margin:72px auto 0;
+}
+.owner-login-brand{
+  font-family:"Archivo",sans-serif;
+  font-size:14px;
+  font-weight:800;
+  letter-spacing:.12em;
+  color:#6E2E34;
+  margin-bottom:24px;
+}
+.owner-login-title{
+  font-family:"Archivo",sans-serif;
+  font-style:normal;
+  font-size:34px;
+  font-weight:700;
+  letter-spacing:-.025em;
+  color:#2F2928;
+  margin:0 0 7px;
+}
+.owner-login-copy{
+  font-size:14px;
+  line-height:1.5;
+  color:#756C68;
+  margin-bottom:22px;
+}
+
+/* Owner form only: undo the chat-composer form styling */
+.owner-login-marker + div [data-testid="stForm"],
+.owner-login-marker ~ div [data-testid="stForm"]{
+  padding:22px !important;
+  margin:0 !important;
+  border:1px solid #DED5CD !important;
+  border-radius:12px !important;
+  background:#FFFDF9 !important;
+}
+.owner-login-marker ~ div [data-testid="stForm"] [data-testid="stHorizontalBlock"]{
+  display:flex !important;
+}
+.owner-login-marker ~ div [data-testid="stForm"] input{
+  height:44px !important;
+  padding:0 12px !important;
+  background:#FFFFFF !important;
+  border:1px solid #D7CEC7 !important;
+  border-radius:8px !important;
+  color:#2F2928 !important;
+}
+.owner-login-marker ~ div [data-testid="stForm"] [data-baseweb="input"]{
+  background:#FFFFFF !important;
+  border-radius:8px !important;
+}
+.owner-login-marker ~ div [data-testid="stForm"] label{
+  font-size:13px !important;
+  font-weight:600 !important;
+  color:#443D39 !important;
+}
+.owner-login-marker ~ div [data-testid="stFormSubmitButton"] button{
+  width:100% !important;
+  min-width:100% !important;
+  height:44px !important;
+  margin-top:8px !important;
+  border-radius:8px !important;
+  background:#6E2E34 !important;
+  color:#FFF !important;
+  font-size:14px !important;
+  font-weight:600 !important;
+}
+.owner-login-help{
+  margin-top:12px;
+  font-size:12px;
+  color:#8A817C;
+}
+@media(max-width:768px){
+  .owner-login-shell{margin:34px auto 0;}
+  .owner-login-title{font-size:28px;}
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -802,24 +882,43 @@ def customer_view():
 
 
 def owner_login_gate(title, caption):
-    """Shared owner login for the full owner page and quick stock updates."""
-    st.title(title)
-    st.caption(caption)
-
+    """Shared Supabase Auth login for bakery owners."""
     if current_owner_id():
+        st.markdown(
+            '<div class="owner-login-shell">'
+            '<div class="owner-login-brand">LOAF</div>'
+            f'<div class="owner-login-title">{html.escape(title)}</div>'
+            f'<div class="owner-login-copy">{html.escape(caption)}</div>'
+            '</div>',
+            unsafe_allow_html=True
+        )
         st.caption(f"Signed in as {st.session_state.get('owner_email', 'bakery owner')}")
         if st.button("Sign out", key=f"signout_{title}"):
             auth_sign_out()
             st.rerun()
         return True
 
+    st.markdown(
+        '<div class="owner-login-shell">'
+        '<div class="owner-login-brand">LOAF</div>'
+        '<div class="owner-login-title">Bakery owner login</div>'
+        '<div class="owner-login-copy">Sign in to manage your bakery.</div>'
+        '<div class="owner-login-marker"></div>'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
     with st.form(f"owner_login_{title}"):
-        email = st.text_input("Owner email")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Sign in")
+        email = st.text_input("Email", placeholder="you@bakery.com")
+        password = st.text_input("Password", type="password", placeholder="Enter your password")
+        submitted = st.form_submit_button("Sign in", use_container_width=True)
+
+    st.markdown(
+        '<div class="owner-login-help">Use the owner account linked to your Loaf bakery.</div>',
+        unsafe_allow_html=True
+    )
 
     if not submitted:
-        st.info("Sign in with your Loaf owner account to continue.")
         return False
 
     user = auth_sign_in(email, password)
