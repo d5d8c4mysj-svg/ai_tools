@@ -5,7 +5,6 @@ import json
 import re
 import random
 import smtplib
-import hashlib
 import html
 from datetime import datetime
 from email.mime.text import MIMEText
@@ -318,8 +317,47 @@ def upload_menu_photos(slug, uploaded_files):
     return urls
 
 
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+def auth_sign_in(email, password):
+    """Sign a bakery owner into Supabase Auth and keep the authenticated client session."""
+    try:
+        result = supabase.auth.sign_in_with_password({
+            "email": email.strip(),
+            "password": password,
+        })
+    except Exception:
+        return None
+    return result.user if result and result.user else None
+
+
+def auth_sign_out():
+    try:
+        supabase.auth.sign_out()
+    except Exception:
+        pass
+    st.session_state.pop("owner_user_id", None)
+    st.session_state.pop("owner_email", None)
+
+
+def current_owner_id():
+    return st.session_state.get("owner_user_id")
+
+
+def get_owned_business(slug):
+    owner_id = current_owner_id()
+    if not owner_id:
+        return None
+    try:
+        result = (
+            supabase.table("businesses")
+            .select("*")
+            .eq("slug", slug)
+            .eq("owner_id", owner_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception:
+        return None
+    return result.data[0] if result.data else None
 
 
 def get_business(slug):
@@ -763,37 +801,90 @@ def customer_view():
     run_chatbot(business)
 
 
+def owner_login_gate(title, caption):
+    """Shared owner login for the full owner page and quick stock updates."""
+    st.title(title)
+    st.caption(caption)
+
+    if current_owner_id():
+        st.caption(f"Signed in as {st.session_state.get('owner_email', 'bakery owner')}")
+        if st.button("Sign out", key=f"signout_{title}"):
+            auth_sign_out()
+            st.rerun()
+        return True
+
+    with st.form(f"owner_login_{title}"):
+        email = st.text_input("Owner email")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Sign in")
+
+    if not submitted:
+        st.info("Sign in with your Loaf owner account to continue.")
+        return False
+
+    user = auth_sign_in(email, password)
+    if not user:
+        st.error("Incorrect email or password.")
+        return False
+
+    st.session_state.owner_user_id = str(user.id)
+    st.session_state.owner_email = user.email or email.strip()
+    st.rerun()
+
+
 def quick_update_view():
-    st.title("Quick Stock Update")
-    st.caption("Mark items as sold out for today. Nothing else about your bot changes.")
-
-    slug_input = st.text_input("Web address name", value=slug_from_url, placeholder="e.g. sweettreats")
-    password = st.text_input("Password", type="password")
-
-    if not slug_input or not password:
-        st.info("Enter your slug and password to continue.")
+    if not owner_login_gate(
+        "Quick Stock Update",
+        "Sign in securely to update today's availability."
+    ):
         return
 
-    clean_slug, slug_error = normalize_and_validate_slug(slug_input)
-    if slug_error:
-        st.error(slug_error)
-        return
+    owner_id = current_owner_id()
 
-    business = get_business(clean_slug)
-    if not business:
-        st.error("No business found with that slug.")
-        return
+    # Prefer the slug in the URL. If absent, show only bakeries owned by this account.
+    clean_slug = None
+    if slug_from_url:
+        clean_slug, slug_error = normalize_and_validate_slug(slug_from_url)
+        if slug_error:
+            st.error(slug_error)
+            return
+        business = get_owned_business(clean_slug)
+        if not business:
+            st.error("This bakery is not linked to your owner account.")
+            return
+    else:
+        try:
+            owned = (
+                supabase.table("businesses")
+                .select("slug,business_name,menu,sold_out_items")
+                .eq("owner_id", owner_id)
+                .execute()
+            ).data or []
+        except Exception:
+            owned = []
 
-    if business.get("admin_password") != hash_password(password):
-        st.error("Incorrect password.")
-        return
+        if not owned:
+            st.error("No bakery is linked to this owner account yet.")
+            return
+
+        labels = {
+            f"{row.get('business_name') or row.get('slug')} ({row.get('slug')})": row
+            for row in owned
+        }
+        selected = st.selectbox("Bakery", list(labels.keys()))
+        business = labels[selected]
+        clean_slug = business["slug"]
 
     menu_items = business.get("menu") or []
     if not menu_items:
         st.info("This business doesn't have any menu items yet.")
         return
 
-    current_sold_out = [n.strip() for n in (business.get("sold_out_items") or "").split(",") if n.strip()]
+    current_sold_out = [
+        n.strip()
+        for n in (business.get("sold_out_items") or "").split(",")
+        if n.strip()
+    ]
 
     st.write("Check anything that's sold out right now:")
     newly_sold_out = []
@@ -801,126 +892,191 @@ def quick_update_view():
         item_name = item.get("Item", "")
         if not item_name:
             continue
-        if st.checkbox(item_name, value=item_name in current_sold_out, key=f"soldout_{item_name}"):
+        if st.checkbox(
+            item_name,
+            value=item_name in current_sold_out,
+            key=f"soldout_{clean_slug}_{item_name}"
+        ):
             newly_sold_out.append(item_name)
 
-    if st.button("Update"):
+    if st.button("Update availability"):
         try:
-            supabase.table("businesses").update(
-                {"sold_out_items": ", ".join(newly_sold_out)}
-            ).eq("slug", clean_slug).execute()
+            result = (
+                supabase.table("businesses")
+                .update({"sold_out_items": ", ".join(newly_sold_out)})
+                .eq("slug", clean_slug)
+                .eq("owner_id", owner_id)
+                .execute()
+            )
         except Exception:
-            st.error("Something went wrong updating this. Please try again in a moment.")
+            st.error("Something went wrong updating this. Please try again.")
         else:
-            st.success("Updated. Your bot now reflects today's availability.")
+            if not result.data:
+                st.error("Update was not permitted for this owner account.")
+            else:
+                st.success("Updated. Your customer page now reflects today's availability.")
 
 
 def owner_view():
-    st.title("Loaf")
-    st.caption("Set up your bakery's ordering chatbot")
+    if not owner_login_gate(
+        "Loaf Owner",
+        "Sign in securely to manage the bakery linked to your Loaf account."
+    ):
+        return
 
-    business_name = st.text_input("Business name")
-    slug = st.text_input("Web address name (letters/numbers only, no spaces)", placeholder="e.g. sweettreats")
-    password = st.text_input(
-        "Password (create one if this is a new bot, or enter your existing password to edit it)",
-        type="password"
+    owner_id = current_owner_id()
+
+    try:
+        owned_rows = (
+            supabase.table("businesses")
+            .select("*")
+            .eq("owner_id", owner_id)
+            .execute()
+        ).data or []
+    except Exception:
+        owned_rows = []
+
+    if not owned_rows:
+        st.warning(
+            "No bakery is linked to this account yet. "
+            "For now, link an owner_id in Supabase before using this page."
+        )
+        return
+
+    if len(owned_rows) == 1:
+        existing_business = owned_rows[0]
+    else:
+        choices = {
+            f"{row.get('business_name') or row.get('slug')} ({row.get('slug')})": row
+            for row in owned_rows
+        }
+        selected = st.selectbox("Bakery", list(choices.keys()))
+        existing_business = choices[selected]
+
+    clean_slug = existing_business["slug"]
+    st.subheader(existing_business.get("business_name") or clean_slug)
+    st.caption(f"Bakery link: {clean_slug}")
+
+    existing_menu = existing_business.get("menu") or []
+    menu_df = pd.DataFrame(existing_menu) if existing_menu else pd.DataFrame(
+        {"Item": [""], "Price": [0], "Ingredients": [""]}
+    )
+    # Keep the editor focused on business data, not duplicated photo URLs.
+    editor_cols = [c for c in ["Item", "Price", "Ingredients"] if c in menu_df.columns]
+    if editor_cols:
+        menu_df = menu_df[editor_cols]
+    menu = st.data_editor(menu_df, num_rows="dynamic")
+
+    business_name = st.text_input(
+        "Business name",
+        value=str(existing_business.get("business_name") or "")
+    )
+    contact = st.text_input(
+        "Contact email",
+        value=str(existing_business.get("contact_email") or "")
+    )
+    address = st.text_input(
+        "Business address",
+        value=str(existing_business.get("address") or "")
     )
 
-    menu_df = pd.DataFrame({"Item": [""], "Price": [0], "Ingredients": [""]})
-    menu = st.data_editor(menu_df, num_rows="dynamic")
-    contact = st.text_input("Contact email")
-    address = st.text_input("Business address")
-
+    fulfillment_values = ["Pickup only", "Delivery only", "Both pickup and delivery"]
+    current_fulfillment = existing_business.get("fulfillment_options")
+    fulfillment_index = (
+        fulfillment_values.index(current_fulfillment)
+        if current_fulfillment in fulfillment_values
+        else 0
+    )
     fulfillment_options = st.selectbox(
         "Fulfillment options offered",
-        ["Pickup only", "Delivery only", "Both pickup and delivery"]
+        fulfillment_values,
+        index=fulfillment_index
     )
     delivery_info = st.text_area(
         "Delivery / pickup info",
-        placeholder="e.g. Pickup available Tue-Sat 10am-6pm. Delivery within 5 miles, $5 fee."
+        value=str(existing_business.get("delivery_info") or "")
     )
     faq_info = st.text_area(
         "FAQ / common questions",
-        placeholder="e.g. Q: Do you offer gluten-free? A: Yes, ask about our GF options."
+        value=str(existing_business.get("faq_info") or "")
     )
-    business_hours = st.text_input("Business hours", placeholder="e.g. Tue-Sat 9am-7pm, closed Sun-Mon")
-    advance_notice = st.text_input("Advance notice required for custom orders", placeholder="e.g. 48 hours")
+    business_hours = st.text_input(
+        "Business hours",
+        value=str(existing_business.get("business_hours") or "")
+    )
+    advance_notice = st.text_input(
+        "Advance notice required for custom orders",
+        value=str(existing_business.get("advance_notice") or "")
+    )
     sold_out_items = st.text_input(
-        "Out of stock today (comma separated, leave blank if none)",
-        placeholder="e.g. Red velvet cake, Croissants"
+        "Out of stock today (comma separated)",
+        value=str(existing_business.get("sold_out_items") or "")
+    )
+    social_link = st.text_input(
+        "Instagram / website link",
+        value=str(existing_business.get("social_link") or "")
     )
     menu_photos = st.file_uploader(
-        "Product photos (optional, upload in the same order as your menu items)",
+        "Replace/add product photos (optional, same order as menu items)",
         accept_multiple_files=True,
-        type=["png", "jpg", "jpeg"],
-        help="Photo 1 is linked to menu item 1, photo 2 to menu item 2, and so on."
+        type=["png", "jpg", "jpeg"]
     )
-    social_link = st.text_input("Instagram / website link (optional)", placeholder="e.g. instagram.com/yourbakery")
 
-    if menu_photos:
-        st.write("Menu photo previews:")
-        st.image(menu_photos, width=150)
-
-    if st.button("Save My Bakery Bot"):
+    if st.button("Save Bakery"):
         at_position = contact.find("@")
         dot_position = contact.find(".")
-        clean_slug, slug_error = normalize_and_validate_slug(slug)
-        if slug_error:
-            st.error(slug_error)
-        elif at_position == -1 or dot_position < at_position:
-            st.error("Please enter a valid email")
-        elif not password:
-            st.error("Please create or enter a password for this bot.")
+        if at_position == -1 or dot_position < at_position:
+            st.error("Please enter a valid email.")
+            return
+
+        if menu_photos:
+            menu_photo_urls = upload_menu_photos(clean_slug, menu_photos)
         else:
-            existing_business = get_business(clean_slug)
+            menu_photo_urls = existing_business.get("menu_photo_urls") or []
 
-            if existing_business:
-                stored_hash = existing_business.get("admin_password")
-                if stored_hash != hash_password(password):
-                    st.error("Incorrect password for this business. If this is your first time saving, choose a slug that isn't already taken.")
-                    st.stop()
-                password_hash = stored_hash
+        menu_records = menu.to_dict(orient="records")
+        old_menu = existing_business.get("menu") or []
+        for idx, item in enumerate(menu_records):
+            if idx < len(menu_photo_urls):
+                item["PhotoURL"] = menu_photo_urls[idx]
+            elif idx < len(old_menu) and old_menu[idx].get("PhotoURL"):
+                item["PhotoURL"] = old_menu[idx].get("PhotoURL")
+
+        business_data = {
+            "business_name": business_name,
+            "contact_email": contact,
+            "address": address,
+            "fulfillment_options": fulfillment_options,
+            "delivery_info": delivery_info,
+            "faq_info": faq_info,
+            "business_hours": business_hours,
+            "advance_notice": advance_notice,
+            "sold_out_items": sold_out_items,
+            "social_link": social_link,
+            "menu": menu_records,
+            "menu_photo_urls": menu_photo_urls,
+        }
+
+        try:
+            result = (
+                supabase.table("businesses")
+                .update(business_data)
+                .eq("slug", clean_slug)
+                .eq("owner_id", owner_id)
+                .execute()
+            )
+        except Exception:
+            st.error("Something went wrong saving your bakery. Please try again.")
+        else:
+            if not result.data:
+                st.error("Save was not permitted for this owner account.")
             else:
-                password_hash = hash_password(password)
-
-            if menu_photos:
-                menu_photo_urls = upload_menu_photos(clean_slug, menu_photos)
-            else:
-                menu_photo_urls = (existing_business or {}).get("menu_photo_urls", [])
-
-            menu_records = menu.to_dict(orient="records")
-            existing_menu = (existing_business or {}).get("menu", []) or []
-            for idx, item in enumerate(menu_records):
-                if idx < len(menu_photo_urls):
-                    item["PhotoURL"] = menu_photo_urls[idx]
-                elif idx < len(existing_menu) and existing_menu[idx].get("PhotoURL"):
-                    item["PhotoURL"] = existing_menu[idx].get("PhotoURL")
-
-            business_data = {
-                "slug": clean_slug,
-                "business_name": business_name,
-                "contact_email": contact,
-                "address": address,
-                "fulfillment_options": fulfillment_options,
-                "delivery_info": delivery_info,
-                "faq_info": faq_info,
-                "business_hours": business_hours,
-                "advance_notice": advance_notice,
-                "sold_out_items": sold_out_items,
-                "social_link": social_link,
-                "menu": menu_records,
-                "menu_photo_urls": menu_photo_urls,
-                "admin_password": password_hash
-            }
-            try:
-                supabase.table("businesses").upsert(business_data, on_conflict="slug").execute()
-            except Exception:
-                st.error("Something went wrong saving your bot. Please try again in a moment.")
-            else:
-                st.success("Saved. Share this link with your customers:")
+                st.success("Saved.")
                 st.code(f"https://bakery-bot.streamlit.app/?slug={clean_slug}")
-                st.caption("Bookmark this link to mark items sold out during the day without opening the full form:")
-                st.code(f"https://bakery-bot.streamlit.app/?mode=quickupdate&slug={clean_slug}")
+                st.caption("Quick stock update:")
+                st.code(
+                    f"https://bakery-bot.streamlit.app/?mode=quickupdate&slug={clean_slug}"
+                )
 
 
 if mode == "owner":
