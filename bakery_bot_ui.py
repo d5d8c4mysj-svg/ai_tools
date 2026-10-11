@@ -298,6 +298,98 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
   .owner-login-title{font-size:28px;}
 }
 
+
+/* ===== OWNER PORTAL: NEUTRAL LOGIN OVERRIDE ===== */
+body:has(.owner-login-marker) .stApp{
+  background:#F7F7F5 !important;
+}
+body:has(.owner-login-marker) .block-container{
+  max-width:520px !important;
+  padding:0 20px 3rem !important;
+}
+.owner-login-shell{
+  max-width:440px !important;
+  margin:88px auto 0 !important;
+}
+.owner-login-brand{
+  color:#222222 !important;
+  font-size:13px !important;
+  margin-bottom:28px !important;
+}
+.owner-login-title{
+  color:#1F1F1F !important;
+  font-size:30px !important;
+  font-weight:700 !important;
+}
+.owner-login-copy{
+  color:#6B6B6B !important;
+  margin-bottom:18px !important;
+}
+
+/* Override all customer chat form rules on the owner login */
+body:has(.owner-login-marker) [data-testid="stForm"]{
+  width:100% !important;
+  margin:0 !important;
+  padding:22px !important;
+  background:#FFFFFF !important;
+  border:1px solid #E1E1DE !important;
+  border-radius:12px !important;
+  box-shadow:0 8px 28px rgba(0,0,0,.045) !important;
+}
+body:has(.owner-login-marker) [data-testid="stForm"] [data-testid="stHorizontalBlock"]{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:0 !important;
+}
+body:has(.owner-login-marker) [data-testid="stForm"] [data-testid="stColumn"],
+body:has(.owner-login-marker) [data-testid="stForm"] [data-testid="column"]{
+  width:100% !important;
+}
+body:has(.owner-login-marker) [data-testid="stForm"] input{
+  height:44px !important;
+  padding:0 12px !important;
+  color:#222 !important;
+  background:#FFF !important;
+  border:1px solid #D8D8D5 !important;
+  border-radius:7px !important;
+  box-shadow:none !important;
+}
+body:has(.owner-login-marker) [data-testid="stForm"] [data-baseweb="input"],
+body:has(.owner-login-marker) [data-testid="stForm"] [data-testid="stTextInputRootElement"]{
+  background:#FFF !important;
+  border-radius:7px !important;
+}
+body:has(.owner-login-marker) [data-testid="stForm"] input::placeholder{
+  color:#9A9A96 !important;
+}
+body:has(.owner-login-marker) [data-testid="stForm"] label{
+  color:#333 !important;
+  font-size:13px !important;
+  font-weight:600 !important;
+}
+body:has(.owner-login-marker) [data-testid="stFormSubmitButton"] button,
+body:has(.owner-login-marker) [data-testid="stFormSubmitButton"] button:hover{
+  width:100% !important;
+  min-width:100% !important;
+  height:44px !important;
+  margin-top:8px !important;
+  padding:0 18px !important;
+  background:#222222 !important;
+  color:#FFFFFF !important;
+  border:1px solid #222222 !important;
+  border-radius:7px !important;
+  font-size:14px !important;
+  font-weight:600 !important;
+}
+.owner-login-help{
+  max-width:440px !important;
+  margin:12px auto 0 !important;
+  color:#858580 !important;
+}
+@media(max-width:768px){
+  .owner-login-shell{margin-top:46px !important;}
+}
+
 </style>
 """, unsafe_allow_html=True)
 
