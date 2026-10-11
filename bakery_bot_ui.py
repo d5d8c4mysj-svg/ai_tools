@@ -27,7 +27,7 @@ st.set_page_config(page_title="Loaf")
 # Loaf design: flat pink block, big bold headline, thin black rules, square corners.
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Archivo:wght@400;500;600;800&family=DM+Mono:wght@400;500&display=swap');
 :root { --pink:#F2C6D8; --pink-deep:#E7A6C1; --ink:#111111; --muted:#5C5558; --paper:#FFFFFF; --line:#111111; --red:#111111; --olive:#111111; --cream:#FFFFFF; }
 html, body, [class*="css"] { font-family:"Archivo", sans-serif; }
 *, *::before, *::after { transition:none !important; }
@@ -128,22 +128,38 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     .popular-title { font-size:32px; }
 }
 
-:root { --blue:#AEB9DE; --green:#1F3D2E; --red:#A52A2D; }
-.loaf-top { display:flex; justify-content:space-between; align-items:baseline; padding:20px 0 14px; border-bottom:1px solid var(--ink); font-size:13px; color:var(--muted); }
-.loaf-top-mark { font-weight:800; font-size:16px; letter-spacing:.08em; color:var(--green); }
-.pw-gingham { background:var(--blue) !important; margin-top:0 !important; }
-.product-card-photo.placeholder { background:var(--blue) !important; }
-.product-card-price { color:var(--red) !important; }
-.script-note { display:none !important; }
-.assistant-intro { background:#fff; border:1px solid var(--ink); padding:18px 20px; }
-.assistant-title { color:var(--green); }
-.popular-title { color:var(--green); }
-.stButton > button, .stButton > button:hover,
-[data-testid="stFormSubmitButton"] button, [data-testid="stFormSubmitButton"] button:hover { background:var(--green) !important; border-color:var(--green) !important; color:#fff !important; }
-[data-testid="stForm"] { border-color:var(--green) !important; }
-.chat-row.assistant .chat-bubble { border-color:var(--green); }
-.product-card-shell { border-color:var(--green); }
-.product-card-photo { border-bottom-color:var(--green); }
+
+:root { --ink:#6E2E34; --paper:#FFF7E6; --pink:#F7C8D3; --muted:#7A4650; --line:#6E2E34; --blush:#F7C8D3; --rose:#B46A72; --sage:#A8B58A; }
+.bakery-name, .assistant-title, .popular-title, .loaf-top-mark, .product-card-name,
+[data-testid="stExpander"] summary { font-family:"DM Serif Display", serif !important; font-style:italic; font-weight:400 !important; letter-spacing:0 !important; }
+.loaf-top { display:flex; justify-content:space-between; align-items:baseline; padding:20px 0 14px; border-bottom:1.5px solid var(--ink); font-size:13px; color:var(--ink); }
+.loaf-top-mark { font-size:26px; color:var(--ink); }
+.pw-gingham { margin:18px 0 0 !important; padding:44px 32px 38px !important; background:var(--blush) !important; border:1.5px solid var(--ink); }
+.bakery-name { font-size:clamp(56px, 11vw, 112px) !important; line-height:.95 !important; color:var(--ink) !important; }
+.bakery-subtitle { color:var(--ink); }
+.assistant-intro { background:var(--sage) !important; border:1.5px solid var(--ink) !important; padding:20px 22px !important; }
+.assistant-title { font-size:34px !important; color:var(--ink) !important; }
+.assistant-copy { color:var(--ink); }
+.chat-name { color:var(--muted); }
+.chat-bubble { border:1.5px solid var(--ink) !important; }
+.chat-row.assistant .chat-bubble { background:var(--blush); }
+.chat-row.user .chat-bubble { background:var(--sage); }
+[data-testid="stForm"] { background:var(--paper) !important; border:1.5px solid var(--ink) !important; }
+[data-testid="stFormSubmitButton"] button, [data-testid="stFormSubmitButton"] button:hover,
+.stButton > button, .stButton > button:hover { background:var(--ink) !important; color:var(--paper) !important; border:1.5px solid var(--ink) !important; }
+.popular-title { font-size:46px !important; color:var(--ink) !important; }
+.product-card-shell { border:1.5px solid var(--ink) !important; }
+.product-card-media { padding:10px 10px 0 !important; }
+.product-card-photo { border:1.5px solid var(--ink) !important; }
+.product-card-photo.placeholder { background:var(--paper) !important; color:var(--ink); }
+.product-card-name { font-size:23px !important; line-height:1.1 !important; }
+.product-card-price, .product-card-desc, .product-card-name { color:inherit !important; }
+.product-card-desc { font-size:13px; }
+.tile-0 { background:var(--blush); color:var(--ink); }
+.tile-1 { background:var(--sage); color:var(--ink); }
+.tile-2 { background:var(--rose); color:var(--paper); }
+[data-testid="stExpander"] details { background:var(--paper) !important; border:1.5px solid var(--ink) !important; }
+.order-empty, .loaf-footer { color:var(--muted); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -470,7 +486,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
             with card_cols[idx % 3]:
                 st.markdown(
-                    f'<div class="product-card-shell">'
+                    f'<div class="product-card-shell tile-{idx % 3}">'
                     f'<div class="product-card-media">{photo_html}</div>'
                     f'<div class="product-card-copy"><div class="product-card-topline"><div class="product-card-name">{item_name}</div>{price_html_card}</div>'
                     f'<div class="product-card-desc">{short_desc}</div></div></div>',
