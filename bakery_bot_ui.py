@@ -365,6 +365,89 @@ header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [dat
   .popular-title{font-size:27px!important}
 }
 
+
+/* ===== THEME 2 RESPONSIVE SIZE PASS ===== */
+
+/* Desktop: make the hero name less oversized */
+.bakery-name{
+  font-size:clamp(38px,6vw,62px)!important;
+  line-height:.98!important;
+}
+.pw-gingham{
+  padding:30px 34px 28px!important;
+}
+
+/* Menu photos should feel like browse cards, not giant posters */
+.product-card-photo{
+  height:220px!important;
+  object-fit:cover!important;
+  object-position:center!important;
+}
+
+/* Mobile is intentionally much more compact */
+@media(max-width:768px){
+  .block-container{
+    padding:0 14px 2rem!important;
+  }
+  .loaf-top{
+    padding:10px 0 9px!important;
+    margin-bottom:12px!important;
+  }
+  .pw-gingham{
+    margin:0 0 18px!important;
+    padding:22px 18px 20px!important;
+    box-shadow:4px 4px 0 var(--blue)!important;
+  }
+  .bakery-name{
+    font-size:clamp(32px,9vw,42px)!important;
+    line-height:1!important;
+    margin-bottom:10px!important;
+  }
+  .bakery-subtitle{
+    font-size:13px!important;
+    line-height:1.45!important;
+    max-width:100%!important;
+  }
+  .assistant-intro{
+    padding:14px 16px!important;
+    border-radius:14px!important;
+  }
+  .assistant-title{
+    font-size:20px!important;
+  }
+  .assistant-copy{
+    font-size:13px!important;
+  }
+  .popular-title{
+    font-size:24px!important;
+  }
+  .pw-section-head{
+    gap:8px!important;
+    margin:23px 0 12px!important;
+  }
+  .pw-section-head:before{
+    width:24px!important;
+    height:6px!important;
+  }
+  .script-note{
+    font-size:9px!important;
+    padding:4px 8px!important;
+  }
+  .product-card-photo{
+    height:190px!important;
+    border-radius:12px!important;
+  }
+  .product-card-copy{
+    padding:9px 2px 0!important;
+  }
+  .product-card-name{
+    font-size:16px!important;
+  }
+  .product-card-desc{
+    font-size:11px!important;
+  }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
