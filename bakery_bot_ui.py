@@ -24,68 +24,82 @@ mode = params.get("mode", "customer")
 
 st.set_page_config(page_title="Loaf")
 
-# Loaf playful theme: periwinkle page, pink, lime and sky blocks, chunky outlines.
+# Loaf design: flat pink block, big bold headline, thin black rules, square corners.
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=DM+Mono:wght@400;500&display=swap');
-:root { --blue:#6F86D6; --pink:#F2B8D6; --cream:#F6ECDF; --lime:#C8CE7C; --sky:#BFD6E8; --lav:#C9B8EA; --ink:#1B1B1B; --paper:#F6ECDF; }
-html, body, [class*="css"] { font-family:"Bricolage Grotesque", sans-serif; }
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Archivo:wght@400;500;600;800&family=DM+Mono:wght@400;500&display=swap');
+:root { --pink:#F2C6D8; --pink-deep:#E7A6C1; --ink:#111111; --muted:#5C5558; --paper:#FFFFFF; --line:#111111; --red:#111111; --olive:#111111; --cream:#FFFFFF; }
+html, body, [class*="css"] { font-family:"Archivo", sans-serif; }
 *, *::before, *::after { transition:none !important; }
-.stApp { background:var(--blue); color:var(--ink); }
-.block-container { max-width:760px; padding:0 20px 3rem !important; margin:0 auto !important; background:transparent; }
+.stApp { background:var(--paper); color:var(--ink); }
+.block-container { max-width:880px; padding:0 28px 3rem !important; margin:0 auto !important; background:transparent; }
 #MainMenu, footer { visibility:hidden; }
-header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"],
-[data-testid="stSidebar"], [data-testid="stBottom"], [data-testid="stBottomBlockContainer"] { display:none !important; height:0 !important; }
+header[data-testid="stHeader"], .stApp > header { display:none !important; height:0 !important; }
+[data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"],
+[data-testid="stSidebar"], [data-testid="stBottom"], [data-testid="stBottomBlockContainer"] { display:none !important; }
 [data-testid="stVerticalBlock"] { gap:.7rem; }
-*:focus-visible { outline:3px solid var(--ink); outline-offset:2px; }
+*:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
 .loaf-wordmark { font-weight:800; font-size:18px; }
-.loaf-top { display:flex; justify-content:space-between; align-items:baseline; background:var(--lime); border:2px solid var(--ink); border-top:0; padding:8px 14px; margin:0 0 16px; font-family:"DM Mono", monospace; font-size:12px; }
-.loaf-top-mark { font-family:"Bricolage Grotesque", sans-serif; font-weight:800; font-size:15px; }
-.pw-strip, .pw-rule { display:none; }
-.pw-gingham { position:relative; overflow:hidden; background:var(--pink); border:2px solid var(--ink); padding:30px 22px 28px; }
-.pw-label { position:relative; z-index:2; max-width:72%; margin:0; padding:0; background:transparent; border:0; text-align:left; }
-.bakery-name { font-weight:800; font-size:clamp(34px, 8vw, 60px); line-height:1; letter-spacing:-.02em; margin:0 0 10px; }
-.bakery-subtitle { font-size:15px; line-height:1.5; margin:0; }
-.t2-half { position:absolute; right:-34px; top:-14px; width:140px; height:140px; background:var(--lime); border:2px solid var(--ink); border-radius:50%; }
-.t2-squig { position:absolute; right:22px; bottom:12px; width:96px; height:44px; background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 40'><path d='M3 22 C12 2 22 38 32 20 S52 4 61 20' fill='none' stroke='%236F86D6' stroke-width='7' stroke-linecap='round'/></svg>") no-repeat center / contain; }
-.assistant-intro { background:var(--cream); border:2px solid var(--ink); padding:16px 18px; margin:14px 0 6px; }
-.assistant-title { font-weight:800; font-size:22px; margin-bottom:4px; }
-.assistant-copy { font-size:14px; line-height:1.5; }
+
+/* Header: one flat pink block, big left-aligned name */
+.pw-strip { display:none; }
+.pw-gingham { margin:0 -28px 0; padding:56px 28px 44px; background:var(--pink); }
+.pw-label { max-width:none; margin:0; padding:0; background:transparent; border:0; text-align:left; }
+.bakery-name { font-weight:800; font-size:clamp(44px, 9vw, 92px); line-height:.98; letter-spacing:-.03em; color:var(--ink); margin:0 0 18px; }
+.bakery-subtitle { max-width:460px; margin:0; color:var(--ink); font-size:16px; line-height:1.55; }
+.pw-rule { height:1px; background:var(--ink); margin:28px 0 18px; }
+
+/* Assistant intro */
+.assistant-intro { background:transparent; border:0; padding:0; margin:8px 0 4px; }
+.assistant-title { font-weight:800; font-size:30px; letter-spacing:-.02em; margin-bottom:6px; }
+.assistant-copy { color:var(--muted); font-size:15px; line-height:1.6; max-width:480px; }
+
+/* Chat */
 .chat-row { display:flex; width:100%; margin:12px 0; }
 .chat-row.user { justify-content:flex-end; }
-.chat-wrap { max-width:84%; }
-.chat-name { font-family:"DM Mono", monospace; font-size:11px; margin:0 0 4px 6px; }
-.chat-row.user .chat-name { text-align:right; margin:0 6px 4px 0; }
-.chat-bubble { font-size:15px; line-height:1.55; padding:10px 15px; border:2px solid var(--ink); border-radius:18px; }
-.chat-row.assistant .chat-bubble { background:var(--cream); border-bottom-left-radius:4px; }
-.chat-row.user .chat-bubble { background:var(--lime); border-bottom-right-radius:4px; }
+.chat-wrap { max-width:82%; }
+.chat-name { font-family:"DM Mono", monospace; font-size:11px; color:var(--muted); margin:0 0 4px; }
+.chat-row.user .chat-name { text-align:right; }
+.chat-bubble { font-size:15px; line-height:1.6; padding:11px 15px; border:1px solid var(--ink); }
+.chat-row.assistant .chat-bubble { background:var(--paper); color:var(--ink); }
+.chat-row.user .chat-bubble { background:var(--pink); color:var(--ink); }
 [data-testid="stChatMessage"] { display:none; }
-[data-testid="stForm"] { width:100% !important; margin:16px 0 6px !important; padding:5px !important; border:2px solid var(--ink) !important; border-radius:999px !important; background:var(--cream) !important; }
+
+/* Composer */
+[data-testid="stForm"] { width:100% !important; margin:16px 0 6px !important; padding:5px !important; border:1px solid var(--ink) !important; border-radius:0 !important; background:var(--paper) !important; }
+[data-testid="stForm"]:focus-within { outline:2px solid var(--ink); }
 [data-testid="stForm"] [data-testid="stHorizontalBlock"] { display:grid !important; grid-template-columns:minmax(0, 1fr) 44px !important; gap:6px !important; align-items:center !important; width:100% !important; }
 [data-testid="stForm"] [data-testid="stColumn"], [data-testid="stForm"] [data-testid="column"] { width:auto !important; min-width:0 !important; flex:none !important; }
 [data-testid="stForm"] [data-baseweb], [data-testid="stForm"] [data-testid="stTextInputRootElement"] { background:transparent !important; border:0 !important; box-shadow:none !important; }
-[data-testid="stForm"] input { background:transparent !important; border:0 !important; box-shadow:none !important; height:44px !important; padding:0 16px !important; font-size:15px !important; color:var(--ink) !important; }
+[data-testid="stForm"] input { background:transparent !important; border:0 !important; box-shadow:none !important; height:44px !important; padding:0 14px !important; font-size:15px !important; color:var(--ink) !important; }
+[data-testid="stForm"] input::placeholder { color:#8A8286; }
 [data-testid="InputInstructions"], [data-testid="stInputInstructions"], .stTextInput small { display:none !important; }
-[data-testid="stFormSubmitButton"] button, [data-testid="stFormSubmitButton"] button:hover { width:44px !important; min-width:44px !important; height:44px !important; padding:0 !important; border-radius:50% !important; background:var(--pink) !important; color:var(--ink) !important; border:2px solid var(--ink) !important; font-size:18px !important; }
-.pw-section-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:22px 0 14px; }
-.popular-title { font-weight:800; font-size:28px; background:var(--cream); border:2px solid var(--ink); padding:2px 14px; }
-.script-note { background:var(--pink); border:2px solid var(--ink); border-radius:999px; font-family:"DM Mono", monospace; font-size:11px; padding:2px 10px; }
-.product-card-shell { background:var(--cream); border:2px solid var(--ink); margin:0 0 16px; overflow:hidden; }
-.tile-1 { background:var(--sky); } .tile-2 { background:var(--lav); }
+[data-testid="stFormSubmitButton"] button { width:44px !important; min-width:44px !important; height:44px !important; padding:0 !important; border-radius:0 !important; background:var(--ink) !important; color:var(--paper) !important; border:0 !important; font-size:18px !important; }
+[data-testid="stFormSubmitButton"] button:hover { background:var(--ink) !important; }
+
+/* Favourites: flat cards, no tabs */
+.pw-section-head { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin:4px 0 20px; }
+.popular-title { font-weight:800; font-size:40px; letter-spacing:-.03em; }
+.script-note { font-family:"DM Mono", monospace; font-size:12px; color:var(--muted); }
+.product-card-shell { background:var(--paper); border:1px solid var(--ink); margin:0 0 18px; }
 .product-card-media { padding:0; }
-.product-card-photo { display:block; width:100%; aspect-ratio:1 / 1; object-fit:cover; border-bottom:2px solid var(--ink); }
-.product-card-photo.placeholder { display:flex; align-items:center; justify-content:center; font-weight:800; font-size:56px; background:var(--pink); }
-.product-card-copy { padding:10px 12px 14px; }
-.product-card-topline { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-.product-card-name { font-weight:800; font-size:18px; line-height:1.15; }
-.product-card-price { font-family:"DM Mono", monospace; font-size:13px; background:var(--pink); border:2px solid var(--ink); border-radius:999px; padding:1px 9px; white-space:nowrap; }
-.product-card-desc { margin-top:6px; font-size:13px; line-height:1.5; }
-[data-testid="stExpander"] { background:transparent !important; border:0 !important; margin-bottom:10px; }
-[data-testid="stExpander"] details { background:var(--cream) !important; border:2px solid var(--ink) !important; border-radius:0 !important; }
+.product-card-photo { display:block; width:100%; aspect-ratio:4 / 3; object-fit:cover; border-bottom:1px solid var(--ink); }
+.product-card-photo.placeholder { display:flex; align-items:center; justify-content:center; font-weight:800; font-size:56px; color:var(--ink); background:var(--pink); }
+.product-card-copy { padding:12px 14px 14px; }
+.product-card-topline { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.product-card-name { font-weight:800; font-size:19px; line-height:1.2; letter-spacing:-.01em; }
+.product-card-price { font-family:"DM Mono", monospace; font-weight:500; font-size:14px; white-space:nowrap; }
+.product-card-desc { margin-top:6px; font-size:13px; line-height:1.55; color:var(--muted); }
+
+/* Expanders and buttons */
+[data-testid="stExpander"] { background:transparent !important; border:0 !important; box-shadow:none !important; margin-bottom:10px; }
+[data-testid="stExpander"] details { background:var(--paper) !important; border:1px solid var(--ink) !important; border-radius:0 !important; }
 [data-testid="stExpander"] summary { font-weight:800; font-size:16px; color:var(--ink); }
-.order-empty { font-size:14px; }
-.stButton > button, .stButton > button:hover { background:var(--ink); color:var(--cream); border:2px solid var(--ink); border-radius:999px; font-weight:600; padding:.4rem 1.3rem; }
-.loaf-footer { text-align:center; font-family:"DM Mono", monospace; font-size:11px; margin-top:32px; }
+.order-empty { color:var(--muted); font-size:14px; }
+.stButton > button { background:var(--ink); color:var(--paper); border:1px solid var(--ink); border-radius:0; font-weight:600; padding:.4rem 1.3rem; }
+.stButton > button:hover { background:var(--ink); color:var(--paper); border-color:var(--ink); }
+.loaf-footer { text-align:center; color:#8A8286; font-family:"DM Mono", monospace; font-size:11px; margin-top:36px; }
+
 /* Loading cake */
 .pw-cake-loader { position:relative; width:52px; height:59px; margin:4px 0 6px 3px; }
 .pw-cake-dots { position:absolute; top:0; left:11px; width:30px; display:flex; justify-content:space-between; align-items:center; }
@@ -107,2011 +121,92 @@ header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [dat
 @keyframes pwCakeBob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
 @media (prefers-reduced-motion:reduce) { .pw-cake-dots span, .pw-whole-cake { animation:none !important; } }
 
-
-@media (max-width:768px) { .block-container { padding:0 12px 2.2rem !important; } .pw-label { max-width:76%; } .t2-half { width:96px; height:96px; right:-26px; } .bakery-name { font-size:clamp(30px, 9vw, 44px); } }
-
-/* ===== THEME 2 V2: PLAYFUL MODERN ===== */
-:root{
- --ink:#25231F; --cream:#FFF8EA; --paper:#FFFDF7;
- --blue:#7189D8; --pink:#F3B7D0; --sage:#C8D18D;
- --butter:#F3D978; --sky:#C9DDF0; --muted:#716A63;
-}
-.stApp{background:var(--cream)!important;color:var(--ink)!important}
-.block-container{max-width:900px!important;padding:0 28px 3rem!important}
-
-/* top */
-.loaf-top{
- background:transparent!important;border:0!important;
- border-bottom:1px solid rgba(37,35,31,.25)!important;
- padding:18px 0 12px!important;margin:0 0 18px!important;
-}
-.loaf-top-mark{
- background:var(--butter)!important;padding:4px 10px!important;
- border-radius:999px!important;font-size:15px!important;
-}
-
-/* hero */
-.pw-gingham{
- position:relative!important;overflow:hidden!important;
- background:var(--paper)!important;
- border:1px solid rgba(37,35,31,.20)!important;
- padding:38px 38px 36px!important;margin:0 0 24px!important;
- box-shadow:8px 8px 0 var(--blue)!important;
-}
-.pw-label{max-width:68%!important}
-.bakery-name{
- font-size:clamp(44px,8vw,76px)!important;line-height:.94!important;
- letter-spacing:-.045em!important;margin:0 0 16px!important;
-}
-.bakery-subtitle{color:var(--muted)!important;max-width:520px!important}
-.t2-half{
- right:28px!important;top:28px!important;width:112px!important;height:112px!important;
- background:var(--pink)!important;border:0!important;
-}
-.t2-half:after{
- content:"";position:absolute;width:66px;height:66px;right:-22px;bottom:-20px;
- background:var(--sage);border-radius:18px;transform:rotate(13deg);
-}
-.t2-squig{right:88px!important;bottom:24px!important;width:108px!important;height:44px!important}
-
-/* ordering area */
-.assistant-intro{
- background:var(--sky)!important;border:0!important;border-radius:20px!important;
- padding:22px 24px!important;margin:10px 0 8px!important;
-}
-.assistant-intro:before{
- content:"ASK + ORDER";display:inline-block;margin-bottom:8px;
- font-family:"DM Mono",monospace;font-size:10px;
- background:var(--paper);padding:4px 8px;border-radius:999px;
-}
-.assistant-title{font-size:25px!important;letter-spacing:-.025em!important}
-.assistant-copy{color:#52524D!important}
-
-/* chat */
-.chat-name{color:var(--muted)!important}
-.chat-bubble{
- border:0!important;border-radius:15px!important;
- box-shadow:0 0 0 1px rgba(37,35,31,.14)!important;
- font-size:14px!important;
-}
-.chat-row.assistant .chat-bubble{background:var(--paper)!important}
-.chat-row.user .chat-bubble{background:var(--pink)!important}
-
-/* input */
-[data-testid="stForm"]{
- background:var(--paper)!important;border:1px solid rgba(37,35,31,.22)!important;
- border-radius:16px!important;box-shadow:0 5px 18px rgba(37,35,31,.04)!important;
-}
-[data-testid="stForm"]:focus-within{
- border-color:var(--blue)!important;box-shadow:0 0 0 1px var(--blue)!important;
-}
-[data-testid="stFormSubmitButton"] button,
-[data-testid="stFormSubmitButton"] button:hover{
- background:var(--blue)!important;color:white!important;border:0!important;
- border-radius:12px!important;
-}
-
-/* menu */
-.pw-section-head{margin:30px 0 15px!important}
-.popular-title{
- background:transparent!important;border:0!important;padding:0!important;
- font-size:34px!important;letter-spacing:-.035em!important;
-}
-.script-note{
- background:var(--butter)!important;border:0!important;
- border-radius:999px!important;padding:5px 10px!important;
-}
-.product-card-shell{
- border:0!important;border-radius:18px!important;
- background:var(--paper)!important;
- box-shadow:0 0 0 1px rgba(37,35,31,.13)!important;
- overflow:hidden!important;
-}
-.tile-0{background:var(--paper)!important}
-.tile-1{background:#F7DCE8!important}
-.tile-2{background:#E6EACD!important}
-.product-card-photo{
- width:100%!important;height:255px!important;aspect-ratio:auto!important;
- object-fit:cover!important;border:0!important;
-}
-.product-card-copy{padding:14px 15px 16px!important}
-.product-card-name{font-size:19px!important;letter-spacing:-.02em!important}
-.product-card-price{
- background:transparent!important;border:0!important;border-radius:0!important;
- padding:0!important;font-size:12px!important;
-}
-.product-card-desc{color:#625D57!important;font-size:12px!important}
-
-/* controls */
-[data-testid="stExpander"] details{
- background:var(--paper)!important;border:1px solid rgba(37,35,31,.18)!important;
- border-radius:14px!important;
-}
-.stButton>button,.stButton>button:hover{
- background:var(--blue)!important;color:white!important;border:0!important;
- border-radius:12px!important;
-}
-.loaf-footer{color:#938A82!important}
-
-@media(max-width:768px){
- .block-container{padding:0 16px 2.2rem!important}
- .pw-gingham{
-   padding:27px 20px 76px!important;margin-top:12px!important;
-   box-shadow:5px 5px 0 var(--blue)!important;
- }
- .pw-label{max-width:100%!important}
- .bakery-name{font-size:clamp(38px,12vw,54px)!important}
- .bakery-subtitle{max-width:88%!important}
- .t2-half{
-   width:74px!important;height:74px!important;right:16px!important;
-   top:auto!important;bottom:10px!important;
- }
- .t2-half:after{width:40px;height:40px;right:-10px;bottom:-8px;border-radius:11px}
- .t2-squig{right:72px!important;bottom:14px!important;width:78px!important;height:32px!important}
- .assistant-intro{padding:18px!important;border-radius:16px!important}
- .popular-title{font-size:29px!important}
- .product-card-photo{height:245px!important}
-}
-
-
-/* ===== THEME 2 FINAL REFINEMENTS ===== */
-
-/* Match Theme 1 cream exactly */
-:root{
-  --cream:#FFF7E6;
-  --paper:#FFFDF7;
-}
-.stApp{background:#FFF7E6!important}
-
-/* Hero: remove random decorative shapes, keep purposeful blue offset */
-.t2-half,.t2-squig{display:none!important}
-.pw-gingham{
-  background:var(--paper)!important;
-  padding:38px 38px 34px!important;
-  min-height:0!important;
-  box-shadow:8px 8px 0 var(--blue)!important;
-}
-.pw-label{max-width:82%!important}
-
-/* Make ordering block slightly lighter/shorter */
-.assistant-intro{
-  padding:18px 22px!important;
-  background:#D7E5F2!important;
-}
-.assistant-intro:before{
-  content:"ORDER ASSISTANT"!important;
-}
-
-/* Modern section heading */
-.popular-title{
-  font-size:32px!important;
-  text-transform:uppercase!important;
-  letter-spacing:-.025em!important;
-}
-.script-note{
-  background:var(--butter)!important;
-  text-transform:uppercase!important;
-  letter-spacing:.04em!important;
-}
-
-/* Photography-led menu: no coloured card boxes */
-.product-card-shell,
-.tile-0,.tile-1,.tile-2{
-  background:transparent!important;
-  border:0!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-  overflow:visible!important;
-  margin-bottom:24px!important;
-}
-.product-card-media{
-  background:transparent!important;
-  padding:0!important;
-}
-.product-card-photo{
-  width:100%!important;
-  height:270px!important;
-  aspect-ratio:auto!important;
-  object-fit:cover!important;
-  border-radius:14px!important;
-  border:0!important;
-  box-shadow:0 0 0 1px rgba(37,35,31,.12)!important;
-}
-.product-card-photo.placeholder{
-  background:var(--pink)!important;
-}
-.product-card-copy{
-  padding:11px 2px 0!important;
-  background:transparent!important;
-}
-.product-card-topline{
-  align-items:baseline!important;
-}
-.product-card-name{
-  font-size:18px!important;
-  text-transform:uppercase!important;
-  letter-spacing:-.01em!important;
-}
-.product-card-price{
-  font-size:12px!important;
-  font-weight:500!important;
-  color:var(--ink)!important;
-}
-.product-card-desc{
-  margin-top:5px!important;
-  color:#706861!important;
-}
-
-/* purposeful colour accents instead of random shapes */
-.pw-section-head:before{
-  content:"";
-  display:block;
-  width:34px;
-  height:8px;
-  background:var(--pink);
-  border-radius:999px;
-  margin-right:2px;
-}
-
-/* mobile */
-@media(max-width:768px){
-  .pw-gingham{
-    padding:28px 20px 26px!important;
-    box-shadow:5px 5px 0 var(--blue)!important;
-  }
-  .pw-label{max-width:100%!important}
-  .assistant-intro{padding:16px!important}
-  .product-card-photo{height:250px!important}
-  .popular-title{font-size:27px!important}
-}
-
-
-/* ===== THEME 2 RESPONSIVE SIZE PASS ===== */
-
-/* Desktop: make the hero name less oversized */
-.bakery-name{
-  font-size:clamp(38px,6vw,62px)!important;
-  line-height:.98!important;
-}
-.pw-gingham{
-  padding:30px 34px 28px!important;
-}
-
-/* Menu photos should feel like browse cards, not giant posters */
-.product-card-photo{
-  height:220px!important;
-  object-fit:cover!important;
-  object-position:center!important;
-}
-
-/* Mobile is intentionally much more compact */
-@media(max-width:768px){
-  .block-container{
-    padding:0 14px 2rem!important;
-  }
-  .loaf-top{
-    padding:10px 0 9px!important;
-    margin-bottom:12px!important;
-  }
-  .pw-gingham{
-    margin:0 0 18px!important;
-    padding:22px 18px 20px!important;
-    box-shadow:4px 4px 0 var(--blue)!important;
-  }
-  .bakery-name{
-    font-size:clamp(32px,9vw,42px)!important;
-    line-height:1!important;
-    margin-bottom:10px!important;
-  }
-  .bakery-subtitle{
-    font-size:13px!important;
-    line-height:1.45!important;
-    max-width:100%!important;
-  }
-  .assistant-intro{
-    padding:14px 16px!important;
-    border-radius:14px!important;
-  }
-  .assistant-title{
-    font-size:20px!important;
-  }
-  .assistant-copy{
-    font-size:13px!important;
-  }
-  .popular-title{
-    font-size:24px!important;
-  }
-  .pw-section-head{
-    gap:8px!important;
-    margin:23px 0 12px!important;
-  }
-  .pw-section-head:before{
-    width:24px!important;
-    height:6px!important;
-  }
-  .script-note{
-    font-size:9px!important;
-    padding:4px 8px!important;
-  }
-  .product-card-photo{
-    height:190px!important;
-    border-radius:12px!important;
-  }
-  .product-card-copy{
-    padding:9px 2px 0!important;
-  }
-  .product-card-name{
-    font-size:16px!important;
-  }
-  .product-card-desc{
-    font-size:11px!important;
-  }
-}
-
-
-/* ===== THEME 2 V4: FOOD-FIRST PLAYFUL MODERN ===== */
-
-/* Remove the boxed-assignment feeling */
-.loaf-top{
-  border-bottom:0!important;
-  padding:18px 2px 8px!important;
-  margin-bottom:6px!important;
-}
-.loaf-top-mark{
-  background:var(--butter)!important;
-  border-radius:999px!important;
-  padding:5px 11px!important;
-}
-
-/* Hero is open, not a card */
-.pw-gingham{
-  background:transparent!important;
-  border:0!important;
-  box-shadow:none!important;
-  padding:34px 2px 26px!important;
-  margin:0!important;
-  overflow:visible!important;
-}
-.pw-label{
-  max-width:70%!important;
-}
-.bakery-name{
-  font-size:clamp(40px,6.5vw,66px)!important;
-  line-height:.94!important;
-  margin-bottom:13px!important;
-}
-.bakery-subtitle{
-  max-width:500px!important;
-  color:#655F59!important;
-}
-
-/* Replace decorative shapes with a bakery/photo-style colour panel */
-.pw-gingham:after{
-  content:"FRESH BAKES\A MADE DAILY";
-  white-space:pre;
-  position:absolute;
-  right:4px;
-  top:28px;
-  width:150px;
-  height:150px;
-  display:flex;
-  align-items:flex-end;
-  justify-content:flex-start;
-  box-sizing:border-box;
-  padding:16px;
-  background:linear-gradient(145deg,var(--pink) 0 58%,var(--butter) 58% 100%);
-  border-radius:24px;
-  color:var(--ink);
-  font-family:"DM Mono",monospace;
-  font-size:11px;
-  font-weight:500;
-  line-height:1.45;
-  transform:rotate(3deg);
-}
-.t2-half,.t2-squig{display:none!important}
-
-/* Remove information-callout panel; make ordering feel like part of page */
-.assistant-intro{
-  background:transparent!important;
-  border:0!important;
-  border-radius:0!important;
-  padding:14px 2px 6px!important;
-  margin:0!important;
-}
-.assistant-intro:before{display:none!important}
-.assistant-title{
-  font-size:28px!important;
-  margin-bottom:5px!important;
-}
-.assistant-copy{
-  max-width:620px!important;
-  font-size:14px!important;
-}
-
-/* Input becomes the visual CTA */
-[data-testid="stForm"]{
-  margin:14px 0 14px!important;
-  border:2px solid var(--ink)!important;
-  border-radius:999px!important;
-  box-shadow:none!important;
-}
-[data-testid="stForm"]:focus-within{
-  border-color:var(--blue)!important;
-}
-[data-testid="stFormSubmitButton"] button,
-[data-testid="stFormSubmitButton"] button:hover{
-  border-radius:50%!important;
-  background:var(--blue)!important;
-}
-
-/* Menu is open and photography-led */
-.pw-section-head{
-  margin:34px 0 16px!important;
-  display:flex!important;
-  align-items:baseline!important;
-}
-.pw-section-head:before{display:none!important}
-.popular-title{
-  font-size:30px!important;
-  text-transform:none!important;
-  letter-spacing:-.035em!important;
-}
-.script-note{
-  background:var(--pink)!important;
-  text-transform:uppercase!important;
-  letter-spacing:.04em!important;
-  transform:rotate(-2deg);
-}
-.product-card-shell,.tile-0,.tile-1,.tile-2{
-  background:transparent!important;
-  box-shadow:none!important;
-  border:0!important;
-  border-radius:0!important;
-}
-.product-card-photo{
-  height:235px!important;
-  border-radius:18px!important;
-  box-shadow:none!important;
-}
-.product-card-copy{
-  padding:10px 3px 0!important;
-}
-.product-card-name{
-  text-transform:none!important;
-  font-size:19px!important;
-}
-.product-card-price{
-  font-size:12px!important;
-}
-.product-card-desc{
-  font-size:12px!important;
-}
-
-/* Small intentional colour tabs on alternating images */
-.tile-0 .product-card-media,
-.tile-1 .product-card-media,
-.tile-2 .product-card-media{position:relative}
-.tile-0 .product-card-media:after,
-.tile-1 .product-card-media:after,
-.tile-2 .product-card-media:after{
-  position:absolute;left:12px;top:12px;
-  padding:5px 9px;border-radius:999px;
-  font-family:"DM Mono",monospace;font-size:9px;font-weight:500;
-}
-.tile-0 .product-card-media:after{content:"BAKED";background:var(--butter)}
-.tile-1 .product-card-media:after{content:"FAVOURITE";background:var(--pink)}
-.tile-2 .product-card-media:after{content:"PICK";background:var(--sage)}
-
-@media(max-width:768px){
-  .block-container{padding:0 16px 2rem!important}
-  .loaf-top{padding-top:10px!important}
-  .pw-gingham{
-    padding:24px 0 122px!important;
-  }
-  .pw-label{max-width:100%!important}
-  .bakery-name{
-    font-size:clamp(34px,10vw,44px)!important;
-    max-width:100%!important;
-  }
-  .bakery-subtitle{
-    max-width:100%!important;
-    font-size:13px!important;
-  }
-  .pw-gingham:after{
-    width:104px;height:94px;right:4px;top:auto;bottom:14px;
-    padding:11px;border-radius:18px;font-size:9px;
-  }
-  .assistant-intro{
-    padding:6px 0 3px!important;
-  }
-  .assistant-title{
-    font-size:22px!important;
-  }
-  .assistant-copy{
-    font-size:13px!important;
-  }
-  .popular-title{
-    font-size:25px!important;
-  }
-  .product-card-photo{
-    height:190px!important;
-    border-radius:14px!important;
-  }
-  .product-card-name{
-    font-size:16px!important;
-  }
-  .product-card-desc{
-    font-size:11px!important;
-  }
-}
-
-
-/* ===== THEME 2 V5: BLUE + CREAM FINAL DIRECTION ===== */
-:root{
-  --cream:#FFF7E6;
-  --paper:#FFFDF7;
-  --blue:#7189D8;
-  --blue-soft:#D7E3F4;
-  --pink:#F3B7D0;
-  --sage:#C8D18D;
-  --butter:#F3D978;
-  --ink:#25231F;
-  --muted:#716A63;
-}
-.stApp{background:var(--cream)!important}
-
-/* Hero: open cream layout with a purposeful blue accent */
-.pw-gingham{
-  position:relative!important;
-  background:var(--paper)!important;
-  border:0!important;
-  border-radius:0!important;
-  padding:32px 34px 30px!important;
-  margin:8px 0 22px!important;
-  box-shadow:8px 8px 0 var(--blue)!important;
-  overflow:visible!important;
-}
-.pw-gingham:after{display:none!important}
-.pw-label{max-width:100%!important}
-.bakery-name{
-  max-width:720px!important;
-  font-size:clamp(40px,6vw,62px)!important;
-}
-.bakery-subtitle{max-width:560px!important}
-
-/* Blue/cream ordering area without the report-callout feeling */
-.assistant-intro{
-  background:var(--blue-soft)!important;
-  border:0!important;
-  border-radius:22px!important;
-  padding:18px 22px!important;
-  margin:8px 0 7px!important;
-  position:relative!important;
-}
-.assistant-intro:before{
-  display:block!important;
-  content:"START YOUR ORDER"!important;
-  width:max-content!important;
-  margin:0 0 8px!important;
-  padding:4px 9px!important;
-  background:var(--paper)!important;
-  border-radius:999px!important;
-  font-family:"DM Mono",monospace!important;
-  font-size:9px!important;
-  letter-spacing:.04em!important;
-}
-.assistant-title{font-size:25px!important}
-.assistant-copy{color:#51545B!important}
-
-/* Chat/input keep the blue as the action colour */
-.chat-row.user .chat-bubble{background:var(--pink)!important}
-[data-testid="stForm"]{
-  background:var(--paper)!important;
-  border:1.5px solid var(--blue)!important;
-  border-radius:999px!important;
-}
-[data-testid="stFormSubmitButton"] button,
-[data-testid="stFormSubmitButton"] button:hover{
-  background:var(--blue)!important;
-  color:white!important;
-  border:0!important;
-}
-
-/* Menu stays photography-first */
-.pw-section-head{
-  padding-bottom:8px!important;
-  border-bottom:3px solid var(--blue)!important;
-}
-.popular-title{
-  color:var(--ink)!important;
-  font-size:30px!important;
-}
-.script-note{
-  background:var(--pink)!important;
-  color:var(--ink)!important;
-  transform:none!important;
-}
-.product-card-shell,.tile-0,.tile-1,.tile-2{
-  background:transparent!important;
-  border:0!important;
-  box-shadow:none!important;
-}
-.product-card-photo{
-  height:225px!important;
-  border-radius:16px!important;
-}
-.tile-0 .product-card-media:after{content:"BAKED TODAY"!important;background:var(--butter)!important}
-.tile-1 .product-card-media:after{content:"FAVOURITE"!important;background:var(--pink)!important}
-.tile-2 .product-card-media:after{content:"OUR PICK"!important;background:var(--sage)!important}
-
-/* Small blue detail at the top, instead of random shapes */
-.loaf-top{
-  border-bottom:1px solid rgba(113,137,216,.45)!important;
-}
-.loaf-top-mark{
-  background:var(--blue)!important;
-  color:white!important;
-}
-
-/* Mobile */
-@media(max-width:768px){
-  .pw-gingham{
-    padding:22px 18px 20px!important;
-    margin:6px 0 17px!important;
-    box-shadow:5px 5px 0 var(--blue)!important;
-  }
-  .bakery-name{
-    font-size:clamp(32px,9vw,42px)!important;
-    margin-bottom:9px!important;
-  }
-  .bakery-subtitle{
-    font-size:13px!important;
-    max-width:100%!important;
-  }
-  .assistant-intro{
-    padding:14px 16px!important;
-    border-radius:16px!important;
-  }
-  .assistant-title{font-size:21px!important}
-  .assistant-copy{font-size:13px!important}
-  .popular-title{font-size:24px!important}
-  .pw-section-head{
-    margin-top:25px!important;
-    padding-bottom:7px!important;
-  }
-  .product-card-photo{
-    height:185px!important;
-    border-radius:13px!important;
-  }
-  .product-card-name{font-size:16px!important}
-  .product-card-desc{font-size:11px!important}
-}
-
-
-/* ===== THEME 2 V6: SPLIT EDITORIAL STOREFRONT ===== */
-:root{
-  --cream:#FFF7E6; --paper:#FFFDF7; --blue:#7189D8;
-  --blue-soft:#D7E3F4; --pink:#F3B7D0; --sage:#C8D18D;
-  --butter:#F3D978; --ink:#25231F; --muted:#716A63;
-}
-.stApp{background:var(--cream)!important}
-.block-container{max-width:980px!important}
-
-/* top bar */
-.loaf-top{
-  padding:16px 0 12px!important;margin:0 0 16px!important;
-  border-bottom:1px solid rgba(37,35,31,.18)!important;
-}
-.loaf-top-mark{
-  background:var(--blue)!important;color:white!important;
-  padding:5px 11px!important;border-radius:999px!important;
-}
-
-/* Hero becomes a split editorial composition */
-.pw-gingham{
-  display:grid!important;
-  grid-template-columns:minmax(0,1.05fr) minmax(280px,.95fr)!important;
-  min-height:330px!important;
-  padding:0!important;margin:0 0 28px!important;
-  background:var(--paper)!important;border:0!important;
-  box-shadow:none!important;overflow:hidden!important;
-  border-radius:24px!important;
-}
-.pw-label{
-  max-width:none!important;padding:42px 38px!important;
-  display:flex!important;flex-direction:column!important;justify-content:center!important;
-  position:relative!important;
-}
-.pw-label:before{
-  content:"FRESH BAKES • MADE DAILY";
-  width:max-content;margin-bottom:18px;padding:5px 9px;
-  background:var(--butter);border-radius:999px;
-  font-family:"DM Mono",monospace;font-size:9px;letter-spacing:.04em;
-}
-.bakery-name{
-  font-size:clamp(44px,6vw,68px)!important;line-height:.92!important;
-  max-width:480px!important;margin-bottom:18px!important;
-}
-.bakery-subtitle{
-  max-width:430px!important;font-size:15px!important;line-height:1.55!important;
-}
-.pw-gingham:after{
-  display:block!important;
-  content:"";
-  position:static!important;
-  width:auto!important;height:auto!important;
-  background:
-    linear-gradient(rgba(113,137,216,.08),rgba(113,137,216,.08)),
-    url("https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80") center/cover no-repeat!important;
-  border-radius:0!important;transform:none!important;
-}
-.t2-half,.t2-squig{display:none!important}
-
-/* Remove the Theme-1-like order card entirely */
-.assistant-intro{
-  background:transparent!important;border:0!important;border-radius:0!important;
-  padding:0!important;margin:0 0 6px!important;
-}
-.assistant-intro:before{display:none!important}
-.assistant-title{
-  font-size:28px!important;margin:0 0 4px!important;
-}
-.assistant-title:before{
-  content:"What are you craving?";
-  font-size:28px;
-}
-.assistant-title{font-size:0!important}
-.assistant-copy{
-  font-size:14px!important;color:var(--muted)!important;max-width:620px!important;
-}
-
-/* chat feels like the action area */
-.chat-row{margin:10px 0!important}
-[data-testid="stForm"]{
-  margin:13px 0 22px!important;background:var(--paper)!important;
-  border:2px solid var(--blue)!important;border-radius:999px!important;
-  box-shadow:none!important;
-}
-
-/* editorial menu */
-.pw-section-head{
-  border:0!important;margin:38px 0 18px!important;padding:0!important;
-}
-.popular-title{font-size:32px!important}
-.script-note{background:var(--pink)!important}
-
-/* alternating image scale creates a magazine feel */
-.product-card-shell,.tile-0,.tile-1,.tile-2{
-  background:transparent!important;border:0!important;box-shadow:none!important;
-  border-radius:0!important;margin-bottom:30px!important;
-}
-.product-card-photo{
-  height:300px!important;border-radius:18px!important;
-  object-fit:cover!important;
-}
-.tile-1 .product-card-photo{height:245px!important;margin-top:42px!important}
-.tile-2 .product-card-photo{height:275px!important}
-.product-card-copy{padding:10px 3px 0!important}
-.product-card-name{font-size:19px!important;text-transform:none!important}
-.product-card-desc{font-size:12px!important}
-.product-card-price{font-size:12px!important}
-
-/* small labels remain playful */
-.tile-0 .product-card-media:after,
-.tile-1 .product-card-media:after,
-.tile-2 .product-card-media:after{
-  top:12px!important;left:12px!important;
-}
-
-/* Mobile: split hero becomes name then visual, menu stays compact */
-@media(max-width:768px){
-  .block-container{padding:0 14px 2rem!important}
-  .pw-gingham{
-    display:grid!important;
-    grid-template-columns:1fr!important;
-    min-height:0!important;border-radius:18px!important;
-    margin-bottom:20px!important;
-  }
-  .pw-label{padding:25px 20px 22px!important}
-  .pw-label:before{margin-bottom:13px!important}
-  .bakery-name{
-    font-size:clamp(34px,10vw,44px)!important;
-    max-width:100%!important;margin-bottom:10px!important;
-  }
-  .bakery-subtitle{font-size:13px!important;max-width:100%!important}
-  .pw-gingham:after{
-    height:190px!important;
-  }
-  .assistant-title:before{font-size:22px!important}
-  .assistant-copy{font-size:13px!important}
-  .popular-title{font-size:25px!important}
-  .product-card-photo,
-  .tile-1 .product-card-photo,
-  .tile-2 .product-card-photo{
-    height:190px!important;margin-top:0!important;border-radius:14px!important;
-  }
-  .product-card-shell{margin-bottom:20px!important}
-  .product-card-name{font-size:16px!important}
-  .product-card-desc{font-size:11px!important}
-}
-
-
-/* ===== THEME 2 V7: CLEAN MODERN BLUE + CREAM ===== */
-:root{
-  --cream:#FFF7E6;
-  --paper:#FFFCF5;
-  --blue:#7189D8;
-  --blue-dark:#5F78CF;
-  --pink:#F3B7D0;
-  --ink:#25231F;
-  --muted:#716A63;
-}
-.stApp{background:var(--cream)!important}
-.block-container{max-width:940px!important;padding:0 24px 3rem!important}
-
-/* Simple top bar */
-.loaf-top{
-  padding:16px 0 12px!important;
-  margin:0!important;
-  border:0!important;
-  background:transparent!important;
-}
-.loaf-top-mark{
-  background:transparent!important;
-  color:var(--blue-dark)!important;
-  padding:0!important;
-  border-radius:0!important;
-  font-size:17px!important;
-  letter-spacing:.06em!important;
-}
-
-/* Strong blue hero: no stock image, no stickers, no shapes */
-.pw-gingham{
-  display:block!important;
-  min-height:0!important;
-  margin:8px 0 0!important;
-  padding:38px 36px 34px!important;
-  background:var(--blue)!important;
-  border:0!important;
-  border-radius:22px 22px 0 0!important;
-  box-shadow:none!important;
-  overflow:hidden!important;
-}
-.pw-gingham:after{display:none!important}
-.pw-label{
-  max-width:720px!important;
-  padding:0!important;
-  display:block!important;
-}
-.pw-label:before{display:none!important}
-.bakery-name{
-  color:white!important;
-  font-size:clamp(40px,6vw,62px)!important;
-  line-height:.96!important;
-  letter-spacing:-.045em!important;
-  margin:0 0 12px!important;
-  max-width:none!important;
-}
-.bakery-subtitle{
-  color:rgba(255,255,255,.88)!important;
-  font-size:14px!important;
-  line-height:1.5!important;
-  max-width:560px!important;
-}
-
-/* Hide the extra intro card so the ordering UI feels integrated */
-.assistant-intro{
-  background:var(--blue)!important;
-  border:0!important;
-  border-radius:0 0 22px 22px!important;
-  padding:0 36px 22px!important;
-  margin:0 0 10px!important;
-}
-.assistant-intro:before{display:none!important}
-.assistant-title{
-  color:white!important;
-  font-size:0!important;
-  margin:0!important;
-}
-.assistant-title:before{
-  content:"What are you craving?";
-  color:white!important;
-  font-size:20px!important;
-  font-weight:700!important;
-}
-.assistant-copy{
-  display:none!important;
-}
-
-/* Keep the initial assistant greeting subtle */
-.chat-row{margin:9px 0!important}
-.chat-name{color:var(--muted)!important}
-.chat-bubble{
-  box-shadow:none!important;
-  border:1px solid rgba(37,35,31,.13)!important;
-  border-radius:14px!important;
-}
-.chat-row.assistant .chat-bubble{background:var(--paper)!important}
-.chat-row.user .chat-bubble{background:var(--pink)!important}
-
-/* Main ordering field */
-[data-testid="stForm"]{
-  margin:10px 0 30px!important;
-  padding:5px!important;
-  background:var(--paper)!important;
-  border:1.5px solid var(--blue)!important;
-  border-radius:16px!important;
-  box-shadow:none!important;
-}
-[data-testid="stFormSubmitButton"] button,
-[data-testid="stFormSubmitButton"] button:hover{
-  background:var(--blue)!important;
-  color:white!important;
-  border:0!important;
-  border-radius:11px!important;
-}
-
-/* Clean menu strip */
-.pw-section-head{
-  margin:8px 0 15px!important;
-  padding:0!important;
-  border:0!important;
-}
-.popular-title{
-  font-size:29px!important;
-  font-weight:800!important;
-  text-transform:none!important;
-  letter-spacing:-.035em!important;
-}
-.script-note{
-  background:var(--pink)!important;
-  color:var(--ink)!important;
-  border:0!important;
-  border-radius:999px!important;
-  padding:4px 9px!important;
-  transform:none!important;
-}
-
-/* Real product photos do the visual work */
-.product-card-shell,.tile-0,.tile-1,.tile-2{
-  background:transparent!important;
-  border:0!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-  margin-bottom:24px!important;
-}
-.product-card-media:after{display:none!important}
-.product-card-photo,
-.tile-1 .product-card-photo,
-.tile-2 .product-card-photo{
-  display:block!important;
-  width:100%!important;
-  height:215px!important;
-  margin:0!important;
-  object-fit:cover!important;
-  object-position:center!important;
-  border:0!important;
-  border-radius:14px!important;
-  box-shadow:none!important;
-}
-.product-card-copy{padding:9px 2px 0!important}
-.product-card-name{
-  font-size:17px!important;
-  font-weight:700!important;
-  text-transform:none!important;
-  letter-spacing:-.01em!important;
-}
-.product-card-price{
-  font-size:12px!important;
-  background:transparent!important;
-  border:0!important;
-  padding:0!important;
-}
-.product-card-desc{
-  margin-top:4px!important;
-  font-size:11px!important;
-  line-height:1.45!important;
-  color:var(--muted)!important;
-}
-
-/* Other controls */
-[data-testid="stExpander"] details{
-  background:var(--paper)!important;
-  border:1px solid rgba(37,35,31,.14)!important;
-  border-radius:12px!important;
-}
-.stButton>button,.stButton>button:hover{
-  background:var(--blue)!important;
-  color:white!important;
-  border:0!important;
-  border-radius:10px!important;
-}
-
-/* Mobile-first tightening */
-@media(max-width:768px){
-  .block-container{padding:0 14px 2rem!important}
-  .loaf-top{padding:10px 0 9px!important}
-  .pw-gingham{
-    margin-top:4px!important;
-    padding:25px 18px 20px!important;
-    border-radius:17px 17px 0 0!important;
-  }
-  .bakery-name{
-    font-size:clamp(32px,10vw,42px)!important;
-    margin-bottom:9px!important;
-  }
-  .bakery-subtitle{
-    font-size:12.5px!important;
-    max-width:100%!important;
-  }
-  .assistant-intro{
-    padding:0 18px 17px!important;
-    border-radius:0 0 17px 17px!important;
-  }
-  .assistant-title:before{font-size:18px!important}
-  [data-testid="stForm"]{margin-bottom:24px!important}
-  .popular-title{font-size:24px!important}
-  .script-note{font-size:9px!important}
-  .product-card-photo,
-  .tile-1 .product-card-photo,
-  .tile-2 .product-card-photo{
-    height:180px!important;
-    border-radius:12px!important;
-  }
-  .product-card-name{font-size:15px!important}
-  .product-card-desc{font-size:10.5px!important}
-}
-
-
-/* ===== THEME 2 V8: RETRO BOUTIQUE =====
-   Palette: beige + dark green + rosy brown + midnight teal.
-   Moss green intentionally excluded.
-*/
-:root{
-  --beige:#F7F4D5;
-  --paper:#FFFDF3;
-  --dark-green:#0A3323;
-  --rose:#D3968C;
-  --teal:#105666;
-  --ink:#26231F;
-  --muted:#6E655D;
-}
-.stApp{background:var(--beige)!important;color:var(--ink)!important}
-.block-container{max-width:940px!important;padding:0 24px 3rem!important}
-
-/* Quiet navigation */
-.loaf-top{
-  padding:17px 0 13px!important;
-  margin:0!important;
-  border-bottom:1px solid rgba(10,51,35,.28)!important;
-  background:transparent!important;
-  color:var(--dark-green)!important;
-}
-.loaf-top-mark{
-  background:transparent!important;
-  color:var(--dark-green)!important;
-  padding:0!important;
-  border-radius:0!important;
-  font-size:18px!important;
-  letter-spacing:.08em!important;
-}
-
-/* Hero: strong editorial colour block */
-.pw-gingham{
-  display:block!important;
-  position:relative!important;
-  min-height:0!important;
-  margin:20px 0 0!important;
-  padding:46px 42px 52px!important;
-  background:var(--rose)!important;
-  border:0!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-  overflow:hidden!important;
-}
-.pw-gingham:before{
-  content:"";
-  position:absolute;
-  right:-55px;top:-80px;
-  width:250px;height:250px;
-  border:34px solid var(--teal);
-  border-radius:50%;
-  opacity:.95;
-}
-.pw-gingham:after{
-  content:"";
-  display:block!important;
-  position:absolute!important;
-  left:0!important;right:0!important;bottom:-1px!important;
-  width:100%!important;height:20px!important;
-  background:
-    radial-gradient(circle at 10px 0, transparent 10px, var(--beige) 11px) 0 0/20px 20px repeat-x!important;
-  border:0!important;border-radius:0!important;transform:none!important;
-}
-.pw-label{
-  position:relative!important;
-  z-index:2!important;
-  max-width:650px!important;
-  padding:0!important;
-}
-.pw-label:before{
-  display:block!important;
-  content:"THE BAKERY EDIT"!important;
-  width:max-content!important;
-  margin:0 0 15px!important;
-  padding:5px 9px!important;
-  background:var(--beige)!important;
-  color:var(--dark-green)!important;
-  font-family:"DM Mono",monospace!important;
-  font-size:9px!important;
-  letter-spacing:.08em!important;
-}
-.bakery-name{
-  color:var(--dark-green)!important;
-  font-size:clamp(44px,6.5vw,68px)!important;
-  line-height:.94!important;
-  letter-spacing:-.045em!important;
-  margin:0 0 14px!important;
-}
-.bakery-subtitle{
-  color:#493C38!important;
-  max-width:520px!important;
-  font-size:15px!important;
-  line-height:1.55!important;
-}
-
-/* Ordering zone: dark green with beige input */
-.assistant-intro{
-  background:var(--dark-green)!important;
-  border:0!important;
-  border-radius:0!important;
-  padding:26px 32px 7px!important;
-  margin:0!important;
-}
-.assistant-intro:before{display:none!important}
-.assistant-title{
-  color:var(--beige)!important;
-  font-size:0!important;
-  margin:0 0 4px!important;
-}
-.assistant-title:before{
-  content:"What are you craving?";
-  color:var(--beige)!important;
-  font-size:25px!important;
-  font-weight:800!important;
-}
-.assistant-copy{
-  color:rgba(247,244,213,.78)!important;
-  font-size:13px!important;
-  max-width:600px!important;
-}
-
-/* Chat */
-.chat-name{color:var(--muted)!important}
-.chat-bubble{
-  border:1px solid rgba(10,51,35,.16)!important;
-  box-shadow:none!important;
-  border-radius:0!important;
-}
-.chat-row.assistant .chat-bubble{background:var(--paper)!important}
-.chat-row.user .chat-bubble{
-  background:var(--rose)!important;
-  color:var(--dark-green)!important;
-}
-
-/* Composer connects visually to the dark-green ordering section */
-[data-testid="stForm"]{
-  margin:0 0 30px!important;
-  padding:7px!important;
-  background:var(--dark-green)!important;
-  border:0!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-}
-[data-testid="stForm"] input{
-  background:var(--paper)!important;
-  border-radius:0!important;
-  padding-left:15px!important;
-}
-[data-testid="stFormSubmitButton"] button,
-[data-testid="stFormSubmitButton"] button:hover{
-  background:var(--rose)!important;
-  color:var(--dark-green)!important;
-  border:0!important;
-  border-radius:0!important;
-}
-
-/* Product section */
-.pw-section-head{
-  margin:35px 0 17px!important;
-  padding:0 0 10px!important;
-  border-bottom:2px solid var(--teal)!important;
-}
-.popular-title{
-  color:var(--dark-green)!important;
-  font-size:31px!important;
-  font-weight:800!important;
-  letter-spacing:-.035em!important;
-  text-transform:none!important;
-}
-.script-note{
-  background:var(--rose)!important;
-  color:var(--dark-green)!important;
-  border:0!important;
-  border-radius:0!important;
-  padding:4px 9px!important;
-  transform:none!important;
-}
-
-/* Clean real-photo product tiles with editorial coloured captions */
-.product-card-shell,.tile-0,.tile-1,.tile-2{
-  background:transparent!important;
-  border:0!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-  margin-bottom:24px!important;
-}
-.product-card-media{position:relative!important}
-.product-card-media:after{display:none!important}
-.product-card-photo,
-.tile-1 .product-card-photo,
-.tile-2 .product-card-photo{
-  width:100%!important;
-  height:220px!important;
-  margin:0!important;
-  object-fit:cover!important;
-  object-position:center!important;
-  border:0!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-}
-.product-card-copy{
-  padding:11px 12px 12px!important;
-  background:var(--paper)!important;
-  border-left:5px solid var(--teal)!important;
-}
-.tile-1 .product-card-copy{border-left-color:var(--rose)!important}
-.tile-2 .product-card-copy{border-left-color:var(--dark-green)!important}
-.product-card-name{
-  color:var(--dark-green)!important;
-  font-size:18px!important;
-  font-weight:800!important;
-  text-transform:none!important;
-}
-.product-card-price{
-  color:var(--teal)!important;
-  font-size:12px!important;
-  background:transparent!important;
-  border:0!important;
-  padding:0!important;
-}
-.product-card-desc{
-  color:var(--muted)!important;
-  margin-top:5px!important;
-  font-size:11px!important;
-}
-
-/* Expanders/buttons */
-[data-testid="stExpander"] details{
-  background:var(--paper)!important;
-  border:1px solid rgba(10,51,35,.22)!important;
-  border-radius:0!important;
-}
-.stButton>button,.stButton>button:hover{
-  background:var(--dark-green)!important;
-  color:var(--beige)!important;
-  border:0!important;
-  border-radius:0!important;
-}
-.loaf-footer{color:var(--muted)!important}
-
-/* Mobile */
-@media(max-width:768px){
-  .block-container{padding:0 14px 2rem!important}
-  .loaf-top{padding:11px 0 10px!important}
-  .pw-gingham{
-    margin-top:12px!important;
-    padding:30px 20px 38px!important;
-  }
-  .pw-gingham:before{
-    width:130px;height:130px;right:-55px;top:-55px;border-width:20px;
-  }
-  .bakery-name{
-    font-size:clamp(34px,10vw,44px)!important;
-    margin-bottom:10px!important;
-  }
-  .bakery-subtitle{font-size:13px!important;max-width:90%!important}
-  .assistant-intro{padding:20px 18px 6px!important}
-  .assistant-title:before{font-size:21px!important}
-  .assistant-copy{font-size:12px!important}
-  [data-testid="stForm"]{margin-bottom:24px!important}
-  .popular-title{font-size:25px!important}
-  .product-card-photo,
-  .tile-1 .product-card-photo,
-  .tile-2 .product-card-photo{
-    height:185px!important;
-  }
-  .product-card-copy{padding:9px 10px 10px!important}
-  .product-card-name{font-size:16px!important}
-  .product-card-desc{font-size:10.5px!important}
-}
-
-
-/* ===== THEME 2 V9: BLUE-LED RETRO BOUTIQUE ===== */
-:root{
-  --beige:#F7F4D5;
-  --paper:#FFFDF3;
-  --green:#0A3323;
-  --rose:#D3968C;
-  --blue:#105666;
-  --ink:#26231F;
-  --muted:#6E655D;
-}
-.stApp{background:var(--beige)!important}
-
-/* Blue leads; green becomes a tiny supporting accent */
-.loaf-top{
-  color:var(--blue)!important;
-  border-bottom:1px solid rgba(16,86,102,.30)!important;
-}
-.loaf-top-mark{color:var(--blue)!important}
-
-/* Rosy hero + scallop, without the decorative ring or fake editorial label */
-.pw-gingham{
-  background:var(--rose)!important;
-  padding:36px 40px 43px!important;
-}
-.pw-gingham:before{display:none!important}
-.pw-label:before{display:none!important}
-.bakery-name{
-  color:var(--blue)!important;
-  margin-top:0!important;
-}
-.bakery-subtitle{color:#493C38!important}
-
-/* Ordering section becomes midnight blue */
-.assistant-intro{
-  background:var(--blue)!important;
-  padding:20px 28px 5px!important;
-}
-.assistant-title:before{color:var(--beige)!important}
-.assistant-copy{color:rgba(247,244,213,.82)!important}
-
-/* Greeting visually connects to the ordering section */
-.chat-row.assistant{
-  background:var(--blue)!important;
-  margin:0!important;
-  padding:3px 28px 12px!important;
-  box-sizing:border-box!important;
-}
-.chat-row.assistant .chat-name{
-  color:rgba(247,244,213,.72)!important;
-}
-.chat-row.assistant .chat-bubble{
-  background:var(--paper)!important;
-  border:0!important;
-  width:max-content!important;
-}
-.chat-row.user .chat-bubble{
-  background:var(--rose)!important;
-  color:var(--ink)!important;
-}
-
-/* Composer stays inside the blue visual zone */
-[data-testid="stForm"]{
-  background:var(--blue)!important;
-  margin:0 0 18px!important;
-  padding:7px 28px 18px!important;
-}
-[data-testid="stForm"] input{
-  background:var(--paper)!important;
-}
-[data-testid="stFormSubmitButton"] button,
-[data-testid="stFormSubmitButton"] button:hover{
-  background:var(--rose)!important;
-  color:var(--blue)!important;
-}
-
-/* Pull products closer and make blue the section accent */
-.pw-section-head{
-  margin:20px 0 13px!important;
-  padding-bottom:8px!important;
-  border-bottom:2px solid var(--blue)!important;
-}
-.popular-title{color:var(--blue)!important}
-.script-note{
-  background:var(--rose)!important;
-  color:var(--ink)!important;
-}
-
-/* Smaller, faster-to-browse product imagery */
-.product-card-photo,
-.tile-1 .product-card-photo,
-.tile-2 .product-card-photo{
-  height:175px!important;
-  object-fit:cover!important;
-  object-position:center!important;
-}
-.product-card-copy{
-  border-left:4px solid var(--blue)!important;
-  padding:9px 10px 10px!important;
-}
-.tile-1 .product-card-copy{border-left-color:var(--rose)!important}
-.tile-2 .product-card-copy{border-left-color:var(--blue)!important}
-.product-card-name{color:var(--blue)!important}
-.product-card-price{color:var(--blue)!important}
-
-/* Green only as a subtle minor detail */
-[data-testid="stExpander"] summary{color:var(--green)!important}
-
-/* Mobile */
-@media(max-width:768px){
-  .pw-gingham{
-    padding:26px 18px 34px!important;
-  }
-  .bakery-name{
-    font-size:clamp(33px,10vw,43px)!important;
-  }
-  .assistant-intro{
-    padding:17px 16px 4px!important;
-  }
-  .chat-row.assistant{
-    padding:3px 16px 10px!important;
-  }
-  [data-testid="stForm"]{
-    padding:6px 16px 14px!important;
-    margin-bottom:14px!important;
-  }
-  .pw-section-head{
-    margin-top:16px!important;
-  }
-  .product-card-photo,
-  .tile-1 .product-card-photo,
-  .tile-2 .product-card-photo{
-    height:145px!important;
-  }
-  .product-card-copy{
-    padding:8px 8px 9px!important;
-  }
-}
-
-
-/* ===== THEME 2 V10: BLUEY DAYS RETRO BOUTIQUE =====
-Palette from the new reference:
-Cloudy Valley #B1C7D4
-Tsunami #849AAD
-Weather Board #A1947F
-Volcanic Island #605246
-Red Oxide #5B1C23
-*/
-:root{
-  --cloud:#B1C7D4;
-  --blue:#849AAD;
-  --taupe:#A1947F;
-  --brown:#605246;
-  --oxide:#5B1C23;
-  --paper:#F7F3EA;
-  --ink:#2B2724;
-}
-.stApp{background:var(--paper)!important;color:var(--ink)!important}
-
-/* top navigation */
-.loaf-top{
-  color:var(--oxide)!important;
-  border-bottom:1px solid rgba(96,82,70,.24)!important;
-}
-.loaf-top-mark{color:var(--oxide)!important}
-
-/* Hero: muted blue, smaller heading, scallops attached to BOTTOM */
-.pw-gingham{
-  position:relative!important;
-  background:var(--cloud)!important;
-  padding:34px 38px 43px!important;
-  margin-top:18px!important;
-  overflow:visible!important;
-}
-.pw-gingham:before{display:none!important}
-.pw-label:before{display:none!important}
-.pw-gingham:after{
-  content:""!important;
-  display:block!important;
-  position:absolute!important;
-  left:0!important;right:0!important;
-  bottom:-15px!important;
-  width:100%!important;height:16px!important;
-  background:
-    radial-gradient(circle at 8px 0, var(--cloud) 8px, transparent 8.5px)
-    0 0/16px 16px repeat-x!important;
-  border:0!important;
-  transform:none!important;
-}
-.bakery-name{
-  color:var(--oxide)!important;
-  font-size:clamp(38px,5.6vw,58px)!important;
-  line-height:.96!important;
-  margin:0 0 12px!important;
-}
-.bakery-subtitle{
-  color:var(--brown)!important;
-  max-width:540px!important;
-}
-
-/* Ordering area: blue-led and more compact */
-.assistant-intro{
-  background:var(--blue)!important;
-  padding:18px 26px 4px!important;
-  margin-top:15px!important;
-}
-.assistant-title:before{
-  color:white!important;
-  font-size:22px!important;
-}
-.assistant-copy{
-  color:rgba(255,255,255,.82)!important;
-  font-size:12.5px!important;
-}
-
-/* Greeting is an intentional compact bubble within same blue zone */
-.chat-row.assistant{
-  background:var(--blue)!important;
-  padding:2px 26px 8px!important;
-}
-.chat-row.assistant .chat-name{
-  color:rgba(255,255,255,.72)!important;
-}
-.chat-row.assistant .chat-bubble{
-  width:max-content!important;
-  max-width:78%!important;
-  background:var(--paper)!important;
-  border:0!important;
-  border-radius:12px!important;
-  padding:8px 12px!important;
-}
-.chat-row.user .chat-bubble{
-  background:var(--taupe)!important;
-  color:white!important;
-  border-radius:12px!important;
-}
-
-/* Input integrated into ordering area */
-[data-testid="stForm"]{
-  background:var(--blue)!important;
-  padding:5px 26px 15px!important;
-  margin:0 0 12px!important;
-}
-[data-testid="stForm"] input{
-  background:var(--paper)!important;
-  border-radius:10px!important;
-}
-[data-testid="stFormSubmitButton"] button,
-[data-testid="stFormSubmitButton"] button:hover{
-  background:var(--oxide)!important;
-  color:white!important;
-  border-radius:10px!important;
-}
-
-/* Pull menu upward; no underline */
-.pw-section-head{
-  margin:14px 0 12px!important;
-  padding:0!important;
-  border-bottom:0!important;
-}
-.popular-title{
-  color:var(--oxide)!important;
-  font-size:29px!important;
-}
-.script-note{
-  background:var(--cloud)!important;
-  color:var(--oxide)!important;
-  border-radius:999px!important;
-}
-
-/* Smaller product imagery, cleaner captions */
-.product-card-photo,
-.tile-1 .product-card-photo,
-.tile-2 .product-card-photo{
-  height:175px!important;
-  object-fit:cover!important;
-  object-position:center!important;
-}
-.product-card-copy{
-  background:transparent!important;
-  border-left:2px solid var(--blue)!important;
-  padding:8px 8px 9px!important;
-}
-.tile-1 .product-card-copy{border-left-color:var(--oxide)!important}
-.tile-2 .product-card-copy{border-left-color:var(--taupe)!important}
-.product-card-name{
-  color:var(--oxide)!important;
-  font-size:17px!important;
-}
-.product-card-price{color:var(--brown)!important}
-.product-card-desc{color:var(--brown)!important}
-
-/* Secondary UI */
-[data-testid="stExpander"] details{
-  border-color:rgba(96,82,70,.22)!important;
-}
-[data-testid="stExpander"] summary{color:var(--oxide)!important}
-.stButton>button,.stButton>button:hover{
-  background:var(--oxide)!important;
-  color:white!important;
-}
-
-/* Mobile */
-@media(max-width:768px){
-  .pw-gingham{
-    padding:25px 18px 34px!important;
-    margin-top:10px!important;
-  }
-  .bakery-name{
-    font-size:clamp(31px,9vw,40px)!important;
-    margin-bottom:9px!important;
-  }
-  .bakery-subtitle{
-    font-size:12.5px!important;
-    max-width:100%!important;
-  }
-  .assistant-intro{
-    margin-top:15px!important;
-    padding:15px 15px 3px!important;
-  }
-  .assistant-title:before{font-size:19px!important}
-  .chat-row.assistant{padding:2px 15px 7px!important}
-  .chat-row.assistant .chat-bubble{max-width:92%!important}
-  [data-testid="stForm"]{
-    padding:5px 15px 12px!important;
-    margin-bottom:10px!important;
-  }
-  .pw-section-head{margin:12px 0 10px!important}
-  .popular-title{font-size:23px!important}
-  .product-card-photo,
-  .tile-1 .product-card-photo,
-  .tile-2 .product-card-photo{
-    height:145px!important;
-  }
-  .product-card-copy{
-    border-left-width:2px!important;
-    padding:7px 7px 8px!important;
-  }
-  .product-card-name{font-size:15px!important}
-  .product-card-desc{font-size:10.5px!important}
-}
-
-
-/* ===== THEME 2 V11: UNIFIED ORDERING AREA ===== */
-
-/* Keep the approved palette and hero */
-.pw-gingham{
-  margin-bottom:0!important;
-}
-
-/* One continuous ordering panel */
-.assistant-intro{
-  background:var(--blue)!important;
-  margin:15px 0 0!important;
-  padding:20px 28px 8px!important;
-  border-radius:16px 16px 0 0!important;
-}
-.assistant-title:before{
-  font-size:22px!important;
-}
-.assistant-copy{
-  display:none!important;
-}
-
-/* Every conversation message stays visually inside the ordering area */
-.chat-row{
-  box-sizing:border-box!important;
-}
-.chat-row.assistant,
-.chat-row.user{
-  background:var(--blue)!important;
-  margin:0!important;
-  padding:7px 28px!important;
-}
-.chat-row.user{
-  justify-content:flex-end!important;
-}
-.chat-row.assistant .chat-name,
-.chat-row.user .chat-name{
-  color:rgba(255,255,255,.72)!important;
-}
-.chat-row.assistant .chat-bubble{
-  background:var(--paper)!important;
-  border:0!important;
-  border-radius:12px!important;
-  max-width:620px!important;
-}
-.chat-row.user .chat-bubble{
-  background:var(--taupe)!important;
-  color:white!important;
-  border:0!important;
-  border-radius:12px!important;
-}
-
-/* Composer completes the same panel */
-[data-testid="stForm"]{
-  background:var(--blue)!important;
-  margin:0 0 22px!important;
-  padding:10px 28px 20px!important;
-  border:0!important;
-  border-radius:0 0 16px 16px!important;
-}
-[data-testid="stForm"] input{
-  background:var(--paper)!important;
-  border-radius:10px!important;
-}
-[data-testid="stFormSubmitButton"] button,
-[data-testid="stFormSubmitButton"] button:hover{
-  background:var(--oxide)!important;
-  color:white!important;
-  border-radius:10px!important;
-}
-
-/* Menu begins cleanly after the ordering panel */
-.pw-section-head{
-  margin:22px 0 12px!important;
-  padding:0!important;
-  border:0!important;
-}
-
-/* Mobile */
-@media(max-width:768px){
-  .assistant-intro{
-    margin-top:15px!important;
-    padding:16px 16px 6px!important;
-    border-radius:14px 14px 0 0!important;
-  }
-  .assistant-title:before{
-    font-size:19px!important;
-  }
-  .chat-row.assistant,
-  .chat-row.user{
-    padding:6px 16px!important;
-  }
-  .chat-wrap{
-    max-width:92%!important;
-  }
-  [data-testid="stForm"]{
-    padding:8px 16px 14px!important;
-    margin-bottom:16px!important;
-    border-radius:0 0 14px 14px!important;
-  }
-  .pw-section-head{
-    margin-top:17px!important;
-  }
-}
-
-
-/* ===== THEME 2 V12: OPEN CHAT + FIXED COMPOSER ===== */
-
-/* Heading remains the blue anchor, but conversation no longer becomes a blue wall */
-.assistant-intro{
-  background:var(--blue)!important;
-  margin:15px 0 12px!important;
-  padding:17px 26px 15px!important;
-  border-radius:14px!important;
-}
-.assistant-title:before{
-  font-size:21px!important;
-}
-.assistant-copy{display:none!important}
-
-/* Conversation lives on the beige page */
-.chat-row,
-.chat-row.assistant,
-.chat-row.user{
-  background:transparent!important;
-  padding:0!important;
-  margin:12px 0!important;
-}
-.chat-wrap{
-  max-width:72%!important;
-}
-.chat-row.assistant .chat-name,
-.chat-row.user .chat-name{
-  color:var(--muted)!important;
-}
-.chat-row.assistant .chat-bubble{
-  background:var(--paper)!important;
-  color:var(--ink)!important;
-  border:1px solid rgba(96,82,70,.16)!important;
-  border-radius:12px!important;
-  max-width:560px!important;
-  padding:9px 13px!important;
-}
-.chat-row.user .chat-bubble{
-  background:var(--taupe)!important;
-  color:white!important;
-  border:0!important;
-  border-radius:12px!important;
-  padding:9px 13px!important;
-}
-
-/* Composer is its own compact blue footer */
-[data-testid="stForm"]{
-  background:var(--blue)!important;
-  margin:10px 0 18px!important;
-  padding:9px 12px!important;
-  border:0!important;
-  border-radius:14px!important;
-}
-[data-testid="stForm"] input{
-  background:var(--paper)!important;
-  border-radius:9px!important;
-}
-[data-testid="stFormSubmitButton"] button,
-[data-testid="stFormSubmitButton"] button:hover{
-  background:var(--oxide)!important;
-  color:white!important;
-  border-radius:9px!important;
-}
-
-/* Loader belongs directly above the composer, not inside a huge blue panel */
-.pw-cake-loader{
-  margin:2px 0 4px 8px!important;
-  width:46px!important;
-  height:53px!important;
-}
-.pw-whole-cake{
-  transform:scale(.9)!important;
-  transform-origin:left bottom!important;
-}
-.pw-cake-dots{
-  left:8px!important;
-}
-
-/* Keep menu close after the compact composer */
-.pw-section-head{
-  margin:18px 0 12px!important;
-}
-
-/* Mobile */
-@media(max-width:768px){
-  .assistant-intro{
-    margin-top:12px!important;
-    margin-bottom:10px!important;
-    padding:14px 15px 13px!important;
-    border-radius:12px!important;
-  }
-  .assistant-title:before{font-size:18px!important}
-  .chat-wrap{max-width:88%!important}
-  .chat-row{margin:9px 0!important}
-  .chat-row.assistant .chat-bubble{
-    max-width:100%!important;
-    padding:8px 11px!important;
-  }
-  .chat-row.user .chat-bubble{
-    padding:8px 11px!important;
-  }
-  [data-testid="stForm"]{
-    margin:8px 0 14px!important;
-    padding:7px 9px!important;
-    border-radius:12px!important;
-  }
-  .pw-cake-loader{
-    margin-left:4px!important;
-    transform:scale(.9)!important;
-    transform-origin:left bottom!important;
-  }
-  .pw-section-head{margin-top:15px!important}
-}
-
-
-/* ===== THEME 2 V13: EDITORIAL CATALOGUE + MOBILE SWIPE ===== */
-
-/* Make ordering area more compact */
-.assistant-intro{
-  padding:13px 20px 11px!important;
-  margin:12px 0 9px!important;
-}
-.assistant-title:before{font-size:19px!important}
-.chat-row{margin:8px 0!important}
-.chat-row.assistant .chat-bubble{
-  max-width:500px!important;
-  font-size:13px!important;
-}
-[data-testid="stForm"]{
-  margin:8px 0 14px!important;
-  padding:7px 9px!important;
-}
-
-/* Catalogue-style heading */
-.pw-section-head{
-  margin:16px 0 11px!important;
-  padding:0!important;
-  align-items:center!important;
-}
-.popular-title{
-  font-size:26px!important;
-  letter-spacing:-.025em!important;
-}
-.script-note{
-  font-size:9px!important;
-  padding:4px 8px!important;
-}
-
-/* Desktop: editorial product tiles with smaller photography */
-.product-card-shell,.tile-0,.tile-1,.tile-2{
-  margin-bottom:20px!important;
-}
-.product-card-photo,
-.tile-1 .product-card-photo,
-.tile-2 .product-card-photo{
-  height:160px!important;
-}
-.product-card-copy{
-  padding:8px 7px 8px!important;
-  border-left:0!important;
-  border-top:2px solid var(--blue)!important;
-}
-.tile-1 .product-card-copy{border-top-color:var(--oxide)!important}
-.tile-2 .product-card-copy{border-top-color:var(--taupe)!important}
-.product-card-name{font-size:16px!important}
-.product-card-desc{font-size:10.5px!important}
-
-/* MOBILE: turn Streamlit's product columns into a horizontal swipe rail */
-@media(max-width:768px){
-  .assistant-intro{
-    padding:12px 14px 10px!important;
-    margin:10px 0 8px!important;
-  }
-  .assistant-title:before{font-size:17px!important}
-  .chat-row{margin:7px 0!important}
-  [data-testid="stForm"]{
-    margin:7px 0 12px!important;
-    padding:6px 8px!important;
-  }
-
-  .pw-section-head{
-    margin:14px 0 10px!important;
-  }
-  .popular-title{font-size:22px!important}
-
-  /* The horizontal block immediately after the section heading is the favourites row */
-  .pw-section-head + div [data-testid="stHorizontalBlock"],
-  .pw-section-head + [data-testid="stHorizontalBlock"]{
-    display:flex!important;
-    flex-wrap:nowrap!important;
-    overflow-x:auto!important;
-    overflow-y:hidden!important;
-    gap:12px!important;
-    scroll-snap-type:x mandatory!important;
-    -webkit-overflow-scrolling:touch!important;
-    padding:0 2px 10px!important;
-    scrollbar-width:none!important;
+@media (max-width:768px) {
+    .block-container { padding:0 16px 2.2rem !important; }
+    .pw-gingham { margin:0 -16px; padding:36px 16px 30px; }
+    .chat-wrap { max-width:92%; }
+    .popular-title { font-size:32px; }
+}
+
+
+:root { --ink:#6E2E34; --paper:#FFF7E6; --pink:#F7C8D3; --muted:#7A4650; --line:#6E2E34; --blush:#F7C8D3; --rose:#B46A72; --sage:#A8B58A; }
+.bakery-name, .assistant-title, .popular-title, .loaf-top-mark, .product-card-name,
+[data-testid="stExpander"] summary { font-family:"DM Serif Display", serif !important; font-style:italic; font-weight:400 !important; letter-spacing:0 !important; }
+.loaf-top { display:flex; justify-content:space-between; align-items:baseline; padding:20px 0 14px; border-bottom:1.5px solid var(--ink); font-size:13px; color:var(--ink); }
+.loaf-top-mark { font-size:26px; color:var(--ink); }
+.pw-gingham { margin:18px 0 0 !important; padding:44px 32px 38px !important; background:var(--blush) !important; border:1.5px solid var(--ink); }
+.bakery-name { font-size:clamp(56px, 11vw, 112px) !important; line-height:.95 !important; color:var(--ink) !important; }
+.bakery-subtitle { color:var(--ink); }
+.assistant-intro { background:var(--sage) !important; border:1.5px solid var(--ink) !important; padding:20px 22px !important; }
+.assistant-title { font-size:34px !important; color:var(--ink) !important; }
+.assistant-copy { color:var(--ink); }
+.chat-name { color:var(--muted); }
+.chat-bubble { border:1.5px solid var(--ink) !important; }
+.chat-row.assistant .chat-bubble { background:var(--blush); }
+.chat-row.user .chat-bubble { background:var(--sage); }
+[data-testid="stForm"] { background:var(--paper) !important; border:1.5px solid var(--ink) !important; }
+[data-testid="stFormSubmitButton"] button, [data-testid="stFormSubmitButton"] button:hover,
+.stButton > button, .stButton > button:hover { background:var(--ink) !important; color:var(--paper) !important; border:1.5px solid var(--ink) !important; }
+.popular-title { font-size:46px !important; color:var(--ink) !important; }
+.product-card-shell { border:1.5px solid var(--ink) !important; }
+.product-card-media { padding:10px 10px 0 !important; }
+.product-card-photo { border:1.5px solid var(--ink) !important; }
+.product-card-photo.placeholder { background:var(--paper) !important; color:var(--ink); }
+.product-card-name { font-size:23px !important; line-height:1.1 !important; }
+.product-card-price, .product-card-desc, .product-card-name { color:inherit !important; }
+.product-card-desc { font-size:13px; }
+.tile-0 { background:var(--blush); color:var(--ink); }
+.tile-1 { background:var(--sage); color:var(--ink); }
+.tile-2 { background:var(--rose); color:var(--paper); }
+[data-testid="stExpander"] details { background:var(--paper) !important; border:1.5px solid var(--ink) !important; }
+.order-empty, .loaf-footer { color:var(--muted); }
+
+/* Quieter, smaller, mobile friendly. Menu cards keep their stronger colours. */
+:root { --blush-lt:#FBE4E9; --sage-lt:#DCE3CB; }
+.loaf-top { padding:14px 0 10px !important; }
+.loaf-top-mark { font-size:22px !important; }
+.pw-gingham { margin:12px 0 0 !important; padding:22px 22px 20px !important; background:var(--blush-lt) !important; border:1px solid var(--ink) !important; }
+.bakery-name { font-size:clamp(32px, 7vw, 54px) !important; margin:0 0 8px !important; }
+.bakery-subtitle { font-size:14px !important; line-height:1.5 !important; max-width:none !important; }
+.pw-rule { margin:16px 0 12px !important; }
+.assistant-intro { background:var(--sage-lt) !important; border:1px solid var(--ink) !important; padding:16px 18px !important; margin:4px 0 !important; }
+.assistant-title { font-size:24px !important; margin-bottom:4px !important; }
+.assistant-copy { font-size:14px !important; line-height:1.5 !important; }
+.chat-bubble { border:1px solid var(--ink) !important; font-size:14px !important; padding:9px 13px !important; }
+.chat-row.assistant .chat-bubble { background:var(--blush-lt) !important; }
+.chat-row.user .chat-bubble { background:var(--sage-lt) !important; }
+[data-testid="stForm"] { border-width:1px !important; }
+.popular-title { font-size:30px !important; }
+.pw-section-head { margin:2px 0 14px !important; }
+@media (max-width:768px) {
+    .pw-gingham { padding:16px 16px 14px !important; }
+    .assistant-intro { padding:14px !important; }
+    .popular-title { font-size:26px !important; }
+    .product-card-name { font-size:20px !important; }
+    .product-card-photo { aspect-ratio:16 / 9 !important; width:100% !important; object-fit:cover !important; object-position:center !important; }
+}
+
+/* Cohesive menu: one card colour, photos fill the full card width, sage badge */
+.tile-0 { background:var(--blush) !important; color:var(--ink) !important; }
+.tile-1 { background:var(--sage) !important; color:var(--ink) !important; }
+.tile-2 { background:var(--rose) !important; color:var(--paper) !important; }
+.product-card-shell { border:1px solid var(--ink) !important; overflow:hidden; }
+.product-card-media { padding:0 !important; }
+.product-card-photo { display:block !important; width:100% !important; aspect-ratio:4 / 3 !important; object-fit:cover !important; border:0 !important; border-bottom:1px solid var(--ink) !important; }
+.product-card-photo.placeholder { background:var(--blush-lt) !important; }
+.product-card-price, .product-card-desc, .product-card-name { color:inherit !important; }
+.script-note { display:inline-block !important; background:var(--sage) !important; color:var(--ink) !important; border:1px solid var(--ink) !important; font-family:"DM Mono", monospace !important; font-size:11px !important; font-weight:500 !important; padding:2px 9px !important; }
+
+/* Final Theme 1 mobile image sizing */
+@media (max-width:768px) {
+  .product-card-photo {
+    width:100% !important;
+    height:280px !important;
+    aspect-ratio:auto !important;
+    object-fit:cover !important;
+    object-position:center !important;
   }
-  .pw-section-head + div [data-testid="stHorizontalBlock"]::-webkit-scrollbar,
-  .pw-section-head + [data-testid="stHorizontalBlock"]::-webkit-scrollbar{
-    display:none!important;
-  }
-  .pw-section-head + div [data-testid="stColumn"],
-  .pw-section-head + div [data-testid="column"],
-  .pw-section-head + [data-testid="stHorizontalBlock"] > [data-testid="stColumn"],
-  .pw-section-head + [data-testid="stHorizontalBlock"] > [data-testid="column"]{
-    flex:0 0 76vw!important;
-    width:76vw!important;
-    min-width:76vw!important;
-    scroll-snap-align:start!important;
-  }
-
-  .product-card-shell{
-    margin-bottom:0!important;
-  }
-  .product-card-photo,
-  .tile-1 .product-card-photo,
-  .tile-2 .product-card-photo{
-    height:155px!important;
-  }
-  .product-card-copy{
-    padding:7px 5px 8px!important;
-    border-top-width:2px!important;
-  }
-  .product-card-name{font-size:15px!important}
-  .product-card-desc{font-size:10px!important}
 }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -2308,9 +403,6 @@ def run_chatbot(business):
     menu_photo_urls = business.get("menu_photo_urls") or []
     menu = business["menu"]
 
-    n_cols = 2
-    deco = '<span class="t2-half"></span><span class="t2-squig"></span>'
-
     display_business_name = short_business_name(business_name)
     safe_business_name = html.escape(str(business_name))
     safe_display_name = html.escape(display_business_name)
@@ -2336,11 +428,28 @@ The current date and time is: {current_time_str}. Use this to tell customers if 
 Advance notice required for custom orders: {advance_notice}. When a customer requests a date/time, always work out and state to the customer in your visible reply the exact number of hours between now ({current_time_str}) and their requested date/time, and compare that to the advance notice requirement -- do this out loud in the conversation, not silently, so the number is always visible and can be checked. If the requested time is sooner than required, politely warn the customer it may not be possible and ask if they'd like to proceed anyway or pick a later date.
 Items that are OUT OF STOCK today and must NOT be offered or confirmed: {sold_out_items if sold_out_items else "none"}.
 If asked about something outside this, direct customers to {contact}.
-Speak in a warm, polite, and helpful tone, with a bit of natural personality and warmth, like a friendly local shopkeeper, not robotic or overly formal. Never use em dashes in your replies.
+Speak like a fast, friendly bakery ordering assistant, not a general chatbot.
+Keep visible replies SHORT by default:
+- For greetings, casual chat, simple menu questions, recommendations, and order follow-ups, use 1-3 short sentences.
+- Usually stay under 45 words unless the customer explicitly asks for detail.
+- Ask only ONE useful next question at a time.
+- Do not list the whole menu unless the customer asks to see the menu or several options are genuinely needed.
+- If recommending products, suggest at most 2 relevant menu items, include their prices when useful, and then ask one short follow-up such as whether they want one added.
+- If the customer simply says "hi", "hey", or similar, greet them briefly and ask what they are craving. Do not explain all your capabilities.
+- Do not repeat information the customer already gave you.
+- Do not repeatedly say "I'd be happy to help", "absolutely", "certainly", or other filler.
+- Do not mention that you are an AI.
+- If the customer asks something unrelated to ordering, answer briefly when appropriate, then naturally steer back to the bakery.
+- For ingredient or allergen questions, answer only from the listed menu/FAQ information. If the information is insufficient, say you cannot confirm and direct them to the business instead of guessing.
+- The product photos and menu are already visible on this page. If a customer asks to see products/photos, tell them they can browse the products below. Only mention the social link if they specifically ask for Instagram, the website, or more photos.
+- When collecting an order, move efficiently through missing details instead of explaining the ordering process.
+- Keep confirmation messages concise, but clearly state the important order details before final confirmation.
+Match the customer's language style naturally: English, Hindi, or Hinglish.
+Never use em dashes in your replies.
 
 Only treat an order as BULK if the customer orders MORE THAN 10 of a single item, or explicitly mentions an event, party, or wholesale quantity. A normal order of a few items (even 2-3 of something) is always a regular RETAIL order, not bulk -- do not mention deposits or extra lead time for ordinary small orders.
 
-The business's social media / website link is: {social_link if social_link else "not provided"}. Mention it naturally when relevant (e.g. if a customer asks to see photos, or wants to follow the business) -- don't force it into every message.
+The business's social media / website link is: {social_link if social_link else "not provided"}. The menu and product photos are already visible on this page, so do not send customers to social media just to browse products. Share the social/website link only if they specifically ask for it or want additional external information.
 
 Customers may write to you in English, Hindi, or Hinglish (a natural mix of Hindi and English, written in Roman script). Always reply in the same style the customer is using, naturally. Don't force pure English or pure Hindi if the customer is mixing languages.
 
@@ -2376,7 +485,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     # Header
     st.markdown(
         '<div class="loaf-top"><span class="loaf-top-mark">LOAF</span><span>Online ordering</span></div>'
-        f'<div class="pw-gingham">{deco}<div class="pw-label">'
+        '<div class="pw-gingham"><div class="pw-label">'
         f'<div class="bakery-name">{safe_business_name}</div>'
         '<div class="bakery-subtitle">Pick your bakes, ask about ingredients or custom cakes, and place your order in one chat.</div>'
         '</div></div><div class="pw-rule"></div>',
@@ -2397,7 +506,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     for message in st.session_state.get("display_messages", []):
         render_chat_message(message["role"], message["content"], business_name)
 
-    # Loader slot sits directly above the message composer.
     thinking_slot = st.empty()
 
     with st.form("chat_form", clear_on_submit=True):
@@ -2419,11 +527,11 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     if visible_menu_items:
         st.markdown(
             '<div class="pw-rule"></div>'
-            '<div class="pw-section-head"><span class="popular-title">Popular right now</span>'
-            '<span class="script-note">fresh picks</span></div>',
+            '<div class="pw-section-head"><span class="popular-title">Our favourites</span>'
+            '<span class="script-note">fresh today</span></div>',
             unsafe_allow_html=True
         )
-        card_cols = st.columns(n_cols)
+        card_cols = st.columns(3)
         for idx, item in enumerate(visible_menu_items):
             raw_name = str(item.get("Item", ""))
             item_name = html.escape(raw_name)
@@ -2440,7 +548,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 photo_html = f'<div class="product-card-photo placeholder">{html.escape(raw_name[:1].upper())}</div>'
             price_html_card = f'<div class="product-card-price">{price_text}</div>' if price_text else ""
 
-            with card_cols[idx % n_cols]:
+            with card_cols[idx % 3]:
                 st.markdown(
                     f'<div class="product-card-shell tile-{idx % 3}">'
                     f'<div class="product-card-media">{photo_html}</div>'
@@ -2452,7 +560,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     remaining_menu_items = [item for item in menu if item.get("Item")][6:]
     if remaining_menu_items:
         with st.expander(f"See the full menu ({len(remaining_menu_items)} more)", expanded=False):
-            menu_cols = st.columns(n_cols)
+            menu_cols = st.columns(3)
             for display_idx, item in enumerate(remaining_menu_items):
                 original_idx = display_idx + 6
                 item_name = html.escape(str(item.get("Item", "")))
@@ -2461,7 +569,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 photo_url = item.get("PhotoURL") or (
                     menu_photo_urls[original_idx] if original_idx < len(menu_photo_urls) else None
                 )
-                with menu_cols[display_idx % n_cols]:
+                with menu_cols[display_idx % 3]:
                     if photo_url:
                         st.image(photo_url, use_container_width=True)
                     price_html = f'<div class="product-card-price">{price_text}</div>' if price_text else ""
