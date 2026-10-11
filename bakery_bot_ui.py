@@ -710,7 +710,10 @@ def run_chatbot(business):
 CRITICAL ORDERING RULES:
 - Standard products already listed on the menu are RETAIL orders, even if named Cake, Cheesecake or Cupcake. Never invent a custom-cake rule for them.
 - order_type is "custom" ONLY when the customer explicitly requests a bespoke/custom cake or meaningful customization. Otherwise use "retail".
-- The bakery's advance-notice rule applies ONLY to custom orders. Standard menu orders can be requested without that custom-order notice restriction, subject to availability and business hours.
+- The bakery's advance-notice rule applies ONLY to custom orders.
+- HARD RULE FOR RETAIL MENU ORDERS: completely ignore advance_notice. Do NOT calculate hours of notice, mention notice, say "24 hours' notice", compare the request with the custom-order notice period, or warn about advance notice in any way.
+- For a normal menu request with a date but no exact time, ask only the next missing operational detail. Example: "I want a brownie tomorrow" -> ask pickup or delivery; after that, ask "What time tomorrow?"
+- Do not say an order "can be done", "will be ready", or is available until required details have been collected and relevant stored availability/business-hour rules permit it.
 - Never invent bakery policies, preparation requirements, availability, dates or times.
 - Never promise "I will check with the bakery/team and get back to you."
 - Never invent a pickup/delivery time. If the customer gives a date but no exact clock time, ask for the time and keep requested_datetime_iso null. If they give a time but no date, ask for the date.
@@ -966,6 +969,18 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         thinking_slot.empty()
         order_match = re.search(r"ORDER_SUMMARY:\s*(\{.*\})", bot_reply, re.DOTALL)
         display_reply = bot_reply
+
+        # Guardrail: standard menu conversations must not surface custom-order
+        # advance-notice commentary even if the model slips.
+        retail_notice_patterns = [
+            r"(?i)(?:for\s+tomorrow,?\s*)?that'?s\s+\d+(?:\.\d+)?\s*hours?'?\s+notice\.?\s*",
+            r"(?i)\b\d+(?:\.\d+)?\s*hours?'?\s+notice\b[.!]?\s*",
+            r"(?i)\badvance\s+notice\b[.!]?\s*",
+        ]
+        if not order_match or '"order_type": "custom"' not in order_match.group(1):
+            for pattern in retail_notice_patterns:
+                display_reply = re.sub(pattern, "", display_reply).strip()
+
 
         if order_match:
             display_reply = bot_reply[:order_match.start()].strip()
