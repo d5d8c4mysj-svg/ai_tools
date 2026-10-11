@@ -1044,6 +1044,26 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 pass
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+        # Cohere may sometimes return only hidden ORDER_SUMMARY JSON after
+        # extracting a reply such as "4 pm". Never show an empty assistant bubble.
+        if not str(display_reply).strip():
+            current = st.session_state.get("current_order") or {}
+            missing_now = get_missing_order_fields(current)
+            if "fulfillment method" in missing_now:
+                display_reply = "Would you like pickup or delivery?"
+            elif "delivery address" in missing_now:
+                display_reply = "What's the delivery address?"
+            elif "requested date/time" in missing_now:
+                display_reply = "What date and time would you like?"
+            elif "customer name" in missing_now and "customer contact" in missing_now:
+                display_reply = "What's your name and contact number or email?"
+            elif "customer name" in missing_now:
+                display_reply = "What's your name?"
+            elif "customer contact" in missing_now:
+                display_reply = "What's your contact number or email?"
+            else:
+                display_reply = "Please confirm the order details to continue."
+
         st.session_state.display_messages.append(
             {"role": "assistant", "content": display_reply}
         )
