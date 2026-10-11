@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import cohere
 import pandas as pd
 import json
@@ -465,6 +466,16 @@ def get_missing_order_fields(order):
     return missing
 
 
+def deterministic_next_question(order):
+    missing = get_missing_order_fields(order)
+    if "fulfillment method" in missing: return "Would you like pickup or delivery?"
+    if "delivery address" in missing: return "What's the delivery address?"
+    if "requested date/time" in missing: return "What date and time would you like?"
+    if "customer name" in missing and "customer contact" in missing: return "What's your name and contact number or email?"
+    if "customer name" in missing: return "What's your name?"
+    if "customer contact" in missing: return "What's your contact number or email?"
+    return None
+
 def normalize_and_validate_slug(raw_slug):
     slug = raw_slug.strip().lower()
     slug = re.sub(r"[\s_]+", "-", slug)
@@ -677,6 +688,12 @@ def render_chat_message(role, content, business_name):
         unsafe_allow_html=True
     )
 
+
+def autofocus_chat_input():
+    components.html("""<script>
+    const f=()=>{try{const d=window.parent.document;const el=[...d.querySelectorAll('input')].find(x=>(x.getAttribute('placeholder')||'').toLowerCase().includes('pink whisk'));if(el){el.focus({preventScroll:true});const n=el.value.length;el.setSelectionRange(n,n);}}catch(e){}};
+    setTimeout(f,120);setTimeout(f,450);
+    </script>""",height=0,width=0)
 
 def run_chatbot(business):
     business_name = business["business_name"]
@@ -1017,6 +1034,9 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     )
 
                 st.session_state.current_order = parsed_order
+                next_required_question = deterministic_next_question(parsed_order)
+                if next_required_question and parsed_order.get("status") != "confirmed":
+                    display_reply = next_required_question
 
                 if (
                     parsed_order.get("status") == "confirmed"
@@ -1170,6 +1190,8 @@ def owner_login_gate(title, caption):
 
     st.rerun()
 
+
+    autofocus_chat_input()
 
 def quick_update_view():
     if not owner_login_gate(
