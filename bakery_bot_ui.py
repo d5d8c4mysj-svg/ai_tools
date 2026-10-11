@@ -720,7 +720,13 @@ CRITICAL ORDERING RULES:
 - "Morning", "afternoon", "evening", "later" and similar are too vague; ask for an exact time.
 - Do not proactively ask about customizations for a normal menu order.
 - Do not ask "anything else?" once required details are complete.
-- Use exactly ONE final confirmation step: show a concise summary and ask "Confirm this order?"
+- Use exactly ONE final confirmation step, and ONLY after ALL required fields are present: items with quantity, fulfillment, exact requested date/time, customer name, customer contact, and delivery address when delivery is selected.
+- NEVER ask "Confirm this order?" while customer_name or customer_contact is missing.
+- Required-field sequence for a normal retail order: item -> pickup/delivery -> exact date/time -> delivery address if needed -> name/contact -> ONE final summary -> confirmation.
+- After an exact retail pickup/delivery time is supplied, do NOT calculate or mention how many hours/minutes away it is. Move directly to the next missing required field.
+- For retail orders, never say phrases such as "23 hours from now", "24 hours away", "hours and minutes from now", or any equivalent countdown.
+- The final summary should be concise and should not expose the full contact value.
+- Ask exactly: "Confirm this order?"
 - Do not set status to "confirmed" until the customer explicitly says yes/confirm after that summary.
 - Keep checkout replies short. Do not argue with the customer or repeat a policy.
 - In visible summaries, mask contact details; do not echo the full phone number/email.
@@ -973,6 +979,8 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         # Guardrail: standard menu conversations must not surface custom-order
         # advance-notice commentary even if the model slips.
         retail_notice_patterns = [
+            r"(?i)(?:okay,?\s*)?(?:so\s+)?that'?s\s+\d+\s*hours?(?:\s+and\s+\d+\s*minutes?)?\s+from\s+now\.?\s*",
+            r"(?i)\b\d+\s*hours?(?:\s+and\s+\d+\s*minutes?)?\s+from\s+now\b[.!]?\s*",
             r"(?i)(?:for\s+tomorrow,?\s*)?that'?s\s+\d+(?:\.\d+)?\s*hours?'?\s+notice\.?\s*",
             r"(?i)\b\d+(?:\.\d+)?\s*hours?'?\s+notice\b[.!]?\s*",
             r"(?i)\badvance\s+notice\b[.!]?\s*",
@@ -1044,6 +1052,24 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 pass
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+        # Deterministic checkout guard: the model may try to confirm before
+        # collecting customer details. Replace that with the next required question.
+        current_for_guard = st.session_state.get("current_order") or {}
+        missing_for_guard = get_missing_order_fields(current_for_guard)
+        if "Confirm this order?" in str(display_reply) and missing_for_guard:
+            if "fulfillment method" in missing_for_guard:
+                display_reply = "Would you like pickup or delivery?"
+            elif "delivery address" in missing_for_guard:
+                display_reply = "What's the delivery address?"
+            elif "requested date/time" in missing_for_guard:
+                display_reply = "What date and time would you like?"
+            elif "customer name" in missing_for_guard and "customer contact" in missing_for_guard:
+                display_reply = "What's your name and contact number or email?"
+            elif "customer name" in missing_for_guard:
+                display_reply = "What's your name?"
+            elif "customer contact" in missing_for_guard:
+                display_reply = "What's your contact number or email?"
+
         # Cohere may sometimes return only hidden ORDER_SUMMARY JSON after
         # extracting a reply such as "4 pm". Never show an empty assistant bubble.
         if not str(display_reply).strip():
