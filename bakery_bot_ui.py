@@ -448,6 +448,8 @@ def get_missing_order_fields(order):
             missing.append("item quantity")
     if order.get("fulfillment") not in ("pickup", "delivery"):
         missing.append("fulfillment method")
+    if order.get("fulfillment") == "delivery" and not order.get("delivery_address"):
+        missing.append("delivery address")
     if not order.get("requested_datetime"):
         missing.append("requested date/time")
     if not order.get("customer_name"):
@@ -582,6 +584,27 @@ def get_business(slug):
     if result.data:
         return result.data[0]
     return None
+
+
+def submit_protected_order(slug, order):
+    """Submit through protected RPC; customers never insert into orders directly."""
+    requested_iso = order.get("requested_datetime_iso")
+    if not requested_iso:
+        raise ValueError("A valid requested date/time is required.")
+    params = {
+        "p_bakery_slug": slug,
+        "p_items": order.get("items") or [],
+        "p_fulfillment": order.get("fulfillment"),
+        "p_requested_datetime": requested_iso,
+        "p_customer_name": order.get("customer_name"),
+        "p_customer_contact": order.get("customer_contact"),
+        "p_delivery_address": order.get("delivery_address") if order.get("fulfillment") == "delivery" else None,
+        "p_order_type": order.get("order_type") or "retail",
+    }
+    result = supabase.rpc("submit_loaf_order", params).execute()
+    if not result.data:
+        raise ValueError("The order could not be saved.")
+    return result.data
 
 
 def send_order_email(order, business_name, business_email, order_number):
@@ -748,6 +771,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.display_messages = []
         st.session_state.current_order = None
         st.session_state.order_email_sent = False
+        st.session_state.order_saved = False
         st.session_state.order_number = None
         st.session_state.orders_this_session = 0
         st.session_state.awaiting_assistant = False
@@ -883,7 +907,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
         if order_count > 0:
             if st.button("Start new order", key="top_start_new_order"):
-                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_number", "awaiting_assistant"]:
+                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
@@ -952,28 +976,27 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
                 if (
                     parsed_order.get("status") == "confirmed"
-                    and not st.session_state.get("order_email_sent", False)
+                    and not st.session_state.get("order_saved", False)
                 ):
-                    if not st.session_state.get("order_number"):
-                        st.session_state.order_number = random.randint(1000, 9999)
                     try:
-                        send_order_email(
-                            parsed_order,
-                            business_name,
-                            contact,
-                            st.session_state.order_number,
-                        )
-                        st.session_state.order_email_sent = True
+                        saved = submit_protected_order(slug_from_url, parsed_order)
                     except Exception:
-                        pass
-
-                    st.session_state.orders_this_session = (
-                        st.session_state.get("orders_this_session", 0) + 1
-                    )
-                    display_reply += (
-                        f"\n\nOrder #{st.session_state.order_number} is confirmed. "
-                        f"We'll be in touch shortly."
-                    )
+                        parsed_order["status"] = "in_progress"
+                        st.session_state.current_order = parsed_order
+                        display_reply = (
+                            "I couldn't securely save that order yet. "
+                            "Please check the item, date/time, and delivery details and try again."
+                        )
+                    else:
+                        db_order_number = saved.get("order_number")
+                        db_total = saved.get("total")
+                        parsed_order["estimated_total"] = db_total
+                        parsed_order["status"] = "confirmed"
+                        st.session_state.current_order = parsed_order
+                        st.session_state.order_number = db_order_number
+                        st.session_state.order_saved = True
+                        st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
+                        display_reply += f"\n\nOrder #{db_order_number} is confirmed. Final total: ₹{db_total}."
                 elif notice_warning:
                     display_reply += f"\n\n{notice_warning}"
 
