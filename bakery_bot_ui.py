@@ -1778,6 +1778,111 @@ Red Oxide #5B1C23
   .product-card-desc{font-size:10.5px!important}
 }
 
+
+/* ===== THEME 2 V11: UNIFIED ORDERING AREA ===== */
+
+/* Keep the approved palette and hero */
+.pw-gingham{
+  margin-bottom:0!important;
+}
+
+/* One continuous ordering panel */
+.assistant-intro{
+  background:var(--blue)!important;
+  margin:15px 0 0!important;
+  padding:20px 28px 8px!important;
+  border-radius:16px 16px 0 0!important;
+}
+.assistant-title:before{
+  font-size:22px!important;
+}
+.assistant-copy{
+  display:none!important;
+}
+
+/* Every conversation message stays visually inside the ordering area */
+.chat-row{
+  box-sizing:border-box!important;
+}
+.chat-row.assistant,
+.chat-row.user{
+  background:var(--blue)!important;
+  margin:0!important;
+  padding:7px 28px!important;
+}
+.chat-row.user{
+  justify-content:flex-end!important;
+}
+.chat-row.assistant .chat-name,
+.chat-row.user .chat-name{
+  color:rgba(255,255,255,.72)!important;
+}
+.chat-row.assistant .chat-bubble{
+  background:var(--paper)!important;
+  border:0!important;
+  border-radius:12px!important;
+  max-width:620px!important;
+}
+.chat-row.user .chat-bubble{
+  background:var(--taupe)!important;
+  color:white!important;
+  border:0!important;
+  border-radius:12px!important;
+}
+
+/* Composer completes the same panel */
+[data-testid="stForm"]{
+  background:var(--blue)!important;
+  margin:0 0 22px!important;
+  padding:10px 28px 20px!important;
+  border:0!important;
+  border-radius:0 0 16px 16px!important;
+}
+[data-testid="stForm"] input{
+  background:var(--paper)!important;
+  border-radius:10px!important;
+}
+[data-testid="stFormSubmitButton"] button,
+[data-testid="stFormSubmitButton"] button:hover{
+  background:var(--oxide)!important;
+  color:white!important;
+  border-radius:10px!important;
+}
+
+/* Menu begins cleanly after the ordering panel */
+.pw-section-head{
+  margin:22px 0 12px!important;
+  padding:0!important;
+  border:0!important;
+}
+
+/* Mobile */
+@media(max-width:768px){
+  .assistant-intro{
+    margin-top:15px!important;
+    padding:16px 16px 6px!important;
+    border-radius:14px 14px 0 0!important;
+  }
+  .assistant-title:before{
+    font-size:19px!important;
+  }
+  .chat-row.assistant,
+  .chat-row.user{
+    padding:6px 16px!important;
+  }
+  .chat-wrap{
+    max-width:92%!important;
+  }
+  [data-testid="stForm"]{
+    padding:8px 16px 14px!important;
+    margin-bottom:16px!important;
+    border-radius:0 0 14px 14px!important;
+  }
+  .pw-section-head{
+    margin-top:17px!important;
+  }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
