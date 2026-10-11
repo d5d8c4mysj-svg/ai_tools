@@ -25,7 +25,7 @@ mode = params.get("mode", "customer")
 st.set_page_config(page_title="Loaf")
 
 # Loaf design: flat pink block, big bold headline, thin black rules, square corners.
-st.markdown("""
+THEME1_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Archivo:wght@400;500;600;800&family=DM+Mono:wght@400;500&display=swap');
 :root { --pink:#F2C6D8; --pink-deep:#E7A6C1; --ink:#111111; --muted:#5C5558; --paper:#FFFFFF; --line:#111111; --red:#111111; --olive:#111111; --cream:#FFFFFF; }
@@ -183,7 +183,6 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
     .assistant-intro { padding:14px !important; }
     .popular-title { font-size:26px !important; }
     .product-card-name { font-size:20px !important; }
-    .product-card-photo { aspect-ratio:16 / 9 !important; width:100% !important; object-fit:cover !important; object-position:center !important; }
 }
 
 /* Cohesive menu: one card colour, photos fill the full card width, sage badge */
@@ -198,17 +197,87 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
 .script-note { display:inline-block !important; background:var(--sage) !important; color:var(--ink) !important; border:1px solid var(--ink) !important; font-family:"DM Mono", monospace !important; font-size:11px !important; font-weight:500 !important; padding:2px 9px !important; }
 
 /* Final Theme 1 mobile image sizing */
-@media (max-width:768px) {
-  .product-card-photo {
-    width:100% !important;
-    height:280px !important;
-    aspect-ratio:auto !important;
-    object-fit:cover !important;
-    object-position:center !important;
-  }
-}
+@media (max-width:768px) { .product-card-photo { width:100% !important; height:280px !important; aspect-ratio:auto !important; object-fit:cover !important; object-position:center !important; } }
 </style>
-""", unsafe_allow_html=True)
+"""
+
+THEME2_BASE = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=DM+Mono:wght@400;500&display=swap');
+:root { --blue:#6F86D6; --pink:#F2B8D6; --cream:#F6ECDF; --lime:#C8CE7C; --sky:#BFD6E8; --lav:#C9B8EA; --ink:#1B1B1B; --paper:#F6ECDF; }
+html, body, [class*="css"] { font-family:"Bricolage Grotesque", sans-serif; }
+*, *::before, *::after { transition:none !important; }
+.stApp { background:var(--blue); color:var(--ink); }
+.block-container { max-width:760px; padding:0 20px 3rem !important; margin:0 auto !important; background:transparent; }
+#MainMenu, footer { visibility:hidden; }
+header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"],
+[data-testid="stSidebar"], [data-testid="stBottom"], [data-testid="stBottomBlockContainer"] { display:none !important; height:0 !important; }
+[data-testid="stVerticalBlock"] { gap:.7rem; }
+*:focus-visible { outline:3px solid var(--ink); outline-offset:2px; }
+.loaf-wordmark { font-weight:800; font-size:18px; }
+.loaf-top { display:flex; justify-content:space-between; align-items:baseline; background:var(--lime); border:2px solid var(--ink); border-top:0; padding:8px 14px; margin:0 0 16px; font-family:"DM Mono", monospace; font-size:12px; }
+.loaf-top-mark { font-family:"Bricolage Grotesque", sans-serif; font-weight:800; font-size:15px; }
+.pw-strip, .pw-rule { display:none; }
+.pw-gingham { position:relative; overflow:hidden; background:var(--pink); border:2px solid var(--ink); padding:30px 22px 28px; }
+.pw-label { position:relative; z-index:2; max-width:72%; margin:0; padding:0; background:transparent; border:0; text-align:left; }
+.bakery-name { font-weight:800; font-size:clamp(34px, 8vw, 60px); line-height:1; letter-spacing:-.02em; margin:0 0 10px; }
+.bakery-subtitle { font-size:15px; line-height:1.5; margin:0; }
+.t2-half { position:absolute; right:-34px; top:-14px; width:140px; height:140px; background:var(--lime); border:2px solid var(--ink); border-radius:50%; }
+.t2-squig { position:absolute; right:22px; bottom:12px; width:96px; height:44px; background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 40'><path d='M3 22 C12 2 22 38 32 20 S52 4 61 20' fill='none' stroke='%236F86D6' stroke-width='7' stroke-linecap='round'/></svg>") no-repeat center / contain; }
+.assistant-intro { background:var(--cream); border:2px solid var(--ink); padding:16px 18px; margin:14px 0 6px; }
+.assistant-title { font-weight:800; font-size:22px; margin-bottom:4px; }
+.assistant-copy { font-size:14px; line-height:1.5; }
+.chat-row { display:flex; width:100%; margin:12px 0; }
+.chat-row.user { justify-content:flex-end; }
+.chat-wrap { max-width:84%; }
+.chat-name { font-family:"DM Mono", monospace; font-size:11px; margin:0 0 4px 6px; }
+.chat-row.user .chat-name { text-align:right; margin:0 6px 4px 0; }
+.chat-bubble { font-size:15px; line-height:1.55; padding:10px 15px; border:2px solid var(--ink); border-radius:18px; }
+.chat-row.assistant .chat-bubble { background:var(--cream); border-bottom-left-radius:4px; }
+.chat-row.user .chat-bubble { background:var(--lime); border-bottom-right-radius:4px; }
+[data-testid="stChatMessage"] { display:none; }
+[data-testid="stForm"] { width:100% !important; margin:16px 0 6px !important; padding:5px !important; border:2px solid var(--ink) !important; border-radius:999px !important; background:var(--cream) !important; }
+[data-testid="stForm"] [data-testid="stHorizontalBlock"] { display:grid !important; grid-template-columns:minmax(0, 1fr) 44px !important; gap:6px !important; align-items:center !important; width:100% !important; }
+[data-testid="stForm"] [data-testid="stColumn"], [data-testid="stForm"] [data-testid="column"] { width:auto !important; min-width:0 !important; flex:none !important; }
+[data-testid="stForm"] [data-baseweb], [data-testid="stForm"] [data-testid="stTextInputRootElement"] { background:transparent !important; border:0 !important; box-shadow:none !important; }
+[data-testid="stForm"] input { background:transparent !important; border:0 !important; box-shadow:none !important; height:44px !important; padding:0 16px !important; font-size:15px !important; color:var(--ink) !important; }
+[data-testid="InputInstructions"], [data-testid="stInputInstructions"], .stTextInput small { display:none !important; }
+[data-testid="stFormSubmitButton"] button, [data-testid="stFormSubmitButton"] button:hover { width:44px !important; min-width:44px !important; height:44px !important; padding:0 !important; border-radius:50% !important; background:var(--pink) !important; color:var(--ink) !important; border:2px solid var(--ink) !important; font-size:18px !important; }
+.pw-section-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:22px 0 14px; }
+.popular-title { font-weight:800; font-size:28px; background:var(--cream); border:2px solid var(--ink); padding:2px 14px; }
+.script-note { background:var(--pink); border:2px solid var(--ink); border-radius:999px; font-family:"DM Mono", monospace; font-size:11px; padding:2px 10px; }
+.product-card-shell { background:var(--cream); border:2px solid var(--ink); margin:0 0 16px; overflow:hidden; }
+.tile-1 { background:var(--sky); } .tile-2 { background:var(--lav); }
+.product-card-media { padding:0; }
+.product-card-photo { display:block; width:100%; aspect-ratio:1 / 1; object-fit:cover; border-bottom:2px solid var(--ink); }
+.product-card-photo.placeholder { display:flex; align-items:center; justify-content:center; font-weight:800; font-size:56px; background:var(--pink); }
+.product-card-copy { padding:10px 12px 14px; }
+.product-card-topline { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.product-card-name { font-weight:800; font-size:18px; line-height:1.15; }
+.product-card-price { font-family:"DM Mono", monospace; font-size:13px; background:var(--pink); border:2px solid var(--ink); border-radius:999px; padding:1px 9px; white-space:nowrap; }
+.product-card-desc { margin-top:6px; font-size:13px; line-height:1.5; }
+[data-testid="stExpander"] { background:transparent !important; border:0 !important; margin-bottom:10px; }
+[data-testid="stExpander"] details { background:var(--cream) !important; border:2px solid var(--ink) !important; border-radius:0 !important; }
+[data-testid="stExpander"] summary { font-weight:800; font-size:16px; color:var(--ink); }
+.order-empty { font-size:14px; }
+.stButton > button, .stButton > button:hover { background:var(--ink); color:var(--cream); border:2px solid var(--ink); border-radius:999px; font-weight:600; padding:.4rem 1.3rem; }
+.loaf-footer { text-align:center; font-family:"DM Mono", monospace; font-size:11px; margin-top:32px; }
+/*LOADER*/
+@media (max-width:768px) { .block-container { padding:0 12px 2.2rem !important; } .pw-label { max-width:76%; } .t2-half { width:96px; height:96px; right:-26px; } .bakery-name { font-size:clamp(30px, 9vw, 44px); } }
+</style>
+"""
+THEME2_CSS = THEME2_BASE.replace("/*LOADER*/", THEME1_CSS[THEME1_CSS.index("/* Loading cake */"):THEME1_CSS.index("@media (max-width:768px) {")])
+
+_theme_applied = False
+
+
+def apply_theme(theme):
+    """Emit one theme's CSS per run. theme1 is the classic look, theme2 the playful one."""
+    global _theme_applied
+    if _theme_applied:
+        return
+    _theme_applied = True
+    st.markdown(THEME2_CSS if theme == "theme2" else THEME1_CSS, unsafe_allow_html=True)
 
 
 MAX_MESSAGES_PER_SESSION = 40  # caps Cohere API spend per customer session
@@ -403,6 +472,13 @@ def run_chatbot(business):
     menu_photo_urls = business.get("menu_photo_urls") or []
     menu = business["menu"]
 
+    theme = params.get("theme") or business.get("theme") or "theme1"
+    if theme not in ("theme1", "theme2"):
+        theme = "theme1"
+    apply_theme(theme)
+    n_cols = 2 if theme == "theme2" else 3
+    deco = '<span class="t2-half"></span><span class="t2-squig"></span>' if theme == "theme2" else ""
+
     display_business_name = short_business_name(business_name)
     safe_business_name = html.escape(str(business_name))
     safe_display_name = html.escape(display_business_name)
@@ -468,7 +544,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     # Header
     st.markdown(
         '<div class="loaf-top"><span class="loaf-top-mark">LOAF</span><span>Online ordering</span></div>'
-        '<div class="pw-gingham"><div class="pw-label">'
+        f'<div class="pw-gingham">{deco}<div class="pw-label">'
         f'<div class="bakery-name">{safe_business_name}</div>'
         '<div class="bakery-subtitle">Pick your bakes, ask about ingredients or custom cakes, and place your order in one chat.</div>'
         '</div></div><div class="pw-rule"></div>',
@@ -514,7 +590,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             '<span class="script-note">fresh today</span></div>',
             unsafe_allow_html=True
         )
-        card_cols = st.columns(3)
+        card_cols = st.columns(n_cols)
         for idx, item in enumerate(visible_menu_items):
             raw_name = str(item.get("Item", ""))
             item_name = html.escape(raw_name)
@@ -531,7 +607,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 photo_html = f'<div class="product-card-photo placeholder">{html.escape(raw_name[:1].upper())}</div>'
             price_html_card = f'<div class="product-card-price">{price_text}</div>' if price_text else ""
 
-            with card_cols[idx % 3]:
+            with card_cols[idx % n_cols]:
                 st.markdown(
                     f'<div class="product-card-shell tile-{idx % 3}">'
                     f'<div class="product-card-media">{photo_html}</div>'
@@ -543,7 +619,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     remaining_menu_items = [item for item in menu if item.get("Item")][6:]
     if remaining_menu_items:
         with st.expander(f"See the full menu ({len(remaining_menu_items)} more)", expanded=False):
-            menu_cols = st.columns(3)
+            menu_cols = st.columns(n_cols)
             for display_idx, item in enumerate(remaining_menu_items):
                 original_idx = display_idx + 6
                 item_name = html.escape(str(item.get("Item", "")))
@@ -552,7 +628,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 photo_url = item.get("PhotoURL") or (
                     menu_photo_urls[original_idx] if original_idx < len(menu_photo_urls) else None
                 )
-                with menu_cols[display_idx % 3]:
+                with menu_cols[display_idx % n_cols]:
                     if photo_url:
                         st.image(photo_url, use_container_width=True)
                     price_html = f'<div class="product-card-price">{price_text}</div>' if price_text else ""
@@ -782,6 +858,7 @@ def owner_view():
         "Out of stock today (comma separated, leave blank if none)",
         placeholder="e.g. Red velvet cake, Croissants"
     )
+    theme_choice = st.selectbox("Chatbot look", ["Keep as is", "Classic", "Playful"])
     menu_photos = st.file_uploader(
         "Product photos (optional, upload in the same order as your menu items)",
         accept_multiple_files=True,
@@ -829,6 +906,13 @@ def owner_view():
                 elif idx < len(existing_menu) and existing_menu[idx].get("PhotoURL"):
                     item["PhotoURL"] = existing_menu[idx].get("PhotoURL")
 
+            if theme_choice == "Classic":
+                theme_value = "theme1"
+            elif theme_choice == "Playful":
+                theme_value = "theme2"
+            else:
+                theme_value = (existing_business or {}).get("theme") or "theme1"
+
             business_data = {
                 "slug": clean_slug,
                 "business_name": business_name,
@@ -843,10 +927,16 @@ def owner_view():
                 "social_link": social_link,
                 "menu": menu_records,
                 "menu_photo_urls": menu_photo_urls,
-                "admin_password": password_hash
+                "admin_password": password_hash,
+                "theme": theme_value
             }
             try:
-                supabase.table("businesses").upsert(business_data, on_conflict="slug").execute()
+                try:
+                    supabase.table("businesses").upsert(business_data, on_conflict="slug").execute()
+                except Exception:
+                    business_data.pop("theme", None)
+                    supabase.table("businesses").upsert(business_data, on_conflict="slug").execute()
+                    st.warning("Saved, but the look was not stored. Add a text column named theme to your businesses table in Supabase.")
             except Exception:
                 st.error("Something went wrong saving your bot. Please try again in a moment.")
             else:
@@ -857,8 +947,11 @@ def owner_view():
 
 
 if mode == "owner":
+    apply_theme("theme1")
     owner_view()
 elif mode == "quickupdate":
+    apply_theme("theme1")
     quick_update_view()
 else:
     customer_view()
+    apply_theme("theme1")
