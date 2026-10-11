@@ -448,6 +448,203 @@ header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [dat
   }
 }
 
+
+/* ===== THEME 2 V4: FOOD-FIRST PLAYFUL MODERN ===== */
+
+/* Remove the boxed-assignment feeling */
+.loaf-top{
+  border-bottom:0!important;
+  padding:18px 2px 8px!important;
+  margin-bottom:6px!important;
+}
+.loaf-top-mark{
+  background:var(--butter)!important;
+  border-radius:999px!important;
+  padding:5px 11px!important;
+}
+
+/* Hero is open, not a card */
+.pw-gingham{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:34px 2px 26px!important;
+  margin:0!important;
+  overflow:visible!important;
+}
+.pw-label{
+  max-width:70%!important;
+}
+.bakery-name{
+  font-size:clamp(40px,6.5vw,66px)!important;
+  line-height:.94!important;
+  margin-bottom:13px!important;
+}
+.bakery-subtitle{
+  max-width:500px!important;
+  color:#655F59!important;
+}
+
+/* Replace decorative shapes with a bakery/photo-style colour panel */
+.pw-gingham:after{
+  content:"FRESH BAKES\A MADE DAILY";
+  white-space:pre;
+  position:absolute;
+  right:4px;
+  top:28px;
+  width:150px;
+  height:150px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:flex-start;
+  box-sizing:border-box;
+  padding:16px;
+  background:linear-gradient(145deg,var(--pink) 0 58%,var(--butter) 58% 100%);
+  border-radius:24px;
+  color:var(--ink);
+  font-family:"DM Mono",monospace;
+  font-size:11px;
+  font-weight:500;
+  line-height:1.45;
+  transform:rotate(3deg);
+}
+.t2-half,.t2-squig{display:none!important}
+
+/* Remove information-callout panel; make ordering feel like part of page */
+.assistant-intro{
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  padding:14px 2px 6px!important;
+  margin:0!important;
+}
+.assistant-intro:before{display:none!important}
+.assistant-title{
+  font-size:28px!important;
+  margin-bottom:5px!important;
+}
+.assistant-copy{
+  max-width:620px!important;
+  font-size:14px!important;
+}
+
+/* Input becomes the visual CTA */
+[data-testid="stForm"]{
+  margin:14px 0 14px!important;
+  border:2px solid var(--ink)!important;
+  border-radius:999px!important;
+  box-shadow:none!important;
+}
+[data-testid="stForm"]:focus-within{
+  border-color:var(--blue)!important;
+}
+[data-testid="stFormSubmitButton"] button,
+[data-testid="stFormSubmitButton"] button:hover{
+  border-radius:50%!important;
+  background:var(--blue)!important;
+}
+
+/* Menu is open and photography-led */
+.pw-section-head{
+  margin:34px 0 16px!important;
+  display:flex!important;
+  align-items:baseline!important;
+}
+.pw-section-head:before{display:none!important}
+.popular-title{
+  font-size:30px!important;
+  text-transform:none!important;
+  letter-spacing:-.035em!important;
+}
+.script-note{
+  background:var(--pink)!important;
+  text-transform:uppercase!important;
+  letter-spacing:.04em!important;
+  transform:rotate(-2deg);
+}
+.product-card-shell,.tile-0,.tile-1,.tile-2{
+  background:transparent!important;
+  box-shadow:none!important;
+  border:0!important;
+  border-radius:0!important;
+}
+.product-card-photo{
+  height:235px!important;
+  border-radius:18px!important;
+  box-shadow:none!important;
+}
+.product-card-copy{
+  padding:10px 3px 0!important;
+}
+.product-card-name{
+  text-transform:none!important;
+  font-size:19px!important;
+}
+.product-card-price{
+  font-size:12px!important;
+}
+.product-card-desc{
+  font-size:12px!important;
+}
+
+/* Small intentional colour tabs on alternating images */
+.tile-0 .product-card-media,
+.tile-1 .product-card-media,
+.tile-2 .product-card-media{position:relative}
+.tile-0 .product-card-media:after,
+.tile-1 .product-card-media:after,
+.tile-2 .product-card-media:after{
+  position:absolute;left:12px;top:12px;
+  padding:5px 9px;border-radius:999px;
+  font-family:"DM Mono",monospace;font-size:9px;font-weight:500;
+}
+.tile-0 .product-card-media:after{content:"BAKED";background:var(--butter)}
+.tile-1 .product-card-media:after{content:"FAVOURITE";background:var(--pink)}
+.tile-2 .product-card-media:after{content:"PICK";background:var(--sage)}
+
+@media(max-width:768px){
+  .block-container{padding:0 16px 2rem!important}
+  .loaf-top{padding-top:10px!important}
+  .pw-gingham{
+    padding:24px 0 122px!important;
+  }
+  .pw-label{max-width:100%!important}
+  .bakery-name{
+    font-size:clamp(34px,10vw,44px)!important;
+    max-width:100%!important;
+  }
+  .bakery-subtitle{
+    max-width:100%!important;
+    font-size:13px!important;
+  }
+  .pw-gingham:after{
+    width:104px;height:94px;right:4px;top:auto;bottom:14px;
+    padding:11px;border-radius:18px;font-size:9px;
+  }
+  .assistant-intro{
+    padding:6px 0 3px!important;
+  }
+  .assistant-title{
+    font-size:22px!important;
+  }
+  .assistant-copy{
+    font-size:13px!important;
+  }
+  .popular-title{
+    font-size:25px!important;
+  }
+  .product-card-photo{
+    height:190px!important;
+    border-radius:14px!important;
+  }
+  .product-card-name{
+    font-size:16px!important;
+  }
+  .product-card-desc{
+    font-size:11px!important;
+  }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -754,8 +951,8 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     if visible_menu_items:
         st.markdown(
             '<div class="pw-rule"></div>'
-            '<div class="pw-section-head"><span class="popular-title">Our favourites</span>'
-            '<span class="script-note">fresh today</span></div>',
+            '<div class="pw-section-head"><span class="popular-title">Popular right now</span>'
+            '<span class="script-note">fresh picks</span></div>',
             unsafe_allow_html=True
         )
         card_cols = st.columns(n_cols)
