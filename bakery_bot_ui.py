@@ -196,6 +196,17 @@ header[data-testid="stHeader"], .stApp > header { display:none !important; heigh
 .product-card-photo.placeholder { background:var(--blush-lt) !important; }
 .product-card-price, .product-card-desc, .product-card-name { color:inherit !important; }
 .script-note { display:inline-block !important; background:var(--sage) !important; color:var(--ink) !important; border:1px solid var(--ink) !important; font-family:"DM Mono", monospace !important; font-size:11px !important; font-weight:500 !important; padding:2px 9px !important; }
+
+/* Final Theme 1 mobile image sizing */
+@media (max-width:768px) {
+  .product-card-photo {
+    width:100% !important;
+    height:280px !important;
+    aspect-ratio:auto !important;
+    object-fit:cover !important;
+    object-position:center !important;
+  }
+}
 </style>
 """, unsafe_allow_html=True)
 
