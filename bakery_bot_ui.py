@@ -1436,6 +1436,145 @@ header[data-testid="stHeader"], .stApp > header, [data-testid="stToolbar"], [dat
   .product-card-desc{font-size:10.5px!important}
 }
 
+
+/* ===== THEME 2 V9: BLUE-LED RETRO BOUTIQUE ===== */
+:root{
+  --beige:#F7F4D5;
+  --paper:#FFFDF3;
+  --green:#0A3323;
+  --rose:#D3968C;
+  --blue:#105666;
+  --ink:#26231F;
+  --muted:#6E655D;
+}
+.stApp{background:var(--beige)!important}
+
+/* Blue leads; green becomes a tiny supporting accent */
+.loaf-top{
+  color:var(--blue)!important;
+  border-bottom:1px solid rgba(16,86,102,.30)!important;
+}
+.loaf-top-mark{color:var(--blue)!important}
+
+/* Rosy hero + scallop, without the decorative ring or fake editorial label */
+.pw-gingham{
+  background:var(--rose)!important;
+  padding:36px 40px 43px!important;
+}
+.pw-gingham:before{display:none!important}
+.pw-label:before{display:none!important}
+.bakery-name{
+  color:var(--blue)!important;
+  margin-top:0!important;
+}
+.bakery-subtitle{color:#493C38!important}
+
+/* Ordering section becomes midnight blue */
+.assistant-intro{
+  background:var(--blue)!important;
+  padding:20px 28px 5px!important;
+}
+.assistant-title:before{color:var(--beige)!important}
+.assistant-copy{color:rgba(247,244,213,.82)!important}
+
+/* Greeting visually connects to the ordering section */
+.chat-row.assistant{
+  background:var(--blue)!important;
+  margin:0!important;
+  padding:3px 28px 12px!important;
+  box-sizing:border-box!important;
+}
+.chat-row.assistant .chat-name{
+  color:rgba(247,244,213,.72)!important;
+}
+.chat-row.assistant .chat-bubble{
+  background:var(--paper)!important;
+  border:0!important;
+  width:max-content!important;
+}
+.chat-row.user .chat-bubble{
+  background:var(--rose)!important;
+  color:var(--ink)!important;
+}
+
+/* Composer stays inside the blue visual zone */
+[data-testid="stForm"]{
+  background:var(--blue)!important;
+  margin:0 0 18px!important;
+  padding:7px 28px 18px!important;
+}
+[data-testid="stForm"] input{
+  background:var(--paper)!important;
+}
+[data-testid="stFormSubmitButton"] button,
+[data-testid="stFormSubmitButton"] button:hover{
+  background:var(--rose)!important;
+  color:var(--blue)!important;
+}
+
+/* Pull products closer and make blue the section accent */
+.pw-section-head{
+  margin:20px 0 13px!important;
+  padding-bottom:8px!important;
+  border-bottom:2px solid var(--blue)!important;
+}
+.popular-title{color:var(--blue)!important}
+.script-note{
+  background:var(--rose)!important;
+  color:var(--ink)!important;
+}
+
+/* Smaller, faster-to-browse product imagery */
+.product-card-photo,
+.tile-1 .product-card-photo,
+.tile-2 .product-card-photo{
+  height:175px!important;
+  object-fit:cover!important;
+  object-position:center!important;
+}
+.product-card-copy{
+  border-left:4px solid var(--blue)!important;
+  padding:9px 10px 10px!important;
+}
+.tile-1 .product-card-copy{border-left-color:var(--rose)!important}
+.tile-2 .product-card-copy{border-left-color:var(--blue)!important}
+.product-card-name{color:var(--blue)!important}
+.product-card-price{color:var(--blue)!important}
+
+/* Green only as a subtle minor detail */
+[data-testid="stExpander"] summary{color:var(--green)!important}
+
+/* Mobile */
+@media(max-width:768px){
+  .pw-gingham{
+    padding:26px 18px 34px!important;
+  }
+  .bakery-name{
+    font-size:clamp(33px,10vw,43px)!important;
+  }
+  .assistant-intro{
+    padding:17px 16px 4px!important;
+  }
+  .chat-row.assistant{
+    padding:3px 16px 10px!important;
+  }
+  [data-testid="stForm"]{
+    padding:6px 16px 14px!important;
+    margin-bottom:14px!important;
+  }
+  .pw-section-head{
+    margin-top:16px!important;
+  }
+  .product-card-photo,
+  .tile-1 .product-card-photo,
+  .tile-2 .product-card-photo{
+    height:145px!important;
+  }
+  .product-card-copy{
+    padding:8px 8px 9px!important;
+  }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
