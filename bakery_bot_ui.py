@@ -819,55 +819,6 @@ def extract_custom_time(text):
     return None
 
 
-def parse_custom_datetime(text):
-    """Parse the common date/time phrases needed by the custom-request handoff.
-    Returns (human_text, iso_text, needs_exact_time). Never invents a clock time.
-    """
-    s = re.sub(r"\s+", " ", str(text or "").lower()).strip()
-    now = datetime.now(ZoneInfo("Asia/Kolkata"))
-
-    if "day after tomorrow" in s:
-        day = (now + timedelta(days=2)).date()
-    elif "tomorrow" in s:
-        day = (now + timedelta(days=1)).date()
-    elif "today" in s:
-        day = now.date()
-    else:
-        # Weekday support: next occurrence, including today only if explicitly named.
-        weekdays = {"monday":0,"tuesday":1,"wednesday":2,"thursday":3,"friday":4,"saturday":5,"sunday":6}
-        found = next((name for name in weekdays if re.search(rf"\b{name}\b", s)), None)
-        if found:
-            delta = (weekdays[found] - now.weekday()) % 7
-            if delta == 0 and "next " in s:
-                delta = 7
-            day = (now + timedelta(days=delta)).date()
-        else:
-            day = None
-
-    # Explicit 12-hour time.
-    m = re.search(r"\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b", s)
-    hour = minute = None
-    if m:
-        hour = int(m.group(1)) % 12
-        minute = int(m.group(2) or 0)
-        if m.group(3) == "pm":
-            hour += 12
-    else:
-        # Explicit 24-hour time only when colon is present.
-        m24 = re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", s)
-        if m24:
-            hour, minute = int(m24.group(1)), int(m24.group(2))
-
-    if day and hour is None:
-        label = day.strftime("%A, %d %b")
-        return label, None, True
-    if hour is not None and day is None:
-        return None, None, True
-    if day and hour is not None:
-        dt = datetime(day.year, day.month, day.day, hour, minute, tzinfo=ZoneInfo("Asia/Kolkata"))
-        return dt.strftime("%A, %d %b at %-I:%M %p"), dt.isoformat(), False
-    return None, None, False
-
 def custom_missing_slots(order):
     """Return missing custom-request fields independent of conversational order."""
     missing = []
@@ -1359,124 +1310,45 @@ def run_chatbot(business):
         else:
             fulfillment_instructions = f"""This business offers BOTH pickup and delivery. Ask the customer which they'd prefer. If pickup, no address is needed (pickup is at {address}). If delivery, ask for their delivery address."""
 
-        prompt = f"""You are a friendly ordering assistant for {business_name}.
-CORE ROLE:
-You are the bakery's conversational assistant. Respond naturally to EVERY customer message, including greetings, fragments, menu questions, ingredient questions, recommendations, hours, delivery questions, off-menu requests, and order requests.
+        prompt = f"""You are the customer-facing bakery assistant for {business_name}.
 
-INTENT ROUTING:
-1. CASUAL / GREETING: respond naturally and briefly.
-2. MENU / PRODUCT QUESTION: answer only from the supplied real menu and business data.
-3. RECOMMENDATION: recommend only real menu items and explain briefly why.
-4. BUSINESS INFO: answer only from supplied hours, delivery, pickup, FAQ, address and other bakery data.
-5. OFF-MENU / UNKNOWN PRODUCT: if the requested product is not clearly on the supplied menu, say it is not on the current menu and offer to send it as a custom request. Never invent availability or price.
-Whenever you offer a custom request for an off-menu item, append this machine-readable line:
-CUSTOM_REQUEST_OFFER: {{"item":"Exact requested item name"}}
-Never omit it when making that offer.
-6. ORDER INTENT: extract structured order state, then let the application/database handle validation and submission.
-7. UNCLEAR: ask one short clarification question.
+SOURCE OF TRUTH
+- Menu: {menu}
+- Address: {address}
+- Fulfillment: {fulfillment_options}
+- Delivery info: {delivery_info}
+- FAQ: {faq_info}
+- Business hours: {business_hours}
+- Sold out today: {sold_out_items if sold_out_items else "none"}
+- Social link: {social_link if social_link else "not provided"}
+- Current India date/time: {current_time_str}
 
-PRODUCT EXTRACTION:
-Understand requested products from natural language regardless of what kind of food/product they are. Do not rely on a fixed catalogue of bakery item types. A fragment such as "a lemon tart" is meaningful and must receive a response.
-- If the customer appears to be requesting something and it is not an exact/clear match to the supplied menu, identify the requested item by name and respond that it is not on the current menu, then offer a custom request. Never silently stop.
-- Never invent that an unknown item exists on the menu.
-- UNIVERSAL RESPONSE CONTRACT: Never return an empty visible reply. Every customer turn must produce a useful visible response, even if no order is in progress.
-- Do not force ordinary conversation into checkout. Only produce/update ORDER_SUMMARY when the customer is actually ordering or modifying an order.
-- If the customer asks about ingredients, allergens, prices, hours, pickup/delivery, recommendations, or menu availability, answer the question first instead of starting checkout unless they clearly ask to order.
-- Standard products already listed on the menu are RETAIL orders, even if named Cake, Cheesecake or Cupcake. Never invent a custom-cake rule for them.
-- OFF-MENU CUSTOM REQUEST RULE: When a requested item is not on the menu, say so briefly. If the customer asks "can you make it?", "can the bakery make it?", or similar, NEVER go silent. Reply: "It isn't on the current menu, but I can help you send it as a custom request to the bakery. Would you like to do that?"
-- Never claim an off-menu item is available, never invent its price, and never promise the bakery will make it.
-- AMBIGUOUS TIME RULE: If a customer gives a bare hour such as "4", use the bakery's stored business hours to resolve AM vs PM. If exactly one interpretation falls within opening hours, use that interpretation without asking another confirmation. Example: if Wednesday hours include 4 PM but not 4 AM, "4" means 4 PM.
-- If both AM and PM interpretations are valid within stored business hours, ask which one they mean.
-- If neither interpretation is within business hours, say the bakery is closed then and ask for another time.
-- Never suggest or confirm a time outside the bakery's stored business hours.
-- If the customer says yes to an off-menu custom request, collect the requested item, quantity, exact date/time, pickup/delivery, name/contact, and delivery address if needed. Make clear that availability and price require bakery approval.
-- Once the custom-request date/time is known, move directly to pickup/delivery, then name/contact, then one final "Send this custom request?" summary. Do not ask "anything else?" and do not show a price.
-- Do not pass an off-menu item into the normal menu-order confirmation flow.
-- order_type is "custom" ONLY when the customer explicitly requests a bespoke/custom cake or meaningful customization. Otherwise use "retail".
-- The bakery's advance-notice rule applies ONLY to custom orders.
-- HARD RULE FOR RETAIL MENU ORDERS: completely ignore advance_notice. Do NOT calculate hours of notice, mention notice, say "24 hours' notice", compare the request with the custom-order notice period, or warn about advance notice in any way.
-- For a normal menu request with a date but no exact time, ask only the next missing operational detail. Example: "I want a brownie tomorrow" -> ask pickup or delivery; after that, ask "What time tomorrow?"
-- Do not say an order "can be done", "will be ready", or is available until required details have been collected and relevant stored availability/business-hour rules permit it.
-- Never invent bakery policies, preparation requirements, availability, dates or times.
-- Never promise "I will check with the bakery/team and get back to you."
-- Never invent a pickup/delivery time. If the customer gives a date but no exact clock time, ask for the time and keep requested_datetime_iso null. If they give a time but no date, ask for the date.
-- "Morning", "afternoon", "evening", "later" and similar are too vague; ask for an exact time.
-- Do not proactively ask about customizations for a normal menu order.
-- Do not ask "anything else?" once required details are complete.
-- Use exactly ONE final confirmation step, and ONLY after ALL required fields are present: items with quantity, fulfillment, exact requested date/time, customer name, customer contact, and delivery address when delivery is selected.
-- NEVER ask "Confirm this order?" while customer_name or customer_contact is missing.
-- Required-field sequence for a normal retail order: item -> pickup/delivery -> exact date/time -> delivery address if needed -> name/contact -> ONE final summary -> confirmation.
-- After an exact retail pickup/delivery time is supplied, do NOT calculate or mention how many hours/minutes away it is. Move directly to the next missing required field.
-- For retail orders, never say phrases such as "23 hours from now", "24 hours away", "hours and minutes from now", or any equivalent countdown.
-- The final summary should be concise and should not expose the full contact value.
-- Ask exactly: "Confirm this order?"
-- Do not set status to "confirmed" until the customer explicitly says yes/confirm after that summary.
-- Keep checkout replies short. Do not argue with the customer or repeat a policy.
-- In visible summaries, mask contact details; do not echo the full phone number/email.
-- After secure submission, say the order is RECEIVED, not accepted/confirmed by the bakery.
+CONVERSATION
+- Reply to every customer message. Never return a blank reply.
+- Match English, Hindi, or Hinglish naturally.
+- Keep replies short and ask only one useful next question.
+- Answer menu, ingredient, recommendation, hours and business questions only from the supplied data.
+- Never invent prices, availability, policies, ingredients, delivery coverage, dates, or times.
 
-You know the menu includes {menu}, including each item's price and ingredients. If a customer asks what something is made of or about allergens, answer using the ingredients listed.
-The business address is {address}.
-Delivery and pickup details: {delivery_info}
-{fulfillment_instructions}
-Frequently asked questions: {faq_info}
-Business hours: {business_hours}
-The current date and time is: {current_time_str}. Use this to tell customers if the business is currently open or closed, and to sanity-check any pickup/delivery date they request.
-Advance notice required for custom orders: {advance_notice}. When a customer requests a date/time, always work out and state to the customer in your visible reply the exact number of hours between now ({current_time_str}) and their requested date/time, and compare that to the advance notice requirement -- do this out loud in the conversation, not silently, so the number is always visible and can be checked. If the requested time is sooner than required, politely warn the customer it may not be possible and ask if they'd like to proceed anyway or pick a later date.
-Items that are OUT OF STOCK today and must NOT be offered or confirmed: {sold_out_items if sold_out_items else "none"}.
-If asked about something outside this, direct customers to {contact}.
-Speak like a fast, friendly bakery ordering assistant, not a general chatbot.
-VISIBLE REPLY LENGTH IS A HARD RULE:
-- Greetings such as "hi", "hey", "heyyy": ONE short sentence only, maximum 15 words. Example: "Heyyy! What are you craving today?"
-- Unclear/random messages such as "blabla": ONE short sentence only, maximum 18 words. Example: "I didn't quite catch that. What are you looking for?"
-- Simple menu, price, ingredient, availability, or business questions: maximum 2 short sentences.
-- Recommendations: suggest at most 2 products, then ask ONE short question.
-- During an order: ask only for the NEXT missing detail. Do not ask several questions at once.
-- Normal visible replies should stay under 35 words.
-- Only exceed 35 words when necessary for allergen uncertainty, an important ordering constraint, or a final order summary.
-- Never add a second paragraph just to sound friendly.
-- Ask only ONE useful next question at a time.
-- Do not list the whole menu unless the customer asks to see the menu or several options are genuinely needed.
-- If recommending products, suggest at most 2 relevant menu items, include their prices when useful, and then ask one short follow-up such as whether they want one added.
-- If the customer simply says "hi", "hey", or similar, greet them briefly and ask what they are craving. Do not explain all your capabilities.
-- Do not repeat information the customer already gave you.
-- Do not repeatedly say "I'd be happy to help", "absolutely", "certainly", or other filler.
-- Do not mention that you are an AI.
-- If the customer asks something unrelated to ordering, answer briefly when appropriate, then naturally steer back to the bakery.
-- For ingredient or allergen questions, answer only from the listed menu/FAQ information. If the information is insufficient, say you cannot confirm and direct them to the business instead of guessing.
-- The product photos and menu are already visible on this page. If a customer asks to see products/photos, tell them they can browse the products below. Only mention the social link if they specifically ask for Instagram, the website, or more photos.
-- When collecting an order, move efficiently through missing details instead of explaining the ordering process.
-- Keep confirmation messages concise, but clearly state the important order details before final confirmation.
-Match the customer's language style naturally: English, Hindi, or Hinglish.
-Never use em dashes in your replies.
+CUSTOM / OFF-MENU REQUESTS
+- If a requested item, variation, or modification is not clearly offered by the menu (for example sugar-free brownies), say it is not on the current menu and offer to send a custom request to the bakery.
+- Whenever you make that offer, append exactly this hidden line:
+CUSTOM_REQUEST_OFFER: {{"item":"Exact requested item or modification"}}
+- Do not promise the bakery can make it. Do not quote a price. Do not say you will personally follow up.
+- After the customer accepts a custom request, Python handles the rest of that flow. Do not create ORDER_SUMMARY for off-menu/custom requests.
 
-Only treat an order as BULK if the customer orders MORE THAN 10 of a single item, or explicitly mentions an event, party, or wholesale quantity. A normal order of a few items (even 2-3 of something) is always a regular RETAIL order, not bulk -- do not mention deposits or extra lead time for ordinary small orders.
+NORMAL MENU ORDERS
+- Only use ORDER_SUMMARY for actual on-menu retail/bulk orders.
+- Standard menu products remain retail even if their name contains Cake, Cheesecake or Cupcake.
+- Ask only for missing operational details. Do not ask about customizations unless the customer requests one.
+- Required fields: items/quantities, pickup or delivery, exact date/time, delivery address when needed, customer name and contact.
+- Never invent an exact time from a vague date/daypart.
+- Do not set status=confirmed until the customer explicitly confirms the final summary.
+- The application/database validates prices and saves orders; do not claim an order is accepted by the bakery.
 
-The business's social media / website link is: {social_link if social_link else "not provided"}. The menu and product photos are already visible on this page, so do not send customers to social media just to browse products. Share the social/website link only if they specifically ask for it or want additional external information.
-
-Customers may write to you in English, Hindi, or Hinglish (a natural mix of Hindi and English, written in Roman script). Always reply in the same style the customer is using, naturally. Don't force pure English or pure Hindi if the customer is mixing languages.
-
-If a customer asks for an item that is NOT on the menu, do not just say no and move on. Let them know that exact item isn't on the current menu, but that you'll check with the business owner about whether it could be made available, and that you'll follow up to confirm. Do NOT add off-menu items to the order, the ORDER_SUMMARY items list, or the estimated total -- only confirmed, on-menu items go in there. If the customer also ordered other items that ARE on the menu in the same message, proceed normally with those and separately mention that the off-menu item needs an owner check.
-
-You can also take orders. When a customer wants to order something, ask any clarifying questions you need: quantity, size, flavor, customizations (like "no nuts" or a message written on a cake), and the date/time they want it, following the fulfillment rules above. Before the order is confirmed, also ask for the customer's name and a phone number or email so the business can reach them if needed. Use the menu prices to calculate a running estimated total.
-
-Before setting "status" to "confirmed", you must have ALL of the following explicitly confirmed with the customer -- do not assume, guess, or let any of them quietly drop as the conversation moves on:
-- Every item, with quantity
-- Size/weight where relevant to the item
-- Any customizations (explicitly confirmed, even if the answer is "none")
-- Fulfillment method (pickup or delivery, per the options actually offered)
-- Requested date/time
-- Customer name
-- Customer contact info (phone or email)
-If ANY of these is missing or still unspecified, do NOT confirm the order -- keep "status" as "in_progress" and ask for whatever is missing next.
-
-Once you have enough detail on the CURRENT state of their order (even if it's not finished, even if they might add more), append a hidden summary block to the END of your reply in exactly this format, with no other text after it:
-
-ORDER_SUMMARY: {{"items": [{{"item": "name", "quantity": 1, "customizations": "notes or empty string"}}], "fulfillment": "pickup or delivery or unspecified", "order_type": "retail or bulk", "requested_datetime": "date/time text or empty string", "requested_datetime_iso": "YYYY-MM-DDTHH:MM:SS in 24-hour time, based on the current date/time given above, or empty string if not yet known", "estimated_total": 0, "customer_name": "name or empty string", "customer_contact": "phone or email or empty string", "status": "in_progress or confirmed"}}
-
-The requested_datetime_iso field must always be a precise, computed date and time (year-month-day and hour:minute:second), worked out from the current date/time given above plus whatever the customer said (e.g. "tomorrow at 2pm", "in two days", "next Saturday") -- never leave it as vague text; convert it to an exact timestamp.
-
-Only set "status" to "confirmed" once the customer has explicitly confirmed AND every field in the checklist above is filled in. Always include ALL items discussed so far in this block, not just the newest one, so it reflects the full running order. If there is no order-related content yet, do not include this block at all."""
+For an active normal order, append this machine-readable block at the END of the reply:
+ORDER_SUMMARY: {{"items":[{{"item":"name","quantity":1,"customizations":""}}],"fulfillment":"pickup or delivery or unspecified","order_type":"retail or bulk","requested_datetime":"human-readable date/time or empty string","requested_datetime_iso":"exact ISO timestamp or empty string","estimated_total":0,"customer_name":"name or empty string","customer_contact":"phone/email or empty string","status":"in_progress or confirmed"}}
+Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
 
         st.session_state.messages = [{"role": "system", "content": prompt}]
         st.session_state.display_messages = []
@@ -1488,6 +1360,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.custom_request_stage = None
         st.session_state.orders_this_session = 0
         st.session_state.awaiting_assistant = False
+        st.session_state.pending_user_text = None
 
     # Header
     st.markdown(
@@ -1538,6 +1411,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         if clean_user_input:
             st.session_state.messages.append({"role": "user", "content": clean_user_input})
             st.session_state.display_messages.append({"role": "user", "content": clean_user_input})
+            st.session_state.pending_user_text = clean_user_input
 
             # Consolidated custom-request handoff. Once a customer accepts an
             # off-menu request, Python owns the flow end-to-end. Cohere is no longer
@@ -1801,7 +1675,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
         if order_count > 0:
             if st.button("Start new order", key="top_start_new_order"):
-                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "pending_custom_item", "custom_request_stage"]:
+                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "pending_user_text", "pending_custom_item", "custom_request_stage"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
@@ -1815,6 +1689,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     # Stage 2: on the immediate rerun, the user's message is already visible.
     # Now show the cake and request the assistant response exactly once.
     if st.session_state.get("awaiting_assistant", False):
+        clean_user_input = str(st.session_state.get("pending_user_text") or "").strip()
         thinking_slot.markdown(
             '<div class="pw-cake-loader" aria-label="Assistant is responding">'
             '<div class="pw-cake-dots"><span></span><span></span><span></span></div>'
@@ -1832,6 +1707,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         except Exception:
             thinking_slot.empty()
             st.session_state.awaiting_assistant = False
+            st.session_state.pending_user_text = None
             st.session_state.display_messages.append({
                 "role": "assistant",
                 "content": "Sorry, I'm having trouble responding right now. Please try again in a moment."
@@ -1878,6 +1754,10 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             display_reply = bot_reply[:order_match.start()].strip()
             try:
                 parsed_order = json.loads(order_match.group(1))
+                # Custom/off-menu requests are owned exclusively by the Python state machine.
+                # Ignore any accidental custom summary emitted by the model.
+                if parsed_order.get("order_type") in ("custom", "custom_request"):
+                    raise json.JSONDecodeError("custom flow owned by Python", order_match.group(1), 0)
                 parsed_order = recover_name_contact(clean_user_input, parsed_order)
 
                 # Never let a relative date such as "tomorrow" silently acquire an
@@ -2018,7 +1898,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             and re.search(r"(?i)custom request", str(display_reply or ""))
         ):
             m = re.search(
-                r"(?i)(?:don't have|do not have)\s+(?:an?\s+)?(.+?)\s+on the (?:current )?menu",
+                r"(?i)(?:don't have|do not have)\s+(?:an?\s+)?(.+?)\s+(?:on|in)\s+(?:the\s+)?(?:current\s+)?menu",
                 str(display_reply),
             )
             if m:
@@ -2052,6 +1932,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             {"role": "assistant", "content": display_reply}
         )
         st.session_state.awaiting_assistant = False
+        st.session_state.pending_user_text = None
         st.rerun()
 
     st.markdown('<div class="loaf-footer">Powered by Loaf</div>', unsafe_allow_html=True)
