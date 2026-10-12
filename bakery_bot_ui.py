@@ -1142,6 +1142,9 @@ INTENT ROUTING:
 3. RECOMMENDATION: recommend only real menu items and explain briefly why.
 4. BUSINESS INFO: answer only from supplied hours, delivery, pickup, FAQ, address and other bakery data.
 5. OFF-MENU / UNKNOWN PRODUCT: if the requested product is not clearly on the supplied menu, say it is not on the current menu and offer to send it as a custom request. Never invent availability or price.
+Whenever you offer a custom request for an off-menu item, append this machine-readable line:
+CUSTOM_REQUEST_OFFER: {"item":"Exact requested item name"}
+Never omit it when making that offer.
 6. ORDER INTENT: extract structured order state, then let the application/database handle validation and submission.
 7. UNCLEAR: ask one short clarification question.
 
@@ -1560,6 +1563,24 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         order_match = re.search(r"ORDER_SUMMARY:\s*(\{.*\})", bot_reply, re.DOTALL)
         display_reply = bot_reply
 
+        # Persist an AI-created custom-request offer so the next "yes/yup" is
+        # handled by Python instead of becoming an untracked conversational turn.
+        offer_match = re.search(r'CUSTOM_REQUEST_OFFER:\s*(\{.*?\})', bot_reply or "", re.S)
+        if offer_match:
+            try:
+                offer_data = json.loads(offer_match.group(1))
+                offered_item = str(offer_data.get("item") or "").strip()
+                if offered_item:
+                    st.session_state.pending_custom_item = offered_item
+            except Exception:
+                pass
+            display_reply = re.sub(
+                r'\n?CUSTOM_REQUEST_OFFER:\s*\{.*?\}\s*',
+                '',
+                display_reply,
+                flags=re.S,
+            ).strip()
+
         # Guardrail: standard menu conversations must not surface custom-order
         # advance-notice commentary even if the model slips.
         retail_notice_patterns = [
@@ -1699,6 +1720,18 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             )
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+        # Safety recovery if the AI offered a custom request but omitted the marker.
+        if (
+            not st.session_state.get("pending_custom_item")
+            and re.search(r"(?i)custom request", str(display_reply or ""))
+        ):
+            m = re.search(
+                r"(?i)(?:don't have|do not have)\s+(?:an?\s+)?(.+?)\s+on the (?:current )?menu",
+                str(display_reply),
+            )
+            if m:
+                st.session_state.pending_custom_item = m.group(1).strip(" .?!")
+
         # Never render an empty assistant bubble.
         if not str(display_reply).strip():
             latest_text = str(clean_user_input or "").lower()
