@@ -5,6 +5,7 @@ import json
 import re
 import random
 import smtplib
+import requests
 import html
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -860,6 +861,56 @@ def get_business(slug):
     return None
 
 
+def send_new_order_notification(business_name, owner_email, order_number, order, final_total):
+    """Send a bakery notification through Resend after the secure DB insert succeeds."""
+    api_key = st.secrets.get("RESEND_API_KEY")
+    if not api_key or not owner_email:
+        return False
+
+    items = order.get("items") or []
+    item_lines = []
+    for item in items:
+        line = f"{item.get('quantity', 1)} x {item.get('item', 'Item')}"
+        if item.get("customizations"):
+            line += f" ({item.get('customizations')})"
+        item_lines.append(line)
+
+    fulfillment = str(order.get("fulfillment") or "").title()
+    when = order.get("requested_datetime") or "Not specified"
+    customer_name = order.get("customer_name") or "Not provided"
+
+    text_body = (
+        f"New Loaf order for {business_name}\n\n"
+        + "\n".join(item_lines)
+        + f"\n\n{fulfillment} · {when}"
+        + f"\nTotal: ₹{final_total}"
+        + f"\nCustomer: {customer_name}"
+        + "\n\nOpen your Loaf owner dashboard to review and accept or decline the order."
+    )
+
+    # Resend's onboarding sender works for initial testing. Once Loaf has a verified
+    # sending domain, replace this with orders@yourdomain.
+    payload = {
+        "from": "Loaf Orders <onboarding@resend.dev>",
+        "to": [owner_email],
+        "subject": f"New Loaf order · {order_number}",
+        "text": text_body,
+    }
+    try:
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=10,
+        )
+        return response.ok
+    except Exception:
+        return False
+
+
 def submit_protected_order(slug, order):
     """Submit through protected RPC; customers never insert into orders directly."""
     requested_iso = order.get("requested_datetime_iso")
@@ -1316,6 +1367,18 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         st.session_state.order_number = db_order_number
                         st.session_state.order_saved = True
                         st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
+
+                        # Notification address stays private. For the MVP/test bakery,
+                        # set ORDER_NOTIFICATION_EMAIL in Streamlit Secrets.
+                        notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
+                        send_new_order_notification(
+                            business_name,
+                            notification_email,
+                            db_order_number,
+                            parsed_order,
+                            db_total,
+                        )
+
                         display_reply = (
                             f"Order received! #{db_order_number}\n\n"
                             f"Final total: ₹{db_total}. "
