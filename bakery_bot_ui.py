@@ -1364,7 +1364,15 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 if confirmation_reply_is_yes(clean_user_input):
                     try:
                         notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
-                        if confirm_order.get("order_type") == "custom_request":
+                        is_custom_request = (
+                            confirm_order.get("order_type") == "custom_request"
+                            or any(
+                                float(item.get("price") or 0) <= 0
+                                for item in (confirm_order.get("items") or [])
+                            )
+                        )
+                        if is_custom_request:
+                            confirm_order["order_type"] = "custom_request"
                             saved = submit_protected_custom_request(slug_from_url, confirm_order)
                             request_number = saved.get("request_number")
                             if not request_number:
@@ -1405,12 +1413,10 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         st.session_state.pending_custom_item = None
                         st.session_state.awaiting_assistant = False
                     except Exception as e:
-                        error_type = type(e).__name__
-                        error_text = str(e)
-                        print(f"LOAF_SUBMIT_ERROR [{error_type}]: {error_text}")
+                        print("LOAF_SUBMIT_ERROR:", repr(e))
                         reply = (
-                            "Submission failed before anything was sent. "
-                            f"Diagnostic: {error_type}: {error_text}"
+                            "I couldn't securely submit that yet. Nothing has been sent. "
+                            "Please try confirming again."
                         )
                     st.session_state.display_messages.append({"role":"assistant","content":reply})
                     st.session_state.messages.append({"role":"assistant","content":reply})
