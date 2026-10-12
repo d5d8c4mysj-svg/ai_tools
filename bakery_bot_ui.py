@@ -798,6 +798,17 @@ def custom_missing_slots(order):
         missing.append("identity")
     return missing
 
+def get_missing_custom_fields(order):
+    first=(order.get("items") or [{}])[0]
+    missing=[]
+    if not first.get("item"): missing.append("item")
+    if not first.get("quantity"): missing.append("quantity")
+    if not order.get("requested_datetime_iso"): missing.append("datetime")
+    if not order.get("fulfillment"): missing.append("fulfillment")
+    if order.get("fulfillment")=="delivery" and not order.get("delivery_address"): missing.append("address")
+    if not order.get("customer_name") or not order.get("customer_contact"): missing.append("identity")
+    return missing
+
 def custom_next_question(order):
     missing = custom_missing_slots(order)
     if not missing:
@@ -893,58 +904,6 @@ def recover_name_contact(text, order):
         if before and len(before) <= 80:
             order["customer_name"] = before
     return order
-
-def interpret_order_turn(user_text, current_order=None, pending_custom_item=None):
-    """Natural-language understanding only; Python remains authoritative for state/actions."""
-    prompt = f"""Extract the customer's meaning for this bakery-order turn.
-
-Customer message: {str(user_text or "")}
-Current order state: {json.dumps(current_order or {}, default=str)}
-Pending off-menu/custom item: {pending_custom_item or ""}
-
-Interpret natural English, Hindi, Hinglish, typos, short replies, and long replies.
-If there is a pending custom item, decide from the full meaning whether the customer:
-- accepts/wants the custom request,
-- declines it,
-- asks a question before deciding,
-- or is unclear.
-Extract only details actually supplied in this message. Do not invent values."""
-
-    schema = {
-        "type": "object",
-        "properties": {
-            "intent": {"type": "string", "enum": [
-                "custom_request","normal_order","confirm","change","question","cancel","other"
-            ]},
-            "accepts_custom_request": {"type": ["boolean","null"]},
-            "item": {"type": ["string","null"]},
-            "quantity": {"type": ["integer","null"]},
-            "date_text": {"type": ["string","null"]},
-            "time_text": {"type": ["string","null"]},
-            "fulfillment": {"type": ["string","null"], "enum": ["pickup","delivery",None]},
-            "delivery_address": {"type": ["string","null"]},
-            "customer_name": {"type": ["string","null"]},
-            "customer_contact": {"type": ["string","null"]},
-            "notes": {"type": ["string","null"]},
-        },
-        "required": [
-            "intent","accepts_custom_request","item","quantity","date_text","time_text",
-            "fulfillment","delivery_address","customer_name","customer_contact","notes"
-        ],
-        "additionalProperties": False,
-    }
-    try:
-        r = co.chat(
-            model="command-r-plus-08-2024",
-            messages=[{"role":"user","content":prompt}],
-            response_format={"type":"json_object"},
-        )
-        raw = str(r.message.content[0].text or "").strip()
-        data = json.loads(raw)
-        return data if isinstance(data,dict) else {}
-    except Exception:
-        # Fail safe: never claim or submit anything if language understanding fails.
-        return {"intent":"other","accepts_custom_request":None}
 
 def apply_turn_to_custom_order(order, turn):
     order=dict(order or {})
@@ -1392,11 +1351,19 @@ CONVERSATION
 - Never invent prices, availability, policies, ingredients, delivery coverage, dates, or times.
 
 CUSTOM / OFF-MENU REQUESTS
-- If a requested item, variation, or modification is not clearly offered by the menu (for example sugar-free brownies), say it is not on the current menu and offer to send a custom request to the bakery.
-- Whenever you offer a custom request or custom order, append exactly this hidden line:
-CUSTOM_REQUEST_OFFER: {{"item":"Exact requested item or modification"}}
-- Do not promise the bakery can make it. Do not quote a price. Do not say you will personally follow up.
-- After the customer accepts a custom request, Python handles the rest of that flow. Do not create ORDER_SUMMARY for off-menu/custom requests.
+- If a requested item, variation, or modification is not clearly offered by the menu, explain that and offer a custom request.
+- Understand the customer's reply using the full conversation context. They may use any natural wording, English, Hindi, Hinglish, typos, or provide several details at once.
+- Never claim a custom request was sent unless Python later confirms that Supabase saved it.
+- For EVERY turn involving an off-menu/custom request, append exactly one hidden machine-readable line at the END:
+CUSTOM_STATE: {{"action":"offer|start|update|confirm|cancel|question","item":null,"quantity":null,"date_text":null,"time_text":null,"fulfillment":null,"delivery_address":null,"customer_name":null,"customer_contact":null,"notes":null}}
+- action=start when the customer wants to begin/send the custom request.
+- action=update when they provide/change request details.
+- action=confirm only when they clearly approve the final custom-request summary.
+- action=cancel when they decline/cancel.
+- action=question when they are asking something rather than progressing the request.
+- Extract only values actually supplied by the customer; use null for missing values.
+- Python validates and saves. You do not write to the database and do not invent missing details.
+- Do not create ORDER_SUMMARY for custom requests.
 
 NORMAL MENU ORDERS
 - Only use ORDER_SUMMARY for actual on-menu retail/bulk orders.
@@ -1479,122 +1446,10 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
             # allowed to replace or lose custom-request state between turns.
             current_custom = st.session_state.get("current_order") or {}
             custom_stage = st.session_state.get("custom_request_stage")
-            if current_custom.get("order_type") == "custom_request" and custom_stage:
-                turn=interpret_order_turn(clean_user_input,current_custom,None)
-                if turn.get("intent")=="cancel":
-                    st.session_state.current_order=None
-                    st.session_state.custom_request_stage=None
-                    reply="No problem. I haven't sent the custom request."
-                elif custom_stage=="confirm" and turn.get("intent")=="confirm":
-                    try:
-                        saved=submit_protected_custom_request(business["slug"],current_custom)
-                        request_number=saved.get("request_number")
-                        current_custom["status"]="confirmed"
-                        st.session_state.current_order=current_custom
-                        st.session_state.order_saved=True
-                        st.session_state.order_number=request_number
-                        st.session_state.custom_request_stage=None
-                        send_custom_request_notification(
-                            business_name,st.secrets.get("ORDER_NOTIFICATION_EMAIL"),
-                            request_number,current_custom)
-                        reply=f"Custom request sent! #{request_number}\n\nThe bakery will contact you to discuss the details, final price and payment."
-                    except Exception:
-                        reply="I couldn't send the request just yet. Please try confirming again."
-                else:
-                    current_custom=apply_turn_to_custom_order(current_custom,turn)
-                    if current_custom.get("fulfillment")=="delivery" and current_custom.get("delivery_address"):
-                        eligibility=delivery_address_allowed(current_custom["delivery_address"],business)
-                        if eligibility is False:
-                            current_custom["delivery_address"]=None
-                            city=business.get("delivery_city") or "the configured delivery city"
-                            areas=", ".join(business.get("delivery_areas") or [])
-                            reply=f"Sorry, delivery is currently available only in {city}"+(f" for these areas: {areas}." if areas else ".")+" You can choose pickup instead or give another delivery address."
-                            st.session_state.custom_request_stage="address"
-                        else:
-                            reply,next_stage=custom_next_question(current_custom)
-                            st.session_state.custom_request_stage=next_stage
-                    else:
-                        reply,next_stage=custom_next_question(current_custom)
-                        st.session_state.custom_request_stage=next_stage
-                    st.session_state.current_order=current_custom
-                st.session_state.display_messages.append({"role":"assistant","content":reply})
-                st.session_state.messages.append({"role":"assistant","content":reply})
-                st.session_state.pending_user_text=None
-                st.session_state.awaiting_assistant=False
-                st.rerun()
-
-            # Pending custom offer: understand any natural-language reply.
-            pending_custom=st.session_state.get("pending_custom_item")
-            if pending_custom:
-                turn=interpret_order_turn(
-                    clean_user_input,
-                    st.session_state.get("current_order"),
-                    pending_custom
-                )
-
-                accepted = (
-                    turn.get("accepts_custom_request") is True
-                    or turn.get("intent") == "custom_request"
-                )
-                declined = (
-                    turn.get("accepts_custom_request") is False
-                    or turn.get("intent") == "cancel"
-                )
-
-                if accepted:
-                    current_custom={
-                        "items":[{"item":pending_custom,"quantity":None,"customizations":""}],
-                        "order_type":"custom_request",
-                        "requested_datetime":None,
-                        "requested_datetime_iso":None,
-                        "fulfillment":None,
-                        "customer_name":None,
-                        "customer_contact":None,
-                        "delivery_address":None,
-                        "status":"in_progress"
-                    }
-                    current_custom=apply_turn_to_custom_order(current_custom,turn)
-                    st.session_state.current_order=current_custom
-                    st.session_state.pending_custom_item=None
-                    reply,next_stage=custom_next_question(current_custom)
-                    st.session_state.custom_request_stage=next_stage
-
-                    # Finish this turn here: exactly one assistant reply.
-                    st.session_state.display_messages.append({"role":"assistant","content":reply})
-                    st.session_state.messages.append({"role":"assistant","content":reply})
-                    st.session_state.pending_user_text=None
-                    st.session_state.awaiting_assistant=False
-                    st.rerun()
-
-                elif declined:
-                    st.session_state.pending_custom_item=None
-                    reply="No problem. What else would you like?"
-                    st.session_state.display_messages.append({"role":"assistant","content":reply})
-                    st.session_state.messages.append({"role":"assistant","content":reply})
-                    st.session_state.pending_user_text=None
-                    st.session_state.awaiting_assistant=False
-                    st.rerun()
-
-                elif turn.get("intent") == "question":
-                    # Preserve the pending offer and let the general assistant answer.
-                    st.session_state.awaiting_assistant=True
-                    st.rerun()
-
-                else:
-                    # Never swallow a message. If interpretation is unclear, respond
-                    # immediately and keep the pending offer alive.
-                    reply=(
-                        f"I still have {pending_custom} as a possible custom request. "
-                        "Would you like me to start the request, or would you like to ask something about it first?"
-                    )
-                    st.session_state.display_messages.append({"role":"assistant","content":reply})
-                    st.session_state.messages.append({"role":"assistant","content":reply})
-                    st.session_state.pending_user_text=None
-                    st.session_state.awaiting_assistant=False
-                    st.rerun()
-
             requested_item, is_menu_item = detect_requested_product(clean_user_input, menu)
-            if requested_item and is_menu_item is False:
+            if (not st.session_state.get("pending_custom_item")
+                and not (st.session_state.get("current_order") or {}).get("order_type") == "custom_request"
+                and requested_item and is_menu_item is False):
                 st.session_state.pending_custom_item = requested_item
                 reply = custom_request_prompt(requested_item, business_name)
                 st.session_state.display_messages.append({"role":"assistant","content":reply})
@@ -1734,23 +1589,84 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
         order_match = re.search(r"ORDER_SUMMARY:\s*(\{.*\})", bot_reply, re.DOTALL)
         display_reply = bot_reply
 
-        # Persist an AI-created custom-request offer so the next "yes/yup" is
-        # handled by Python instead of becoming an untracked conversational turn.
-        offer_match = re.search(r'CUSTOM_REQUEST_OFFER:\s*(\{.*?\})', bot_reply or "", re.S)
-        if offer_match:
+        # One-call custom-request protocol: the same conversational AI that sees
+        # full chat context emits a hidden state update. Python validates/actions it.
+        custom_state = None
+        custom_match = re.search(r"CUSTOM_STATE:\s*(\{.*?\})\s*$", bot_reply or "", re.S)
+        if custom_match:
             try:
-                offer_data = json.loads(offer_match.group(1))
-                offered_item = str(offer_data.get("item") or "").strip()
-                if offered_item:
-                    st.session_state.pending_custom_item = offered_item
+                custom_state = json.loads(custom_match.group(1))
             except Exception:
-                pass
-            display_reply = re.sub(
-                r'\n?CUSTOM_REQUEST_OFFER:\s*\{.*?\}\s*',
-                '',
-                display_reply,
-                flags=re.S,
-            ).strip()
+                custom_state = None
+            display_reply = re.sub(r"\n?CUSTOM_STATE:\s*\{.*?\}\s*$", "", display_reply, flags=re.S).strip()
+
+        if isinstance(custom_state, dict):
+            action = str(custom_state.get("action") or "").lower()
+            pending_item = st.session_state.get("pending_custom_item")
+            current_custom = st.session_state.get("current_order") or {}
+
+            if action == "offer":
+                offered = custom_state.get("item")
+                if offered:
+                    st.session_state.pending_custom_item = str(offered).strip()
+
+            elif action == "start":
+                item = custom_state.get("item") or pending_item
+                if item:
+                    current_custom = {
+                        "items":[{"item":str(item).strip(),"quantity":None,"customizations":""}],
+                        "order_type":"custom_request","requested_datetime":None,
+                        "requested_datetime_iso":None,"fulfillment":None,
+                        "customer_name":None,"customer_contact":None,
+                        "delivery_address":None,"status":"in_progress"
+                    }
+                    current_custom = apply_turn_to_custom_order(current_custom, custom_state)
+                    st.session_state.current_order = current_custom
+                    st.session_state.pending_custom_item = None
+                    reply, next_stage = custom_next_question(current_custom)
+                    st.session_state.custom_request_stage = next_stage
+                    display_reply = reply
+
+            elif action == "update" and current_custom.get("order_type") == "custom_request":
+                current_custom = apply_turn_to_custom_order(current_custom, custom_state)
+                st.session_state.current_order = current_custom
+                reply, next_stage = custom_next_question(current_custom)
+                st.session_state.custom_request_stage = next_stage
+                display_reply = reply
+
+            elif action == "cancel":
+                st.session_state.pending_custom_item = None
+                if current_custom.get("order_type") == "custom_request":
+                    st.session_state.current_order = None
+                    st.session_state.custom_request_stage = None
+                display_reply = "No problem. I haven't sent the custom request."
+
+            elif action == "confirm" and current_custom.get("order_type") == "custom_request":
+                # Only Python can save; required fields are checked first.
+                missing = get_missing_custom_fields(current_custom)
+                if missing:
+                    reply, next_stage = custom_next_question(current_custom)
+                    st.session_state.custom_request_stage = next_stage
+                    display_reply = reply
+                else:
+                    try:
+                        saved = submit_protected_custom_request(business["slug"], current_custom)
+                        request_number = saved.get("request_number")
+                        current_custom["status"] = "confirmed"
+                        st.session_state.current_order = current_custom
+                        st.session_state.order_saved = True
+                        st.session_state.order_number = request_number
+                        st.session_state.custom_request_stage = None
+                        send_custom_request_notification(
+                            business_name, st.secrets.get("ORDER_NOTIFICATION_EMAIL"),
+                            request_number, current_custom
+                        )
+                        display_reply = (
+                            f"Custom request sent! #{request_number}\n\n"
+                            "The bakery will contact you to discuss the details, final price and payment."
+                        )
+                    except Exception:
+                        display_reply = "I couldn't send the custom request just yet. Please try confirming again."
 
         # Guardrail: standard menu conversations must not surface custom-order
         # advance-notice commentary even if the model slips.
