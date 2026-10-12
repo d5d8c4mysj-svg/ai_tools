@@ -418,6 +418,49 @@ body:has(.owner-login-marker) [data-testid="stFormSubmitButton"] button:hover{
   min-height:48px !important;
 }
 
+
+/* Customer chat composer — unmistakably interactive */
+div[data-testid="stForm"]:has(input[placeholder*="Ask "]) {
+  border:0 !important;
+  padding:0 !important;
+  margin-top:14px !important;
+  background:transparent !important;
+}
+div[data-testid="stForm"]:has(input[placeholder*="Ask "]) input {
+  height:52px !important;
+  padding:0 16px !important;
+  background:#FFFDF8 !important;
+  border:1.5px solid #7A2E35 !important;
+  border-radius:8px !important;
+  font-size:15px !important;
+  color:#3A2928 !important;
+  box-shadow:none !important;
+}
+div[data-testid="stForm"]:has(input[placeholder*="Ask "]) input::placeholder {
+  color:#807875 !important;
+  opacity:1 !important;
+}
+div[data-testid="stForm"]:has(input[placeholder*="Ask "]) [data-testid="stFormSubmitButton"] button {
+  height:52px !important;
+  min-height:52px !important;
+  width:100% !important;
+  border:0 !important;
+  border-radius:8px !important;
+  background:#7A2E35 !important;
+  color:white !important;
+  font-size:18px !important;
+  font-weight:700 !important;
+}
+@media(max-width:768px){
+  div[data-testid="stForm"]:has(input[placeholder*="Ask "]) input {
+    height:48px !important;
+  }
+  div[data-testid="stForm"]:has(input[placeholder*="Ask "]) [data-testid="stFormSubmitButton"] button {
+    height:48px !important;
+    min-height:48px !important;
+  }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -902,15 +945,18 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
     thinking_slot = st.empty()
 
-    # Inline composer at the chat location. Pressing Enter submits the form.
+    # Clear, full-width chat composer with a visible send button.
     with st.form("chat_form", clear_on_submit=True):
-        user_input = st.text_input(
-            "Message",
-            placeholder=f"Ask {display_business_name} anything...",
-            label_visibility="collapsed",
-            key=f"chat_text_{slug_from_url or 'bakery'}"
-        )
-        send_message = st.form_submit_button("↑")
+        chat_col, send_col = st.columns([12, 1], gap="small")
+        with chat_col:
+            user_input = st.text_input(
+                "Message",
+                placeholder=f"Ask {display_business_name} anything...",
+                label_visibility="collapsed",
+                key=f"chat_text_{slug_from_url or 'bakery'}"
+            )
+        with send_col:
+            send_message = st.form_submit_button("↑", use_container_width=True)
 
     if not send_message:
         user_input = None
