@@ -820,7 +820,7 @@ def custom_next_question(order):
             lines.append(f"- Delivery: {order.get('delivery_address')}")
         lines.append(f"- Contact: {mask_contact(order.get('customer_contact'))}")
         lines.append("")
-        lines.append("Price and availability will be decided by the bakery.")
+        lines.append("The bakery will contact you to finalize the details, price and payment.")
         return "\n".join(lines), "confirm"
     nxt=missing[0]
     questions={
@@ -1764,7 +1764,15 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
                 st.session_state.current_order = parsed_order
 
-                if (
+                # If every custom-request slot is complete, Python owns the final
+                # confirmation wording and state. Never let it become "Confirm this order?".
+                if parsed_order.get("order_type") == "custom_request" and not custom_missing_slots(parsed_order):
+                    display_reply, next_stage = custom_next_question(parsed_order)
+                    st.session_state.custom_request_stage = "confirm"
+                    parsed_order["status"] = "in_progress"
+                    st.session_state.current_order = parsed_order
+                    state_reply, ready_for_confirmation = display_reply, False
+                elif (
                     parsed_order.get("order_type") == "custom_request"
                     and st.session_state.get("custom_request_stage") == "datetime"
                     and parsed_order.get("requested_datetime_iso")
@@ -1775,8 +1783,12 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     state_reply, ready_for_confirmation = display_reply, False
                 else:
                     state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
-                if parsed_order.get("status") != "confirmed":
-                    display_reply = state_reply
+                if (
+                    parsed_order.get("order_type") != "custom_request"
+                    or st.session_state.get("custom_request_stage") != "confirm"
+                ):
+                    if parsed_order.get("status") != "confirmed":
+                        display_reply = state_reply
 
                 if (
                     parsed_order.get("status") == "confirmed"
@@ -1846,7 +1858,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 f"- {current_custom.get('requested_datetime')}\n"
                 + (f"- Delivery: {current_custom.get('delivery_address')}\n" if current_custom.get("delivery_address") else "")
                 + f"- Contact: {mask_contact(current_custom.get('customer_contact'))}\n\n"
-                "Price and availability will be decided by the bakery."
+                "The bakery will contact you to finalize the details, price and payment."
             )
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
@@ -2244,21 +2256,46 @@ def owner_view():
                 if r.get("delivery_address"):
                     st.caption(f"Delivery: {r.get('delivery_address')}")
                 st.caption("Price and availability are not confirmed.")
-                a1,a2=st.columns(2)
+                contact_value = str(r.get("customer_contact") or "")
+                digits = re.sub(r"\D", "", contact_value)
+                if len(digits) >= 10:
+                    from urllib.parse import quote
+                    bakery_label = str(existing_business.get("business_name") or "the bakery")
+                    msg = (
+                        f"Hi {r.get('customer_name') or ''}, this is {bakery_label} "
+                        f"regarding your Loaf custom request #{1000 + int(r.get('id',0))} "
+                        f"for {r.get('requested_item','your custom request')}."
+                    )
+                    whatsapp_url = f"https://wa.me/{digits}?text={quote(msg)}"
+                    st.link_button(
+                        "Contact customer on WhatsApp",
+                        whatsapp_url,
+                        use_container_width=True
+                    )
+                elif "@" in contact_value:
+                    st.markdown(f"**Customer email:** {html.escape(contact_value)}")
+                else:
+                    st.caption("No WhatsApp-ready phone number was provided.")
+
+                a1, a2 = st.columns(2)
                 with a1:
-                    if st.button("Accept request", key=f"accept_custom_{r['id']}", use_container_width=True, type="primary"):
+                    if st.button("Mark confirmed", key=f"confirm_custom_{r['id']}", use_container_width=True, type="primary"):
                         try:
-                            result=supabase.table("custom_requests").update({"status":"accepted"}).eq("id",r["id"]).execute()
-                            if result.data: st.rerun()
-                            else: st.error("Could not update this request.")
+                            result = supabase.table("custom_requests").update({"status":"accepted"}).eq("id", r["id"]).execute()
+                            if result.data:
+                                st.rerun()
+                            else:
+                                st.error("Could not update this request.")
                         except Exception:
                             st.error("Could not update this request.")
                 with a2:
-                    if st.button("Decline request", key=f"decline_custom_{r['id']}", use_container_width=True):
+                    if st.button("Decline", key=f"decline_custom_{r['id']}", use_container_width=True):
                         try:
-                            result=supabase.table("custom_requests").update({"status":"declined"}).eq("id",r["id"]).execute()
-                            if result.data: st.rerun()
-                            else: st.error("Could not update this request.")
+                            result = supabase.table("custom_requests").update({"status":"declined"}).eq("id", r["id"]).execute()
+                            if result.data:
+                                st.rerun()
+                            else:
+                                st.error("Could not update this request.")
                         except Exception:
                             st.error("Could not update this request.")
 
