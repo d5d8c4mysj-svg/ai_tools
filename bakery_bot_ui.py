@@ -7,7 +7,7 @@ import random
 import smtplib
 import requests
 import html
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
 from email.mime.text import MIMEText
 
@@ -421,7 +421,7 @@ body:has(.owner-login-marker) [data-testid="stFormSubmitButton"] button:hover{
 }
 
 
-/* Customer chat composer: unmistakably interactive */
+/* Customer chat composer — unmistakably interactive */
 div[data-testid="stForm"]:has(input[placeholder*="Ask "]) {
   border:0 !important;
   padding:0 !important;
@@ -748,17 +748,6 @@ def check_advance_notice(requested_datetime_iso, advance_notice_text):
 def is_custom_order(order):
     return str(order.get("order_type") or "retail").lower() == "custom"
 
-def compute_order_total(order, menu):
-    prices = {str(m.get("Item") or "").strip().lower(): m.get("Price") for m in (menu or [])}
-    total = 0
-    for it in order.get("items") or []:
-        try:
-            total += float(prices.get(str(it.get("item") or "").strip().lower())) * float(it.get("quantity") or 0)
-        except (TypeError, ValueError):
-            pass
-    return total
-
-
 def get_missing_order_fields(order):
     missing = []
     items = order.get("items", [])
@@ -797,83 +786,6 @@ def mask_contact(value):
     if len(digits) >= 4:
         return "••••••" + digits[-4:]
     return "••••"
-
-def extract_custom_date(text):
-    """Return a date if the text names one (today, tomorrow, a weekday), else None."""
-    s = re.sub(r"\s+", " ", str(text or "").lower()).strip()
-    now = datetime.now(ZoneInfo("Asia/Kolkata"))
-    if "day after tomorrow" in s:
-        return (now + timedelta(days=2)).date()
-    if "tomorrow" in s:
-        return (now + timedelta(days=1)).date()
-    if "today" in s:
-        return now.date()
-    weekdays = {"monday":0,"tuesday":1,"wednesday":2,"thursday":3,"friday":4,"saturday":5,"sunday":6}
-    for name, num in weekdays.items():
-        if re.search(rf"\b{name}\b", s):
-            delta = (num - now.weekday()) % 7
-            if delta == 0 and "next " in s:
-                delta = 7
-            return (now + timedelta(days=delta)).date()
-    return None
-
-
-def extract_custom_time(text):
-    """Return (hour, minute) in 24-hour time if the text has a clock time, else None."""
-    s = str(text or "").lower()
-    m = re.search(r"\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b", s)
-    if m:
-        return int(m.group(1)) % 12 + (12 if m.group(3) == "pm" else 0), int(m.group(2) or 0)
-    m24 = re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", s)
-    if m24:
-        return int(m24.group(1)), int(m24.group(2))
-    return None
-
-
-def custom_missing_slots(order):
-    """Return missing custom-request fields independent of conversational order."""
-    missing = []
-    items = order.get("items") or []
-    first = items[0] if items else {}
-    if not first.get("item"):
-        missing.append("item")
-    if not first.get("quantity"):
-        missing.append("quantity")
-    if not order.get("requested_datetime_iso"):
-        missing.append("datetime")
-    if order.get("fulfillment") not in ("pickup", "delivery"):
-        missing.append("fulfillment")
-    if order.get("fulfillment") == "delivery" and not order.get("delivery_address"):
-        missing.append("address")
-    if not order.get("customer_name") or not order.get("customer_contact"):
-        missing.append("identity")
-    return missing
-
-def custom_next_question(order):
-    missing = custom_missing_slots(order)
-    if not missing:
-        first=(order.get("items") or [{}])[0]
-        lines = [
-            "Send this custom request?",
-            f"- {first.get('quantity',1)} × {first.get('item','Custom item')}",
-            f"- {str(order.get('fulfillment') or '').title()}",
-            f"- {order.get('requested_datetime')}",
-        ]
-        if order.get("delivery_address"):
-            lines.append(f"- Delivery: {order.get('delivery_address')}")
-        lines.append(f"- Contact: {mask_contact(order.get('customer_contact'))}")
-        lines.append("")
-        lines.append("The bakery will contact you to finalize the details, price and payment.")
-        return "\n".join(lines), "confirm"
-    nxt=missing[0]
-    questions={
-        "quantity":"How many would you like?",
-        "datetime":"What date and time would you like it?",
-        "fulfillment":"Would you like pickup or delivery?",
-        "address":"What's the delivery address?",
-        "identity":"What's your name and contact number or email?",
-    }
-    return questions.get(nxt,"Could you tell me a little more?"), nxt
 
 def delivery_address_allowed(address, business):
     """Conservative MVP delivery validation using owner-configured city + areas."""
@@ -973,8 +885,8 @@ def deterministic_checkout_reply(order):
     fulfillment = str(order.get("fulfillment") or "").title()
     contact = mask_contact(order.get("customer_contact"))
 
-    summary = "Confirm this order?\n" + "\n".join(item_lines)
-    summary += f"\n- {fulfillment}\n- {when}\n- Contact: {contact}"
+    summary = "Confirm this order?\\n" + "\\n".join(item_lines)
+    summary += f"\\n- {fulfillment}\\n- {when}\\n- Contact: {contact}"
     return summary, True
 
 
@@ -1181,14 +1093,6 @@ def send_custom_request_notification(business_name, owner_email, request_number,
         return False
 
 
-def with_ist(value):
-    """ISO string with an explicit offset. The model sends local times without one."""
-    dt = datetime.fromisoformat(str(value))
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
-    return dt.isoformat()
-
-
 def submit_protected_custom_request(slug, order):
     items = order.get("items") or []
     first = items[0] if items else {}
@@ -1200,7 +1104,7 @@ def submit_protected_custom_request(slug, order):
         "p_requested_item": first.get("item"),
         "p_quantity": int(first.get("quantity") or 1),
         "p_fulfillment": order.get("fulfillment"),
-        "p_requested_datetime": with_ist(requested_iso),
+        "p_requested_datetime": requested_iso,
         "p_customer_name": order.get("customer_name"),
         "p_customer_contact": order.get("customer_contact"),
         "p_delivery_address": order.get("delivery_address") if order.get("fulfillment") == "delivery" else None,
@@ -1221,7 +1125,7 @@ def submit_protected_order(slug, order):
         "p_bakery_slug": slug,
         "p_items": order.get("items") or [],
         "p_fulfillment": order.get("fulfillment"),
-        "p_requested_datetime": with_ist(requested_iso),
+        "p_requested_datetime": requested_iso,
         "p_customer_name": order.get("customer_name"),
         "p_customer_contact": order.get("customer_contact"),
         "p_delivery_address": order.get("delivery_address") if order.get("fulfillment") == "delivery" else None,
@@ -1330,8 +1234,38 @@ def run_chatbot(business):
             fulfillment_instructions = f"""This business offers BOTH pickup and delivery. Ask the customer which they'd prefer. If pickup, no address is needed (pickup is at {address}). If delivery, ask for their delivery address."""
 
         prompt = f"""You are a friendly ordering assistant for {business_name}.
-CRITICAL ORDERING RULES:
+CORE ROLE:
+You are the bakery's conversational assistant. Respond naturally to EVERY customer message, including greetings, fragments, menu questions, ingredient questions, recommendations, hours, delivery questions, off-menu requests, and order requests.
+
+INTENT ROUTING:
+1. CASUAL / GREETING: respond naturally and briefly.
+2. MENU / PRODUCT QUESTION: answer only from the supplied real menu and business data.
+3. RECOMMENDATION: recommend only real menu items and explain briefly why.
+4. BUSINESS INFO: answer only from supplied hours, delivery, pickup, FAQ, address and other bakery data.
+5. OFF-MENU / UNKNOWN PRODUCT: if the requested product is not clearly on the supplied menu, say it is not on the current menu and offer to send it as a custom request. Never invent availability or price.
+Whenever you offer a custom request for an off-menu item, append this machine-readable line:
+CUSTOM_REQUEST_OFFER: {{"item":"Exact requested item name"}}
+Never omit it when making that offer.
+6. ORDER INTENT: extract structured order state, then let the application/database handle validation and submission.
+7. UNCLEAR: ask one short clarification question.
+
+PRODUCT EXTRACTION:
+Understand requested products from natural language regardless of what kind of food/product they are. Do not rely on a fixed catalogue of bakery item types. A fragment such as "a lemon tart" is meaningful and must receive a response.
+- If the customer appears to be requesting something and it is not an exact/clear match to the supplied menu, identify the requested item by name and respond that it is not on the current menu, then offer a custom request. Never silently stop.
+- Never invent that an unknown item exists on the menu.
+- UNIVERSAL RESPONSE CONTRACT: Never return an empty visible reply. Every customer turn must produce a useful visible response, even if no order is in progress.
+- Do not force ordinary conversation into checkout. Only produce/update ORDER_SUMMARY when the customer is actually ordering or modifying an order.
+- If the customer asks about ingredients, allergens, prices, hours, pickup/delivery, recommendations, or menu availability, answer the question first instead of starting checkout unless they clearly ask to order.
 - Standard products already listed on the menu are RETAIL orders, even if named Cake, Cheesecake or Cupcake. Never invent a custom-cake rule for them.
+- OFF-MENU CUSTOM REQUEST RULE: When a requested item is not on the menu, say so briefly. If the customer asks "can you make it?", "can the bakery make it?", or similar, NEVER go silent. Reply: "It isn't on the current menu, but I can help you send it as a custom request to the bakery. Would you like to do that?"
+- Never claim an off-menu item is available, never invent its price, and never promise the bakery will make it.
+- AMBIGUOUS TIME RULE: If a customer gives a bare hour such as "4", use the bakery's stored business hours to resolve AM vs PM. If exactly one interpretation falls within opening hours, use that interpretation without asking another confirmation. Example: if Wednesday hours include 4 PM but not 4 AM, "4" means 4 PM.
+- If both AM and PM interpretations are valid within stored business hours, ask which one they mean.
+- If neither interpretation is within business hours, say the bakery is closed then and ask for another time.
+- Never suggest or confirm a time outside the bakery's stored business hours.
+- If the customer says yes to an off-menu custom request, collect the requested item, quantity, exact date/time, pickup/delivery, name/contact, and delivery address if needed. Make clear that availability and price require bakery approval.
+- Once the custom-request date/time is known, move directly to pickup/delivery, then name/contact, then one final "Send this custom request?" summary. Do not ask "anything else?" and do not show a price.
+- Do not pass an off-menu item into the normal menu-order confirmation flow.
 - order_type is "custom" ONLY when the customer explicitly requests a bespoke/custom cake or meaningful customization. Otherwise use "retail".
 - The bakery's advance-notice rule applies ONLY to custom orders.
 - HARD RULE FOR RETAIL MENU ORDERS: completely ignore advance_notice. Do NOT calculate hours of notice, mention notice, say "24 hours' notice", compare the request with the custom-order notice period, or warn about advance notice in any way.
@@ -1396,8 +1330,6 @@ The business's social media / website link is: {social_link if social_link else 
 
 Customers may write to you in English, Hindi, or Hinglish (a natural mix of Hindi and English, written in Roman script). Always reply in the same style the customer is using, naturally. Don't force pure English or pure Hindi if the customer is mixing languages.
 
-If a customer asks for an item that is NOT on the menu, do not just say no and move on. Let them know that exact item isn't on the current menu, but that you'll check with the business owner about whether it could be made available, and that you'll follow up to confirm. Do NOT add off-menu items to the order, the ORDER_SUMMARY items list, or the estimated total -- only confirmed, on-menu items go in there. If the customer also ordered other items that ARE on the menu in the same message, proceed normally with those and separately mention that the off-menu item needs an owner check.
-
 You can also take orders. When a customer wants to order something, ask any clarifying questions you need: quantity, size, flavor, customizations (like "no nuts" or a message written on a cake), and the date/time they want it, following the fulfillment rules above. Before the order is confirmed, also ask for the customer's name and a phone number or email so the business can reach them if needed. Use the menu prices to calculate a running estimated total.
 
 Before setting "status" to "confirmed", you must have ALL of the following explicitly confirmed with the customer -- do not assume, guess, or let any of them quietly drop as the conversation moves on:
@@ -1424,6 +1356,8 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.order_email_sent = False
         st.session_state.order_saved = False
         st.session_state.order_number = None
+        st.session_state.pending_custom_item = None
+        st.session_state.custom_request_stage = None
         st.session_state.orders_this_session = 0
         st.session_state.awaiting_assistant = False
 
@@ -1453,13 +1387,15 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
     thinking_slot = st.empty()
 
+    # Clear, full-width chat composer with a visible send button.
     with st.form("chat_form", clear_on_submit=True):
-        chat_col, send_col = st.columns([12, 1])
+        chat_col, send_col = st.columns([12, 1], gap="small")
         with chat_col:
             user_input = st.text_input(
                 "Message",
                 placeholder=f"Ask {display_business_name} anything...",
-                label_visibility="collapsed"
+                label_visibility="collapsed",
+                key=f"chat_text_{slug_from_url or 'bakery'}"
             )
         with send_col:
             send_message = st.form_submit_button("↑", use_container_width=True)
@@ -1474,6 +1410,146 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         if clean_user_input:
             st.session_state.messages.append({"role": "user", "content": clean_user_input})
             st.session_state.display_messages.append({"role": "user", "content": clean_user_input})
+
+            # Complete custom-request state machine. Once a custom request starts,
+            # Python owns progression so short replies cannot dead-end.
+            custom_stage = st.session_state.get("custom_request_stage")
+            current_custom = st.session_state.get("current_order") or {}
+            if current_custom.get("order_type") == "custom_request" and custom_stage:
+                reply = None
+
+                if custom_stage == "quantity":
+                    qty_match = re.search(r"\b(\d{1,3})\b", clean_user_input)
+                    if qty_match and 1 <= int(qty_match.group(1)) <= 100:
+                        current_custom["items"][0]["quantity"] = int(qty_match.group(1))
+                        st.session_state.custom_request_stage = "datetime"
+                        reply = "Got it. What date and time would you like it?"
+                    else:
+                        reply = "How many would you like? Please enter a number between 1 and 100."
+
+                elif custom_stage == "fulfillment":
+                    low = clean_user_input.lower()
+                    if "deliver" in low:
+                        current_custom["fulfillment"] = "delivery"
+                        st.session_state.custom_request_stage = "address"
+                        reply = "Sure. What's the delivery address?"
+                    elif "pickup" in low or "pick up" in low:
+                        current_custom["fulfillment"] = "pickup"
+                        st.session_state.custom_request_stage = "identity"
+                        reply = "What's your name and contact number or email?"
+                    else:
+                        reply = "Would you like pickup or delivery?"
+
+                elif custom_stage == "address":
+                    # Do not demand street/house-number formatting: landmarks/campuses may be valid.
+                    address = clean_user_input.strip()
+                    if len(address) >= 5:
+                        eligibility = delivery_address_allowed(address, business)
+                        if eligibility is True:
+                            current_custom["delivery_address"] = address
+                            current_custom = recover_name_contact(clean_user_input, current_custom)
+                            if current_custom.get("customer_name") and current_custom.get("customer_contact"):
+                                st.session_state.custom_request_stage = "confirm"
+                            else:
+                                st.session_state.custom_request_stage = "identity"
+                            reply = (
+                                "Thanks. What's your name and contact number or email?"
+                                if st.session_state.custom_request_stage == "identity"
+                                else None
+                            )
+                        elif eligibility is False:
+                            city = business.get("delivery_city") or "the bakery's delivery city"
+                            areas = ", ".join(business.get("delivery_areas") or [])
+                            reply = (
+                                f"Sorry, delivery is currently available only in {city}"
+                                + (f" for these areas: {areas}." if areas else ".")
+                                + " Would you like pickup instead?"
+                            )
+                        else:
+                            reply = (
+                                "The bakery hasn't configured its delivery areas yet, "
+                                "so I can't safely confirm delivery. Would you like pickup instead?"
+                            )
+                    else:
+                        reply = "Please share the delivery location or address."
+
+                elif custom_stage == "identity":
+                    current_custom = recover_name_contact(clean_user_input, current_custom)
+                    if current_custom.get("customer_name") and current_custom.get("customer_contact"):
+                        st.session_state.custom_request_stage = "confirm"
+                    else:
+                        reply = "Please send your name and a contact number or email together."
+
+                elif custom_stage == "confirm":
+                    low = clean_user_input.lower()
+                    if re.search(r"\b(yes|yeah|yep|yup|confirm|send|sure|ok|okay)\b", low):
+                        try:
+                            saved = submit_protected_custom_request(slug_from_url, current_custom)
+                            request_number = saved.get("request_number")
+                            st.session_state.order_saved = True
+                            st.session_state.order_number = request_number
+                            st.session_state.custom_request_stage = None
+                            notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
+                            send_custom_request_notification(
+                                business_name, notification_email, request_number, current_custom
+                            )
+                            reply = (
+                                f"Custom request sent! #{request_number}\n\n"
+                                "The bakery will contact you to discuss the details, final price and payment."
+                            )
+                        except Exception:
+                            reply = "I couldn't send the custom request yet. Please try confirming again."
+                    elif re.search(r"\b(no|cancel|nope|nah)\b", low):
+                        st.session_state.custom_request_stage = None
+                        st.session_state.current_order = None
+                        reply = "No problem. I haven't sent the request."
+                    else:
+                        reply = "Would you like me to send this custom request to the bakery?"
+
+                st.session_state.current_order = current_custom
+
+                # Date/time parsing remains with Cohere, but all later stages are deterministic.
+                if reply:
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
+
+            # Resolve a pending off-menu offer deterministically.
+            pending_custom = st.session_state.get("pending_custom_item")
+            if pending_custom:
+                if re.search(r"(?i)\b(yes|yeah|yep|yup|sure|okay|ok|please|do it)\b", clean_user_input):
+                    reply = f"Sure — how many {pending_custom}s would you like?"
+                    st.session_state.custom_request_stage = "quantity"
+                    st.session_state.current_order = {
+                        "items": [{"item": pending_custom, "quantity": None, "customizations": ""}],
+                        "order_type": "custom_request",
+                        "requested_datetime": None,
+                        "requested_datetime_iso": None,
+                        "fulfillment": None,
+                        "customer_name": None,
+                        "customer_contact": None,
+                        "delivery_address": None,
+                        "status": "in_progress",
+                    }
+                    st.session_state.pending_custom_item = None
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
+                if re.search(r"(?i)\b(no|nope|nah|cancel|never mind|nevermind)\b", clean_user_input):
+                    reply = "No problem. What else would you like?"
+                    st.session_state.pending_custom_item = None
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
+
+            requested_item, is_menu_item = detect_requested_product(clean_user_input, menu)
+            if requested_item and is_menu_item is False:
+                st.session_state.pending_custom_item = requested_item
+                reply = custom_request_prompt(requested_item, business_name)
+                st.session_state.display_messages.append({"role":"assistant","content":reply})
+                st.session_state.messages.append({"role":"assistant","content":reply})
+                st.rerun()
+
             st.session_state.awaiting_assistant = True
             st.rerun()
 
@@ -1599,6 +1675,24 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         order_match = re.search(r"ORDER_SUMMARY:\s*(\{.*\})", bot_reply, re.DOTALL)
         display_reply = bot_reply
 
+        # Persist an AI-created custom-request offer so the next "yes/yup" is
+        # handled by Python instead of becoming an untracked conversational turn.
+        offer_match = re.search(r'CUSTOM_REQUEST_OFFER:\s*(\{.*?\})', bot_reply or "", re.S)
+        if offer_match:
+            try:
+                offer_data = json.loads(offer_match.group(1))
+                offered_item = str(offer_data.get("item") or "").strip()
+                if offered_item:
+                    st.session_state.pending_custom_item = offered_item
+            except Exception:
+                pass
+            display_reply = re.sub(
+                r'\n?CUSTOM_REQUEST_OFFER:\s*\{.*?\}\s*',
+                '',
+                display_reply,
+                flags=re.S,
+            ).strip()
+
         # Guardrail: standard menu conversations must not surface custom-order
         # advance-notice commentary even if the model slips.
         retail_notice_patterns = [
@@ -1617,6 +1711,18 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             display_reply = bot_reply[:order_match.start()].strip()
             try:
                 parsed_order = json.loads(order_match.group(1))
+                parsed_order = recover_name_contact(clean_user_input, parsed_order)
+
+                # Never let a relative date such as "tomorrow" silently acquire an
+                # invented clock time. If this turn supplied no explicit time and the
+                # prior order still had no exact time, keep datetime incomplete.
+                previous_order = st.session_state.get("current_order") or {}
+                if (
+                    not has_explicit_time(clean_user_input)
+                    and not previous_order.get("requested_datetime_iso")
+                    and re.search(r"(?i)\b(today|tomorrow|day after tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", clean_user_input)
+                ):
+                    parsed_order["requested_datetime_iso"] = None
 
                 if parsed_order.get("status") == "confirmed" and get_missing_order_fields(parsed_order):
                     parsed_order["status"] = "in_progress"
@@ -1642,11 +1748,27 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 st.session_state.current_order = parsed_order
 
                 if (
+                    parsed_order.get("order_type") == "custom_request"
+                    and st.session_state.get("custom_request_stage") == "datetime"
+                    and parsed_order.get("requested_datetime_iso")
+                ):
+                    st.session_state.custom_request_stage = "fulfillment"
+                    display_reply = "Got it. Would you like pickup or delivery?"
+                    state_reply, ready_for_confirmation = display_reply, False
+                else:
+                    state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
+                if parsed_order.get("status") != "confirmed":
+                    display_reply = state_reply
+
+                if (
                     parsed_order.get("status") == "confirmed"
                     and not st.session_state.get("order_saved", False)
                 ):
                     try:
-                        saved = submit_protected_order(slug_from_url, parsed_order)
+                        if parsed_order.get("order_type") == "custom_request":
+                            saved = submit_protected_custom_request(slug_from_url, parsed_order)
+                        else:
+                            saved = submit_protected_order(slug_from_url, parsed_order)
                     except Exception:
                         parsed_order["status"] = "in_progress"
                         st.session_state.current_order = parsed_order
@@ -1655,63 +1777,95 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                             "Please check the item, date/time, and delivery details and try again."
                         )
                     else:
-                        db_order_number = saved.get("order_number")
-                        db_total = saved.get("total")
-                        parsed_order["estimated_total"] = db_total
+                        notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
                         parsed_order["status"] = "confirmed"
                         st.session_state.current_order = parsed_order
-                        st.session_state.order_number = db_order_number
                         st.session_state.order_saved = True
-                        st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
-                        display_reply = (
-                            f"Order received! #{db_order_number}\n\n"
-                            f"Final total: ₹{db_total}. "
-                            "The bakery will review and accept or decline it."
-                        )
+
+                        if parsed_order.get("order_type") == "custom_request":
+                            request_number = saved.get("request_number")
+                            st.session_state.order_number = request_number
+                            send_custom_request_notification(
+                                business_name, notification_email, request_number, parsed_order
+                            )
+                            display_reply = (
+                                f"Custom request sent! #{request_number}\n\n"
+                                "The bakery will contact you to discuss the details, final price and payment."
+                            )
+                        else:
+                            db_order_number = saved.get("order_number")
+                            db_total = saved.get("total")
+                            parsed_order["estimated_total"] = db_total
+                            st.session_state.order_number = db_order_number
+                            st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
+                            send_new_order_notification(
+                                business_name, notification_email, db_order_number, parsed_order, db_total
+                            )
+                            display_reply = (
+                                f"Order received! #{db_order_number}\n\n"
+                                f"Final total: ₹{db_total}. "
+                                "The bakery will review and accept or decline it."
+                            )
                 elif notice_warning:
                     display_reply += f"\n\n{notice_warning}"
 
             except json.JSONDecodeError:
                 pass
 
-        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-        # Deterministic checkout guard: the model may try to confirm before
-        # collecting customer details. Replace that with the next required question.
-        current_for_guard = st.session_state.get("current_order") or {}
-        missing_for_guard = get_missing_order_fields(current_for_guard)
-        if "Confirm this order?" in str(display_reply) and missing_for_guard:
-            if "fulfillment method" in missing_for_guard:
-                display_reply = "Would you like pickup or delivery?"
-            elif "delivery address" in missing_for_guard:
-                display_reply = "What's the delivery address?"
-            elif "requested date/time" in missing_for_guard:
-                display_reply = "What date and time would you like?"
-            elif "customer name" in missing_for_guard and "customer contact" in missing_for_guard:
-                display_reply = "What's your name and contact number or email?"
-            elif "customer name" in missing_for_guard:
-                display_reply = "What's your name?"
-            elif "customer contact" in missing_for_guard:
-                display_reply = "What's your contact number or email?"
+        current_custom = st.session_state.get("current_order") or {}
+        if (
+            current_custom.get("order_type") == "custom_request"
+            and st.session_state.get("custom_request_stage") == "confirm"
+            and current_custom.get("customer_name")
+            and current_custom.get("customer_contact")
+        ):
+            first = (current_custom.get("items") or [{}])[0]
+            display_reply = (
+                "Send this custom request?\n"
+                f"- {first.get('quantity',1)} × {first.get('item','Custom item')}\n"
+                f"- {str(current_custom.get('fulfillment') or '').title()}\n"
+                f"- {current_custom.get('requested_datetime')}\n"
+                + (f"- Delivery: {current_custom.get('delivery_address')}\n" if current_custom.get("delivery_address") else "")
+                + f"- Contact: {mask_contact(current_custom.get('customer_contact'))}\n\n"
+                "Price and availability will be decided by the bakery."
+            )
 
-        # Cohere may sometimes return only hidden ORDER_SUMMARY JSON after
-        # extracting a reply such as "4 pm". Never show an empty assistant bubble.
+        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+        # Safety recovery if the AI offered a custom request but omitted the marker.
+        if (
+            not st.session_state.get("pending_custom_item")
+            and re.search(r"(?i)custom request", str(display_reply or ""))
+        ):
+            m = re.search(
+                r"(?i)(?:don't have|do not have)\s+(?:an?\s+)?(.+?)\s+on the (?:current )?menu",
+                str(display_reply),
+            )
+            if m:
+                st.session_state.pending_custom_item = m.group(1).strip(" .?!")
+
+        # Never render an empty assistant bubble.
         if not str(display_reply).strip():
-            current = st.session_state.get("current_order") or {}
-            missing_now = get_missing_order_fields(current)
-            if "fulfillment method" in missing_now:
-                display_reply = "Would you like pickup or delivery?"
-            elif "delivery address" in missing_now:
-                display_reply = "What's the delivery address?"
-            elif "requested date/time" in missing_now:
-                display_reply = "What date and time would you like?"
-            elif "customer name" in missing_now and "customer contact" in missing_now:
-                display_reply = "What's your name and contact number or email?"
-            elif "customer name" in missing_now:
-                display_reply = "What's your name?"
-            elif "customer contact" in missing_now:
-                display_reply = "What's your contact number or email?"
+            latest_text = str(clean_user_input or "").lower()
+            if re.search(r"\b(can|could|would)\s+(?:u|you|the bakery)\s+(?:make|do)\b", latest_text):
+                display_reply = (
+                    "It isn't on the current menu, but I can help you send it as a custom "
+                    "request to the bakery. Would you like to do that?"
+                )
             else:
-                display_reply = "Please confirm the order details to continue."
+                current = st.session_state.get("current_order") or {}
+                if current:
+                    display_reply, _ = deterministic_checkout_reply(current)
+                else:
+                    display_reply = (
+                        "I didn't quite catch that. You can ask about the menu, ingredients, "
+                        "recommendations, opening hours, pickup or delivery, or place an order."
+                    )
+
+        if not str(display_reply or "").strip():
+            display_reply = (
+                "I didn't quite catch that. You can ask me about the menu, ingredients, "
+                "recommendations, pickup or delivery, opening hours, or place an order."
+            )
 
         st.session_state.display_messages.append(
             {"role": "assistant", "content": display_reply}
@@ -1782,6 +1936,24 @@ def owner_login_gate(title, caption):
     st.rerun()
 
 
+
+    st.markdown("""
+<script>
+(function(){
+  function focusLoafInput(){
+    const inputs = Array.from(document.querySelectorAll('input'));
+    const el = inputs.find(x => (x.placeholder || '').toLowerCase().includes('pink whisk'));
+    if(el && document.activeElement !== el){
+      el.focus({preventScroll:true});
+      try { el.setSelectionRange(el.value.length, el.value.length); } catch(e) {}
+    }
+  }
+  requestAnimationFrame(focusLoafInput);
+  setTimeout(focusLoafInput, 80);
+  setTimeout(focusLoafInput, 250);
+})();
+</script>
+""", unsafe_allow_html=True)
 
 def quick_update_view():
     if not owner_login_gate(
@@ -1988,7 +2160,7 @@ def owner_view():
 
     st.markdown("## New orders")
     if not pending_orders:
-        st.info("You're all caught up. No new orders.")
+        st.info("You're all caught up — no new orders.")
     else:
         for o in pending_orders:
             with st.container(border=True):
@@ -2052,47 +2224,36 @@ def owner_view():
                     st.caption(f"Notes: {r.get('customer_notes')}")
                 if r.get("delivery_address"):
                     st.caption(f"Delivery: {r.get('delivery_address')}")
-                st.caption("Price and availability are not confirmed.")
+                st.caption("The bakery should contact the customer to finalize details, price and payment.")
                 contact_value = str(r.get("customer_contact") or "")
                 digits = re.sub(r"\D", "", contact_value)
                 if len(digits) >= 10:
                     from urllib.parse import quote
-                    bakery_label = str(existing_business.get("business_name") or "the bakery")
                     msg = (
-                        f"Hi {r.get('customer_name') or ''}, this is {bakery_label} "
-                        f"regarding your Loaf custom request #{1000 + int(r.get('id',0))} "
-                        f"for {r.get('requested_item','your custom request')}."
+                        f"Hi {r.get('customer_name') or ''}, this is "
+                        f"{existing_business.get('business_name') or 'the bakery'} regarding "
+                        f"your Loaf custom request #{1000 + int(r.get('id',0))}."
                     )
-                    whatsapp_url = f"https://wa.me/{digits}?text={quote(msg)}"
                     st.link_button(
                         "Contact customer on WhatsApp",
-                        whatsapp_url,
+                        f"https://wa.me/{digits}?text={quote(msg)}",
                         use_container_width=True
                     )
-                elif "@" in contact_value:
-                    st.markdown(f"**Customer email:** {html.escape(contact_value)}")
-                else:
-                    st.caption("No WhatsApp-ready phone number was provided.")
-
-                a1, a2 = st.columns(2)
+                a1,a2=st.columns(2)
                 with a1:
-                    if st.button("Mark confirmed", key=f"confirm_custom_{r['id']}", use_container_width=True, type="primary"):
+                    if st.button("Mark confirmed", key=f"accept_custom_{r['id']}", use_container_width=True, type="primary"):
                         try:
-                            result = supabase.table("custom_requests").update({"status":"accepted"}).eq("id", r["id"]).execute()
-                            if result.data:
-                                st.rerun()
-                            else:
-                                st.error("Could not update this request.")
+                            result=supabase.table("custom_requests").update({"status":"accepted"}).eq("id",r["id"]).execute()
+                            if result.data: st.rerun()
+                            else: st.error("Could not update this request.")
                         except Exception:
                             st.error("Could not update this request.")
                 with a2:
                     if st.button("Decline", key=f"decline_custom_{r['id']}", use_container_width=True):
                         try:
-                            result = supabase.table("custom_requests").update({"status":"declined"}).eq("id", r["id"]).execute()
-                            if result.data:
-                                st.rerun()
-                            else:
-                                st.error("Could not update this request.")
+                            result=supabase.table("custom_requests").update({"status":"declined"}).eq("id",r["id"]).execute()
+                            if result.data: st.rerun()
+                            else: st.error("Could not update this request.")
                         except Exception:
                             st.error("Could not update this request.")
 
@@ -2101,10 +2262,10 @@ def owner_view():
         for r in custom_history[:15]:
             status = str(r.get("status") or "").title()
             with st.container(border=True):
-                h1, h2 = st.columns([4, 1])
+                h1, h2 = st.columns([4,1])
                 with h1:
-                    st.markdown(f"**Custom request #{1000 + int(r.get('id', 0))}**")
-                    st.write(f"{r.get('quantity', 1)} × {r.get('requested_item', 'Custom item')}")
+                    st.markdown(f"**Custom request #{1000 + int(r.get('id',0))}**")
+                    st.write(f"{r.get('quantity',1)} × {r.get('requested_item','Custom item')}")
                     st.caption(
                         f"{r.get('customer_name') or ''} · "
                         f"{format_owner_order_time(r.get('requested_datetime'))}"
@@ -2113,8 +2274,6 @@ def owner_view():
                         st.caption(f"Contact: {r.get('customer_contact')}")
                     if r.get("delivery_address"):
                         st.caption(f"Delivery: {r.get('delivery_address')}")
-                    if r.get("customer_notes"):
-                        st.caption(f"Notes: {r.get('customer_notes')}")
                 with h2:
                     st.markdown(f"**{status}**")
 
