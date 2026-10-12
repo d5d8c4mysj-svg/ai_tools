@@ -1652,6 +1652,72 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             f"Please contact {contact} directly, or start a new order."
         )
 
+    # Final confirmation is a Python-owned action. Once the complete summary has
+    # already been shown, a clear confirmation must save immediately instead of
+    # asking Cohere to reconstruct the same order again.
+    if st.session_state.get("awaiting_assistant", False):
+        clean_user_input = str(st.session_state.get("last_user_input") or "").strip()
+        existing_order = st.session_state.get("current_order") or {}
+        existing_missing = get_missing_order_fields(existing_order) if existing_order else []
+        confirmation_words = re.search(
+            r"(?i)\b(yes|yeah|yep|yup|confirm|confirmed|sure|ok|okay|go ahead|place it|send it|do it)\b",
+            clean_user_input,
+        )
+        if (
+            existing_order
+            and not existing_missing
+            and not st.session_state.get("order_saved", False)
+            and confirmation_words
+        ):
+            try:
+                if existing_order.get("order_type") == "custom_request":
+                    saved = submit_protected_custom_request(slug_from_url, existing_order)
+                    request_number = saved.get("request_number")
+                    existing_order["status"] = "confirmed"
+                    st.session_state.current_order = existing_order
+                    st.session_state.order_saved = True
+                    st.session_state.order_number = request_number
+                    st.session_state.custom_request_stage = None
+                    send_custom_request_notification(
+                        business_name,
+                        st.secrets.get("ORDER_NOTIFICATION_EMAIL"),
+                        request_number,
+                        existing_order,
+                    )
+                    reply = (
+                        f"Custom request sent! #{request_number}\n\n"
+                        "The bakery will contact you to discuss the details, final price and payment."
+                    )
+                else:
+                    saved = submit_protected_order(slug_from_url, existing_order)
+                    db_order_number = saved.get("order_number")
+                    db_total = saved.get("total")
+                    existing_order["status"] = "confirmed"
+                    existing_order["estimated_total"] = db_total
+                    st.session_state.current_order = existing_order
+                    st.session_state.order_saved = True
+                    st.session_state.order_number = db_order_number
+                    st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
+                    send_new_order_notification(
+                        business_name,
+                        st.secrets.get("ORDER_NOTIFICATION_EMAIL"),
+                        db_order_number,
+                        existing_order,
+                        db_total,
+                    )
+                    reply = (
+                        f"Order received! #{db_order_number}\n\n"
+                        f"Final total: ₹{db_total}. "
+                        "The bakery will review and accept or decline it."
+                    )
+            except Exception:
+                reply = "I couldn't securely save that yet. Please try confirming once more."
+
+            st.session_state.messages.append({"role":"assistant","content":reply})
+            st.session_state.display_messages.append({"role":"assistant","content":reply})
+            st.session_state.awaiting_assistant = False
+            st.rerun()
+
     # Stage 2: on the immediate rerun, the user's message is already visible.
     # Now show the cake and request the assistant response exactly once.
     if st.session_state.get("awaiting_assistant", False):
