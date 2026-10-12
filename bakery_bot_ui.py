@@ -1311,6 +1311,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         if clean_user_input:
             st.session_state.messages.append({"role": "user", "content": clean_user_input})
             st.session_state.display_messages.append({"role": "user", "content": clean_user_input})
+            st.session_state.last_user_input = clean_user_input
 
             # Complete custom-request state machine. Once a custom request starts,
             # Python owns progression so short replies cannot dead-end.
@@ -1522,7 +1523,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
         if order_count > 0:
             if st.button("Start new order", key="top_start_new_order"):
-                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant"]:
+                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "last_user_input", "pending_custom_item", "custom_request_stage"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
@@ -1536,6 +1537,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     # Stage 2: on the immediate rerun, the user's message is already visible.
     # Now show the cake and request the assistant response exactly once.
     if st.session_state.get("awaiting_assistant", False):
+        clean_user_input = str(st.session_state.get("last_user_input") or "").strip()
         thinking_slot.markdown(
             '<div class="pw-cake-loader" aria-label="Assistant is responding">'
             '<div class="pw-cake-dots"><span></span><span></span><span></span></div>'
