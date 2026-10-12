@@ -570,6 +570,30 @@ body:has(.owner-portal-marker) [data-baseweb="select"] > div{
   border-color:#DADAD7 !important;
 }
 
+
+/* ===== V23 OWNER DASHBOARD ===== */
+body:has(.owner-portal-marker) .block-container{
+  max-width:960px !important;
+  padding-top:36px !important;
+}
+.owner-dashboard-head{margin:8px 0 26px;}
+.owner-dashboard-head h1{font-size:32px !important;margin:3px 0 4px !important;}
+.owner-dashboard-head p{margin:0;color:#6F6F6B;}
+.owner-kicker{font-size:12px;font-weight:800;letter-spacing:.14em;color:#555;}
+body:has(.owner-portal-marker) [data-testid="stMetric"]{
+  background:#FFF !important;border:1px solid #E3E3DF !important;
+  border-radius:12px !important;padding:16px 18px !important;
+}
+.status-pill{display:inline-block;float:right;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.06em;}
+.status-pill.pending{background:#F1EEE7;color:#665E51;}
+.history-row{display:flex;justify-content:space-between;gap:20px;padding:16px 2px;border-bottom:1px solid #E8E8E4;}
+.history-row span{font-size:13px;color:#777773;}
+.history-right{text-align:right;white-space:nowrap;}
+body:has(.owner-portal-marker) h2{font-size:21px !important;margin-top:30px !important;}
+body:has(.owner-portal-marker) [data-testid="stVerticalBlockBorderWrapper"]{
+  padding:4px !important;margin-bottom:12px !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1474,13 +1498,20 @@ def quick_update_view():
                 st.success("Updated. Your customer page now reflects today's availability.")
 
 
+def display_order_id(order):
+    """Short human-facing order number; database IDs remain internal."""
+    try:
+        return f"#{1000 + int(order.get('id', 0))}"
+    except Exception:
+        return "#----"
+
 def format_owner_order_time(value):
     if not value:
         return "Time not specified"
     try:
         dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
         dt = dt.astimezone(ZoneInfo("Asia/Kolkata"))
-        return dt.strftime("%a, %d %b · %-I:%M %p")
+        return dt.strftime("%a, %d %b · %I:%M %p").replace(" 0", " ")
     except Exception:
         return str(value)
 
@@ -1525,8 +1556,7 @@ def owner_view():
     st.subheader(existing_business.get("business_name") or clean_slug)
     st.caption(f"Bakery link: {clean_slug}")
 
-    # ----- Owner order inbox -----
-    st.markdown("### Orders")
+    # ----- Loaf owner dashboard -----
     try:
         owner_orders = (
             supabase.table("orders")
@@ -1540,81 +1570,91 @@ def owner_view():
         owner_orders = []
 
     pending_orders = [o for o in owner_orders if o.get("status") == "pending"]
-    other_orders = [o for o in owner_orders if o.get("status") != "pending"]
+    accepted_orders = [o for o in owner_orders if o.get("status") == "accepted"]
+    history_orders = [o for o in owner_orders if o.get("status") != "pending"]
+    today_total = sum(float(o.get("estimated_total") or 0) for o in accepted_orders)
 
-    st.markdown(f"**New orders ({len(pending_orders)})**")
+    st.markdown(
+        f"""
+        <div class="owner-dashboard-head">
+          <div>
+            <div class="owner-kicker">LOAF</div>
+            <h1>{html.escape(existing_business.get("business_name") or clean_slug)}</h1>
+            <p>Manage incoming orders and your bakery details.</p>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.metric("New orders", len(pending_orders))
+    with m2:
+        st.metric("Accepted", len(accepted_orders))
+    with m3:
+        st.metric("Accepted value", f"₹{today_total:,.0f}")
+
+    st.markdown("## New orders")
     if not pending_orders:
-        st.caption("No new orders.")
+        st.info("You're all caught up — no new orders.")
     else:
         for o in pending_orders:
             with st.container(border=True):
-                st.markdown(f"#### {o.get('order_number')}")
-                st.write(f"**₹{o.get('estimated_total')} · {str(o.get('fulfillment') or '').title()}**")
+                top1, top2 = st.columns([4, 1])
+                with top1:
+                    st.markdown(f"### Order {display_order_id(o)}")
+                with top2:
+                    st.markdown('<div class="status-pill pending">PENDING</div>', unsafe_allow_html=True)
+
                 st.markdown(
-                    f'<div class="owner-order-time">{format_owner_order_time(o.get("requested_datetime"))}</div>',
-                    unsafe_allow_html=True
+                    f"**{str(o.get('fulfillment') or '').title()} · "
+                    f"{format_owner_order_time(o.get('requested_datetime'))}**"
                 )
 
                 for item in o.get("items") or []:
-                    line = f"{item.get('quantity', 1)} × {item.get('item', 'Item')}"
-                    st.write(line)
+                    st.write(f"{item.get('quantity',1)} × {item.get('item','Item')}")
                     if item.get("customizations"):
                         st.caption(f"Note: {item.get('customizations')}")
 
-                st.write(f"**Customer:** {o.get('customer_name')}")
-                st.write(f"**Contact:** {o.get('customer_contact')}")
+                st.markdown(f"**Total: ₹{float(o.get('estimated_total') or 0):,.0f}**")
+                st.caption(f"{o.get('customer_name')} · {o.get('customer_contact')}")
                 if o.get("delivery_address"):
-                    st.write(f"**Delivery address:** {o.get('delivery_address')}")
+                    st.caption(f"Delivery: {o.get('delivery_address')}")
 
-                accept_col, decline_col = st.columns(2)
-                with accept_col:
-                    if st.button("Accept order", key=f"accept_order_{o['id']}", use_container_width=True):
+                ac, dc = st.columns([1,1])
+                with ac:
+                    if st.button("Accept", key=f"accept_order_{o['id']}", use_container_width=True, type="primary"):
                         try:
-                            result = (
-                                supabase.table("orders")
-                                .update({"status": "accepted"})
-                                .eq("id", o["id"])
-                                .execute()
-                            )
-                            if result.data:
-                                st.success("Order accepted.")
-                                st.rerun()
-                            else:
-                                st.error("This order could not be updated.")
+                            result=(supabase.table("orders").update({"status":"accepted"}).eq("id",o["id"]).execute())
+                            if result.data: st.rerun()
+                            else: st.error("Could not update this order.")
                         except Exception:
-                            st.error("This order could not be updated.")
-                with decline_col:
-                    if st.button("Decline order", key=f"decline_order_{o['id']}", use_container_width=True):
+                            st.error("Could not update this order.")
+                with dc:
+                    if st.button("Decline", key=f"decline_order_{o['id']}", use_container_width=True):
                         try:
-                            result = (
-                                supabase.table("orders")
-                                .update({"status": "declined"})
-                                .eq("id", o["id"])
-                                .execute()
-                            )
-                            if result.data:
-                                st.success("Order declined.")
-                                st.rerun()
-                            else:
-                                st.error("This order could not be updated.")
+                            result=(supabase.table("orders").update({"status":"declined"}).eq("id",o["id"]).execute())
+                            if result.data: st.rerun()
+                            else: st.error("Could not update this order.")
                         except Exception:
-                            st.error("This order could not be updated.")
+                            st.error("Could not update this order.")
 
-    if other_orders:
-        with st.expander(f"Order history ({len(other_orders)})"):
-            for o in other_orders:
-                st.markdown(
-                    f"**{o.get('order_number')}** · "
-                    f"{str(o.get('status') or '').title()} · "
-                    f"₹{o.get('estimated_total')}"
-                )
-                st.caption(
-                    f"{str(o.get('fulfillment') or '').title()} · "
-                    f"{format_owner_order_time(o.get('requested_datetime'))} · "
-                    f"{o.get('customer_name')}"
-                )
-                st.divider()
+    if history_orders:
+        st.markdown("## Order history")
+        for o in history_orders[:15]:
+            status=str(o.get("status") or "").title()
+            st.markdown(
+                f"""
+                <div class="history-row">
+                  <div><strong>Order {display_order_id(o)}</strong><br>
+                  <span>{html.escape(str(o.get('customer_name') or ''))} · {html.escape(format_owner_order_time(o.get('requested_datetime')))}</span></div>
+                  <div class="history-right"><strong>₹{float(o.get('estimated_total') or 0):,.0f}</strong><br>
+                  <span>{html.escape(status)}</span></div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
     st.divider()
     st.markdown("### Bakery settings")
