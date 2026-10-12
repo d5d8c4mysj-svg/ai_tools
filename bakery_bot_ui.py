@@ -896,31 +896,55 @@ def recover_name_contact(text, order):
 
 def interpret_order_turn(user_text, current_order=None, pending_custom_item=None):
     """Natural-language understanding only; Python remains authoritative for state/actions."""
-    prompt = f"""Extract structured bakery-order information from this customer message.
+    prompt = f"""Extract the customer's meaning for this bakery-order turn.
 
-MESSAGE: {json.dumps(str(user_text or ""))}
-CURRENT STATE: {json.dumps(current_order or {}, default=str)}
-PENDING CUSTOM ITEM: {json.dumps(pending_custom_item)}
+Customer message: {str(user_text or "")}
+Current order state: {json.dumps(current_order or {}, default=str)}
+Pending off-menu/custom item: {pending_custom_item or ""}
 
-Return ONLY valid JSON:
-{{"intent":"custom_request|normal_order|confirm|change|question|cancel|other",
-"accepts_custom_request":true|false|null,
-"item":null,"quantity":null,"date_text":null,"time_text":null,
-"fulfillment":null,"delivery_address":null,
-"customer_name":null,"customer_contact":null,"notes":null}}
+Interpret natural English, Hindi, Hinglish, typos, short replies, and long replies.
+If there is a pending custom item, decide from the full meaning whether the customer:
+- accepts/wants the custom request,
+- declines it,
+- asks a question before deciding,
+- or is unclear.
+Extract only details actually supplied in this message. Do not invent values."""
 
-Understand English, Hindi and Hinglish. Extract only what this message actually says.
-If responding to a custom-request offer, infer acceptance from meaning, not keywords.
-Questions do not equal acceptance unless the customer also clearly asks to send/make the request.
-For a displayed final summary, clear approval means intent=confirm. Return JSON only."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "intent": {"type": "string", "enum": [
+                "custom_request","normal_order","confirm","change","question","cancel","other"
+            ]},
+            "accepts_custom_request": {"type": ["boolean","null"]},
+            "item": {"type": ["string","null"]},
+            "quantity": {"type": ["integer","null"]},
+            "date_text": {"type": ["string","null"]},
+            "time_text": {"type": ["string","null"]},
+            "fulfillment": {"type": ["string","null"], "enum": ["pickup","delivery",None]},
+            "delivery_address": {"type": ["string","null"]},
+            "customer_name": {"type": ["string","null"]},
+            "customer_contact": {"type": ["string","null"]},
+            "notes": {"type": ["string","null"]},
+        },
+        "required": [
+            "intent","accepts_custom_request","item","quantity","date_text","time_text",
+            "fulfillment","delivery_address","customer_name","customer_contact","notes"
+        ],
+        "additionalProperties": False,
+    }
     try:
-        r=co.chat(model="command-r-plus-08-2024",messages=[{"role":"user","content":prompt}])
-        raw=str(r.message.content[0].text or "").strip()
-        raw=re.sub(r"^```(?:json)?\s*|\s*```$","",raw,flags=re.I|re.S).strip()
-        data=json.loads(raw)
+        r = co.chat(
+            model="command-r-plus-08-2024",
+            messages=[{"role":"user","content":prompt}],
+            response_format={"type":"json_object","schema":schema},
+        )
+        raw = str(r.message.content[0].text or "").strip()
+        data = json.loads(raw)
         return data if isinstance(data,dict) else {}
     except Exception:
-        return {}
+        # Fail safe: never claim or submit anything if language understanding fails.
+        return {"intent":"other","accepts_custom_request":None}
 
 def apply_turn_to_custom_order(order, turn):
     order=dict(order or {})
@@ -1528,7 +1552,22 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                     st.session_state.pending_user_text=None
                     st.session_state.awaiting_assistant=False
                     st.rerun()
-                # Questions/unclear replies continue conversationally; offer remains pending.
+                if turn.get("intent") == "question":
+                    # Let the conversational model answer the question while preserving the offer.
+                    st.session_state.awaiting_assistant = True
+                    st.rerun()
+
+                # If intent extraction is unavailable/unclear, do not silently fall through
+                # or claim a request was sent. Ask one natural clarification and keep state.
+                reply = (
+                    f"I can send {pending_custom} to the bakery as a custom request. "
+                    "Would you like me to start that request?"
+                )
+                st.session_state.display_messages.append({"role":"assistant","content":reply})
+                st.session_state.messages.append({"role":"assistant","content":reply})
+                st.session_state.pending_user_text=None
+                st.session_state.awaiting_assistant=False
+                st.rerun()
 
             requested_item, is_menu_item = detect_requested_product(clean_user_input, menu)
             if requested_item and is_menu_item is False:
