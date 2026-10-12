@@ -1057,6 +1057,10 @@ def run_chatbot(business):
         prompt = f"""You are a friendly ordering assistant for {business_name}.
 CRITICAL ORDERING RULES:
 - Standard products already listed on the menu are RETAIL orders, even if named Cake, Cheesecake or Cupcake. Never invent a custom-cake rule for them.
+- OFF-MENU CUSTOM REQUEST RULE: When a requested item is not on the menu, say so briefly. If the customer asks "can you make it?", "can the bakery make it?", or similar, NEVER go silent. Reply: "It isn't on the current menu, but I can help you send it as a custom request to the bakery. Would you like to do that?"
+- Never claim an off-menu item is available, never invent its price, and never promise the bakery will make it.
+- If the customer says yes to an off-menu custom request, collect the requested item, quantity, pickup/delivery, exact date/time, name/contact, and delivery address if needed. Make clear that availability and price require bakery approval.
+- Do not pass an off-menu item into the normal menu-order confirmation flow.
 - order_type is "custom" ONLY when the customer explicitly requests a bespoke/custom cake or meaningful customization. Otherwise use "retail".
 - The bakery's advance-notice rule applies ONLY to custom orders.
 - HARD RULE FOR RETAIL MENU ORDERS: completely ignore advance_notice. Do NOT calculate hours of notice, mention notice, say "24 hours' notice", compare the request with the custom-order notice period, or warn about advance notice in any way.
@@ -1431,11 +1435,18 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
         # Never render an empty assistant bubble.
         if not str(display_reply).strip():
-            current = st.session_state.get("current_order") or {}
-            if current:
-                display_reply, _ = deterministic_checkout_reply(current)
+            latest_text = str(clean_user_input or "").lower()
+            if re.search(r"\b(can|could|would)\s+(?:u|you|the bakery)\s+(?:make|do)\b", latest_text):
+                display_reply = (
+                    "It isn't on the current menu, but I can help you send it as a custom "
+                    "request to the bakery. Would you like to do that?"
+                )
             else:
-                display_reply = "What would you like to order?"
+                current = st.session_state.get("current_order") or {}
+                if current:
+                    display_reply, _ = deterministic_checkout_reply(current)
+                else:
+                    display_reply = "What would you like to order?"
 
         st.session_state.display_messages.append(
             {"role": "assistant", "content": display_reply}
