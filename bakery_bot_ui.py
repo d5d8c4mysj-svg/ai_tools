@@ -1413,6 +1413,74 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             st.session_state.display_messages.append({"role": "user", "content": clean_user_input})
             st.session_state.last_user_input = clean_user_input
 
+            # FINAL CONFIRMATION MUST RUN FIRST IN STAGE 1.
+            # At this point the complete summary was already shown on the previous
+            # render. Do not let custom routing or Cohere reinterpret "yes".
+            existing_order = st.session_state.get("current_order") or {}
+            existing_missing = get_missing_order_fields(existing_order) if existing_order else []
+            confirms_now = re.search(
+                r"(?i)\b(yes|yeah|yep|yup|confirm|confirmed|sure|ok|okay|go ahead|place it|send it|do it)\b",
+                clean_user_input,
+            )
+            if (
+                existing_order
+                and not existing_missing
+                and st.session_state.get("awaiting_final_confirmation", False)
+                and not st.session_state.get("order_saved", False)
+                and confirms_now
+            ):
+                try:
+                    if existing_order.get("order_type") == "custom_request":
+                        saved = submit_protected_custom_request(slug_from_url, existing_order)
+                        request_number = saved.get("request_number")
+                        existing_order["status"] = "confirmed"
+                        st.session_state.current_order = existing_order
+                        st.session_state.order_saved = True
+                        st.session_state.order_number = request_number
+                        send_custom_request_notification(
+                            business_name,
+                            st.secrets.get("ORDER_NOTIFICATION_EMAIL"),
+                            request_number,
+                            existing_order,
+                        )
+                        reply = (
+                            f"Custom request sent! #{request_number}\n\n"
+                            "The bakery will contact you to discuss the details, final price and payment."
+                        )
+                    else:
+                        saved = submit_protected_order(slug_from_url, existing_order)
+                        db_order_number = saved.get("order_number")
+                        db_total = saved.get("total")
+                        existing_order["status"] = "confirmed"
+                        existing_order["estimated_total"] = db_total
+                        st.session_state.current_order = existing_order
+                        st.session_state.order_saved = True
+                        st.session_state.order_number = db_order_number
+                        st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
+                        send_new_order_notification(
+                            business_name,
+                            st.secrets.get("ORDER_NOTIFICATION_EMAIL"),
+                            db_order_number,
+                            existing_order,
+                            db_total,
+                        )
+                        reply = (
+                            f"Order received! #{db_order_number}\n\n"
+                            f"Final total: ₹{db_total}. "
+                            "The bakery will review and accept or decline it."
+                        )
+
+                    st.session_state.awaiting_final_confirmation = False
+                    st.session_state.pending_custom_item = None
+                    st.session_state.custom_request_stage = None
+                    st.session_state.awaiting_assistant = False
+                except Exception:
+                    reply = "I couldn't securely save that yet. Please try confirming once more."
+
+                st.session_state.messages.append({"role":"assistant","content":reply})
+                st.session_state.display_messages.append({"role":"assistant","content":reply})
+                st.rerun()
+
             # Complete custom-request state machine. Once a custom request starts,
             # Python owns progression so short replies cannot dead-end.
             custom_stage = st.session_state.get("custom_request_stage")
