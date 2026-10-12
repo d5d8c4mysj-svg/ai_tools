@@ -901,9 +901,86 @@ def recover_name_contact(text, order):
     if contact_match and not order.get("customer_name"):
         before = s[:contact_match.start()].strip(" ,:-")
         before = re.sub(r"(?i)^(?:my name is|i am|i'm|name is)\s+", "", before).strip()
+        before = re.sub(r"(?i)\s+(?:and|&)$", "", before).strip(" ,:-")
         if before and len(before) <= 80:
             order["customer_name"] = before
     return order
+
+def extract_custom_quantity(text):
+    """Extract an order quantity, while not mistaking clock times for quantities."""
+    s = str(text or "").lower()
+    # Remove explicit clock expressions first (7 pm, 7:30 pm, 19:30).
+    s = re.sub(r"\b(?:1[0-2]|0?[1-9])(?::[0-5]\d)?\s*(?:am|pm)\b", " ", s)
+    s = re.sub(r"\b(?:[01]?\d|2[0-3]):[0-5]\d\b", " ", s)
+    # Prefer quantities near ordering language / item nouns.
+    m = re.search(r"\b(?:want|need|order|make|send|get|have)\s+(\d{1,3})\b", s)
+    if not m:
+        m = re.search(r"\b(\d{1,3})\s*(?:x|×|pieces?|pcs?|items?|tarts?|cakes?|brownies?|cookies?|muffins?|cupcakes?|matchas?)\b", s)
+    if not m:
+        # A bare number is acceptable only when the whole reply is essentially the number.
+        m = re.fullmatch(r"\s*(\d{1,3})\s*", s)
+    if m:
+        q = int(m.group(1))
+        return q if 1 <= q <= 100 else None
+    return None
+
+
+def enrich_custom_from_text(order, text, allow_quantity=True):
+    """Deterministically merge core customer-supplied slots from the actual message.
+    AI may understand intent/item, but cannot invent operational fields.
+    """
+    order = dict(order or {})
+    s = str(text or "").strip()
+    low = s.lower()
+    items = list(order.get("items") or [{}])
+    first = dict(items[0] if items else {})
+
+    if allow_quantity:
+        q = extract_custom_quantity(s)
+        if q is not None:
+            first["quantity"] = q
+    order["items"] = [first]
+
+    d = extract_custom_date(s)
+    if d:
+        order["requested_date_iso"] = d.isoformat()
+    tm = extract_custom_time(s)
+    if tm:
+        order["requested_time_hour"], order["requested_time_minute"] = tm
+
+    if re.search(r"\b(deliver|delivered|delivery)\b", low):
+        order["fulfillment"] = "delivery"
+    elif re.search(r"\b(pick\s*up|pickup|collect)\b", low):
+        order["fulfillment"] = "pickup"
+        order["delivery_address"] = None
+
+    # Name/contact recovery is deterministic and handles "Cookie and 983637827".
+    order = recover_name_contact(s, order)
+
+    if order.get("requested_date_iso") and order.get("requested_time_hour") is not None:
+        day = datetime.fromisoformat(order["requested_date_iso"]).date()
+        dt = datetime(
+            day.year, day.month, day.day,
+            int(order["requested_time_hour"]), int(order.get("requested_time_minute") or 0),
+            tzinfo=ZoneInfo("Asia/Kolkata")
+        )
+        order["requested_datetime"] = dt.strftime("%A, %d %b at %-I:%M %p")
+        order["requested_datetime_iso"] = dt.isoformat()
+    return order
+
+
+def make_custom_order(item):
+    return {
+        "items": [{"item": str(item).strip(), "quantity": None, "customizations": ""}],
+        "order_type": "custom_request",
+        "requested_datetime": None,
+        "requested_datetime_iso": None,
+        "fulfillment": None,
+        "customer_name": None,
+        "customer_contact": None,
+        "delivery_address": None,
+        "status": "in_progress",
+    }
 
 def apply_turn_to_custom_order(order, turn):
     order=dict(order or {})
@@ -1363,6 +1440,7 @@ CUSTOM_STATE: {{"action":"offer|start|update|confirm|cancel|question","item":nul
 - action=cancel when they decline/cancel.
 - action=question when they are asking something rather than progressing the request.
 - Extract only values actually supplied by the customer; use null for missing values.
+- In CUSTOM_STATE, quantity/date_text/time_text/fulfillment/delivery_address/customer_name/customer_contact MUST describe only the CURRENT customer message, never repeat or infer them from earlier turns. Python remembers earlier values.
 - Python validates and saves. You do not write to the database and do not invent missing details.
 - Do not create ORDER_SUMMARY for custom requests.
 
@@ -1386,6 +1464,7 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
         st.session_state.order_saved = False
         st.session_state.order_number = None
         st.session_state.pending_custom_item = None
+        st.session_state.pending_custom_draft = None
         st.session_state.custom_request_stage = None
         st.session_state.orders_this_session = 0
         st.session_state.awaiting_assistant = False
@@ -1547,7 +1626,7 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
 
         if order_count > 0:
             if st.button("Start new order", key="top_start_new_order"):
-                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "pending_user_text", "pending_custom_item", "custom_request_stage"]:
+                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "pending_user_text", "pending_custom_item", "pending_custom_draft", "custom_request_stage"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
@@ -1636,45 +1715,79 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
             action = str(custom_state.get("action") or "").lower()
             pending_item = st.session_state.get("pending_custom_item")
             current_custom = st.session_state.get("current_order") or {}
+            actual_text = clean_user_input
 
             if action == "offer":
                 offered = custom_state.get("item")
                 if offered:
                     st.session_state.pending_custom_item = str(offered).strip()
+                    # Preserve quantity/date/time/fulfillment/contact the customer already
+                    # supplied in the ORIGINAL request. Do not make them repeat it later.
+                    draft = make_custom_order(str(offered).strip())
+                    draft = enrich_custom_from_text(draft, actual_text, allow_quantity=True)
+                    st.session_state.pending_custom_draft = draft
 
             elif action == "start":
                 item = custom_state.get("item") or pending_item
                 if item:
-                    current_custom = {
-                        "items":[{"item":str(item).strip(),"quantity":None,"customizations":""}],
-                        "order_type":"custom_request","requested_datetime":None,
-                        "requested_datetime_iso":None,"fulfillment":None,
-                        "customer_name":None,"customer_contact":None,
-                        "delivery_address":None,"status":"in_progress"
-                    }
-                    current_custom = apply_turn_to_custom_order(current_custom, custom_state)
+                    draft = st.session_state.get("pending_custom_draft")
+                    if not (draft and (draft.get("items") or [{}])[0].get("item")):
+                        draft = make_custom_order(item)
+                    current_custom = dict(draft)
+                    # Merge ONLY fields actually present in this acceptance message.
+                    current_custom = enrich_custom_from_text(current_custom, actual_text, allow_quantity=True)
+                    # Notes may be semantic; core operational fields above remain deterministic.
+                    if custom_state.get("notes"):
+                        current_custom["items"][0]["customizations"] = str(custom_state["notes"]).strip()
                     st.session_state.current_order = current_custom
                     st.session_state.pending_custom_item = None
+                    st.session_state.pending_custom_draft = None
                     reply, next_stage = custom_next_question(current_custom)
                     st.session_state.custom_request_stage = next_stage
                     display_reply = reply
 
             elif action == "update" and current_custom.get("order_type") == "custom_request":
-                current_custom = apply_turn_to_custom_order(current_custom, custom_state)
+                # Never trust AI-extracted quantity/date/time/fulfillment/name/contact blindly.
+                # Parse those from the customer's literal message.
+                current_custom = enrich_custom_from_text(current_custom, actual_text, allow_quantity=True)
+                if custom_state.get("notes"):
+                    current_custom["items"][0]["customizations"] = str(custom_state["notes"]).strip()
                 st.session_state.current_order = current_custom
-                reply, next_stage = custom_next_question(current_custom)
-                st.session_state.custom_request_stage = next_stage
-                display_reply = reply
+
+                # Validate delivery only after a literal address exists.
+                if current_custom.get("fulfillment") == "delivery" and current_custom.get("delivery_address"):
+                    eligibility = delivery_address_allowed(current_custom["delivery_address"], business)
+                    if eligibility is False:
+                        current_custom["delivery_address"] = None
+                        city = business.get("delivery_city") or "the configured delivery city"
+                        areas = ", ".join(business.get("delivery_areas") or [])
+                        display_reply = (
+                            f"Sorry, delivery is currently available only in {city}"
+                            + (f" for these areas: {areas}." if areas else ".")
+                            + " You can choose pickup instead or give another delivery address."
+                        )
+                        st.session_state.custom_request_stage = "address"
+                    else:
+                        reply, next_stage = custom_next_question(current_custom)
+                        st.session_state.custom_request_stage = next_stage
+                        display_reply = reply
+                else:
+                    reply, next_stage = custom_next_question(current_custom)
+                    st.session_state.custom_request_stage = next_stage
+                    display_reply = reply
 
             elif action == "cancel":
                 st.session_state.pending_custom_item = None
+                st.session_state.pending_custom_draft = None
                 if current_custom.get("order_type") == "custom_request":
                     st.session_state.current_order = None
                     st.session_state.custom_request_stage = None
                 display_reply = "No problem. I haven't sent the custom request."
 
             elif action == "confirm" and current_custom.get("order_type") == "custom_request":
-                # Only Python can save; required fields are checked first.
+                # Merge any literal corrections supplied in the confirmation message first.
+                current_custom = enrich_custom_from_text(current_custom, actual_text, allow_quantity=True)
+                st.session_state.current_order = current_custom
                 missing = get_missing_custom_fields(current_custom)
                 if missing:
                     reply, next_stage = custom_next_question(current_custom)
@@ -1699,6 +1812,16 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                         )
                     except Exception:
                         display_reply = "I couldn't send the custom request just yet. Please try confirming again."
+
+        # Deterministic safety net for an ACTIVE custom request: even if the model
+        # omits CUSTOM_STATE on a detail turn, never lose the customer's data or stall.
+        active_custom = st.session_state.get("current_order") or {}
+        if active_custom.get("order_type") == "custom_request" and not isinstance(custom_state, dict):
+            active_custom = enrich_custom_from_text(active_custom, clean_user_input, allow_quantity=True)
+            st.session_state.current_order = active_custom
+            reply, next_stage = custom_next_question(active_custom)
+            st.session_state.custom_request_stage = next_stage
+            display_reply = reply
 
         # Guardrail: standard menu conversations must not surface custom-order
         # advance-notice commentary even if the model slips.
