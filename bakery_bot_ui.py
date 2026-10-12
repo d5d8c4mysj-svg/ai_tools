@@ -1244,7 +1244,7 @@ INTENT ROUTING:
 4. BUSINESS INFO: answer only from supplied hours, delivery, pickup, FAQ, address and other bakery data.
 5. OFF-MENU / UNKNOWN PRODUCT: if the requested product is not clearly on the supplied menu, say it is not on the current menu and offer to send it as a custom request. Never invent availability or price.
 Whenever you offer a custom request for an off-menu item, append this machine-readable line:
-CUSTOM_REQUEST_OFFER: {"item":"Exact requested item name"}
+CUSTOM_REQUEST_OFFER: {{"item":"Exact requested item name"}}
 Never omit it when making that offer.
 6. ORDER INTENT: extract structured order state, then let the application/database handle validation and submission.
 7. UNCLEAR: ask one short clarification question.
