@@ -885,8 +885,8 @@ def deterministic_checkout_reply(order):
     fulfillment = str(order.get("fulfillment") or "").title()
     contact = mask_contact(order.get("customer_contact"))
 
-    summary = "Confirm this order?\\n" + "\\n".join(item_lines)
-    summary += f"\\n- {fulfillment}\\n- {when}\\n- Contact: {contact}"
+    summary = "Confirm this order?\n" + "\n".join(item_lines)
+    summary += f"\n- {fulfillment}\n- {when}\n- Contact: {contact}"
     return summary, True
 
 
@@ -1360,6 +1360,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.custom_request_stage = None
         st.session_state.orders_this_session = 0
         st.session_state.awaiting_assistant = False
+        st.session_state.awaiting_final_confirmation = False
 
     # Header
     st.markdown(
@@ -1517,7 +1518,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
             # Resolve a pending off-menu offer deterministically.
             pending_custom = st.session_state.get("pending_custom_item")
-            if pending_custom:
+            if pending_custom and not st.session_state.get("awaiting_final_confirmation", False):
                 if re.search(r"(?i)\b(yes|yeah|yep|yup|sure|okay|ok|please|do it)\b", clean_user_input):
                     reply = f"Sure — how many {pending_custom}s would you like?"
                     st.session_state.custom_request_stage = "quantity"
@@ -1641,7 +1642,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
         if order_count > 0:
             if st.button("Start new order", key="top_start_new_order"):
-                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant"]:
+                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "awaiting_final_confirmation", "pending_custom_item", "custom_request_stage", "last_user_input"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
@@ -1666,6 +1667,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         if (
             existing_order
             and not existing_missing
+            and st.session_state.get("awaiting_final_confirmation", False)
             and not st.session_state.get("order_saved", False)
             and confirmation_words
         ):
@@ -1678,6 +1680,8 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     st.session_state.order_saved = True
                     st.session_state.order_number = request_number
                     st.session_state.custom_request_stage = None
+                    st.session_state.awaiting_final_confirmation = False
+                    st.session_state.pending_custom_item = None
                     send_custom_request_notification(
                         business_name,
                         st.secrets.get("ORDER_NOTIFICATION_EMAIL"),
@@ -1697,6 +1701,9 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     st.session_state.current_order = existing_order
                     st.session_state.order_saved = True
                     st.session_state.order_number = db_order_number
+                    st.session_state.awaiting_final_confirmation = False
+                    st.session_state.pending_custom_item = None
+                    st.session_state.custom_request_stage = None
                     st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
                     send_new_order_notification(
                         business_name,
@@ -1833,6 +1840,11 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     state_reply, ready_for_confirmation = display_reply, False
                 else:
                     state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
+                st.session_state.awaiting_final_confirmation = bool(
+                    ready_for_confirmation and parsed_order.get("status") != "confirmed"
+                )
+                if st.session_state.awaiting_final_confirmation:
+                    st.session_state.pending_custom_item = None
                 if parsed_order.get("status") != "confirmed":
                     display_reply = state_reply
 
