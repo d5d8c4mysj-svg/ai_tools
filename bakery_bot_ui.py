@@ -1356,6 +1356,7 @@ CUSTOM / OFF-MENU REQUESTS
 - Never claim a custom request was sent unless Python later confirms that Supabase saved it.
 - For EVERY turn involving an off-menu/custom request, append exactly one hidden machine-readable line at the END:
 CUSTOM_STATE: {{"action":"offer|start|update|confirm|cancel|question","item":null,"quantity":null,"date_text":null,"time_text":null,"fulfillment":null,"delivery_address":null,"customer_name":null,"customer_contact":null,"notes":null}}
+- NEVER output CUSTOM_REQUEST_OFFER. That protocol is obsolete. CUSTOM_STATE is the only custom-request machine protocol.
 - action=start when the customer wants to begin/send the custom request.
 - action=update when they provide/change request details.
 - action=confirm only when they clearly approve the final custom-request summary.
@@ -1599,6 +1600,37 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
             except Exception:
                 custom_state = None
             display_reply = re.sub(r"\n?CUSTOM_STATE:\s*\{.*?\}\s*$", "", display_reply, flags=re.S).strip()
+
+        # Backward-compatibility guard: if the model ever emits the obsolete
+        # marker on an acceptance turn, translate it into the current Python state.
+        legacy_custom = re.search(r"CUSTOM_REQUEST_OFFER:\s*(\{.*?\})", bot_reply or "", re.S)
+        if custom_state is None and legacy_custom:
+            try:
+                legacy_data = json.loads(legacy_custom.group(1))
+                legacy_item = str(legacy_data.get("item") or "").strip()
+                if legacy_item:
+                    custom_state = {
+                        "action":"start",
+                        "item":legacy_item,
+                        "quantity":None,
+                        "date_text":None,
+                        "time_text":None,
+                        "fulfillment":None,
+                        "delivery_address":None,
+                        "customer_name":None,
+                        "customer_contact":None,
+                        "notes":None,
+                    }
+            except Exception:
+                pass
+
+        # Never expose obsolete/internal machine markers to customers.
+        display_reply = re.sub(
+            r"\n?CUSTOM_REQUEST_OFFER:\s*\{.*?\}\s*",
+            "",
+            display_reply,
+            flags=re.S,
+        ).strip()
 
         if isinstance(custom_state, dict):
             action = str(custom_state.get("action") or "").lower()
