@@ -500,6 +500,31 @@ div[data-testid="stForm"]:has(input[placeholder*="Ask "]) [data-testid="stFormSu
   box-shadow:none !important;
 }
 
+
+/* ===== LOAF OWNER ORDER DASHBOARD ===== */
+.owner-order-time{
+  font-size:14px;
+  color:#756D68;
+  margin:-2px 0 14px;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]{
+  border:1px solid #E3DED8 !important;
+  border-radius:14px !important;
+  background:#FFFFFF !important;
+  box-shadow:0 4px 18px rgba(34,31,29,.035) !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"] h4{
+  margin-top:0 !important;
+}
+div[data-testid="stExpander"]{
+  border:1px solid #E3DED8 !important;
+  border-radius:12px !important;
+  background:#FFFFFF !important;
+}
+div[data-testid="stExpander"] details summary{
+  font-weight:600 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1404,6 +1429,16 @@ def quick_update_view():
                 st.success("Updated. Your customer page now reflects today's availability.")
 
 
+def format_owner_order_time(value):
+    if not value:
+        return "Time not specified"
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        dt = dt.astimezone(ZoneInfo("Asia/Kolkata"))
+        return dt.strftime("%a, %d %b · %-I:%M %p")
+    except Exception:
+        return str(value)
+
 def owner_view():
     if not owner_login_gate(
         "Loaf Owner",
@@ -1470,7 +1505,10 @@ def owner_view():
             with st.container(border=True):
                 st.markdown(f"#### {o.get('order_number')}")
                 st.write(f"**₹{o.get('estimated_total')} · {str(o.get('fulfillment') or '').title()}**")
-                st.caption(str(o.get("requested_datetime") or ""))
+                st.markdown(
+                    f'<div class="owner-order-time">{format_owner_order_time(o.get("requested_datetime"))}</div>',
+                    unsafe_allow_html=True
+                )
 
                 for item in o.get("items") or []:
                     line = f"{item.get('quantity', 1)} × {item.get('item', 'Item')}"
@@ -1527,7 +1565,8 @@ def owner_view():
                 )
                 st.caption(
                     f"{str(o.get('fulfillment') or '').title()} · "
-                    f"{o.get('requested_datetime')} · {o.get('customer_name')}"
+                    f"{format_owner_order_time(o.get('requested_datetime'))} · "
+                    f"{o.get('customer_name')}"
                 )
                 st.divider()
 
