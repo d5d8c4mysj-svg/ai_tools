@@ -1035,7 +1035,19 @@ def submit_protected_custom_request(slug, order):
     result = supabase.rpc("submit_loaf_custom_request", params).execute()
     if not result.data:
         raise ValueError("The custom request could not be saved.")
-    return result.data
+
+    # Supabase RPC returns the function's JSON object directly (a dict), not
+    # necessarily a list/row. Normalize it so callers can always use .get().
+    data = result.data
+    if isinstance(data, list):
+        if not data:
+            raise ValueError("The custom request could not be saved.")
+        data = data[0]
+
+    if not isinstance(data, dict) or not data.get("success"):
+        raise ValueError(f"Custom request RPC did not report success: {data!r}")
+
+    return data
 
 
 def submit_protected_order(slug, order):
@@ -1056,7 +1068,14 @@ def submit_protected_order(slug, order):
     result = supabase.rpc("submit_loaf_order", params).execute()
     if not result.data:
         raise ValueError("The order could not be saved.")
-    return result.data
+    data = result.data
+    if isinstance(data, list):
+        if not data:
+            raise ValueError("The order could not be saved.")
+        data = data[0]
+    if not isinstance(data, dict):
+        raise ValueError(f"Order RPC returned an unexpected response: {data!r}")
+    return data
 
 
 def send_order_email(order, business_name, business_email, order_number):
