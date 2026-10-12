@@ -937,7 +937,7 @@ Extract only details actually supplied in this message. Do not invent values."""
         r = co.chat(
             model="command-r-plus-08-2024",
             messages=[{"role":"user","content":prompt}],
-            response_format={"type":"json_object","schema":schema},
+            response_format={"type":"json_object"},
         )
         raw = str(r.message.content[0].text or "").strip()
         data = json.loads(raw)
@@ -1526,25 +1526,47 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
             # Pending custom offer: understand any natural-language reply.
             pending_custom=st.session_state.get("pending_custom_item")
             if pending_custom:
-                turn=interpret_order_turn(clean_user_input,st.session_state.get("current_order"),pending_custom)
-                if turn.get("accepts_custom_request") is True or turn.get("intent")=="custom_request":
+                turn=interpret_order_turn(
+                    clean_user_input,
+                    st.session_state.get("current_order"),
+                    pending_custom
+                )
+
+                accepted = (
+                    turn.get("accepts_custom_request") is True
+                    or turn.get("intent") == "custom_request"
+                )
+                declined = (
+                    turn.get("accepts_custom_request") is False
+                    or turn.get("intent") == "cancel"
+                )
+
+                if accepted:
                     current_custom={
                         "items":[{"item":pending_custom,"quantity":None,"customizations":""}],
-                        "order_type":"custom_request","requested_datetime":None,
-                        "requested_datetime_iso":None,"fulfillment":None,
-                        "customer_name":None,"customer_contact":None,
-                        "delivery_address":None,"status":"in_progress"}
+                        "order_type":"custom_request",
+                        "requested_datetime":None,
+                        "requested_datetime_iso":None,
+                        "fulfillment":None,
+                        "customer_name":None,
+                        "customer_contact":None,
+                        "delivery_address":None,
+                        "status":"in_progress"
+                    }
                     current_custom=apply_turn_to_custom_order(current_custom,turn)
                     st.session_state.current_order=current_custom
                     st.session_state.pending_custom_item=None
                     reply,next_stage=custom_next_question(current_custom)
                     st.session_state.custom_request_stage=next_stage
+
+                    # Finish this turn here: exactly one assistant reply.
                     st.session_state.display_messages.append({"role":"assistant","content":reply})
                     st.session_state.messages.append({"role":"assistant","content":reply})
                     st.session_state.pending_user_text=None
                     st.session_state.awaiting_assistant=False
                     st.rerun()
-                if turn.get("accepts_custom_request") is False or turn.get("intent")=="cancel":
+
+                elif declined:
                     st.session_state.pending_custom_item=None
                     reply="No problem. What else would you like?"
                     st.session_state.display_messages.append({"role":"assistant","content":reply})
@@ -1552,22 +1574,24 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                     st.session_state.pending_user_text=None
                     st.session_state.awaiting_assistant=False
                     st.rerun()
-                if turn.get("intent") == "question":
-                    # Let the conversational model answer the question while preserving the offer.
-                    st.session_state.awaiting_assistant = True
+
+                elif turn.get("intent") == "question":
+                    # Preserve the pending offer and let the general assistant answer.
+                    st.session_state.awaiting_assistant=True
                     st.rerun()
 
-                # If intent extraction is unavailable/unclear, do not silently fall through
-                # or claim a request was sent. Ask one natural clarification and keep state.
-                reply = (
-                    f"I can send {pending_custom} to the bakery as a custom request. "
-                    "Would you like me to start that request?"
-                )
-                st.session_state.display_messages.append({"role":"assistant","content":reply})
-                st.session_state.messages.append({"role":"assistant","content":reply})
-                st.session_state.pending_user_text=None
-                st.session_state.awaiting_assistant=False
-                st.rerun()
+                else:
+                    # Never swallow a message. If interpretation is unclear, respond
+                    # immediately and keep the pending offer alive.
+                    reply=(
+                        f"I still have {pending_custom} as a possible custom request. "
+                        "Would you like me to start the request, or would you like to ask something about it first?"
+                    )
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.session_state.pending_user_text=None
+                    st.session_state.awaiting_assistant=False
+                    st.rerun()
 
             requested_item, is_menu_item = detect_requested_product(clean_user_input, menu)
             if requested_item and is_menu_item is False:
