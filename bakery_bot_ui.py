@@ -1904,18 +1904,20 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     and parsed_order.get("requested_datetime_iso")
                 ):
                     st.session_state.custom_request_stage = "fulfillment"
-                    display_reply = "Got it. Would you like pickup or delivery?"
+                    display_reply = "Would you like pickup or delivery?"
                     state_reply, ready_for_confirmation = display_reply, False
                 else:
                     state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
+
+                # Checkout copy is deterministic. Do not surface filler such as
+                # "Great", "Perfect", or "Just to confirm" before the actual final summary.
+                if parsed_order.get("status") != "confirmed":
+                    display_reply = state_reply
                 st.session_state.awaiting_final_confirmation = bool(
                     ready_for_confirmation and parsed_order.get("status") != "confirmed"
                 )
                 if st.session_state.awaiting_final_confirmation:
                     st.session_state.pending_custom_item = None
-                if parsed_order.get("status") != "confirmed":
-                    display_reply = state_reply
-
                 if (
                     parsed_order.get("status") == "confirmed"
                     and not st.session_state.get("order_saved", False)
