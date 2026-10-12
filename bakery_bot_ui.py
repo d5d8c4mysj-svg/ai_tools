@@ -525,6 +525,51 @@ div[data-testid="stExpander"] details summary{
   font-weight:600 !important;
 }
 
+
+/* ===== OWNER PORTAL IS THEME-INDEPENDENT ===== */
+body:has(.owner-portal-marker) .stApp{
+  background:#F7F7F5 !important;
+}
+body:has(.owner-portal-marker) .block-container{
+  max-width:980px !important;
+}
+body:has(.owner-portal-marker) h1,
+body:has(.owner-portal-marker) h2,
+body:has(.owner-portal-marker) h3,
+body:has(.owner-portal-marker) h4,
+body:has(.owner-portal-marker) p,
+body:has(.owner-portal-marker) label,
+body:has(.owner-portal-marker) span{
+  font-family:"Arial",sans-serif !important;
+  font-style:normal !important;
+}
+body:has(.owner-portal-marker) h1,
+body:has(.owner-portal-marker) h2,
+body:has(.owner-portal-marker) h3,
+body:has(.owner-portal-marker) h4{
+  color:#202020 !important;
+}
+body:has(.owner-portal-marker) [data-testid="stVerticalBlockBorderWrapper"],
+body:has(.owner-portal-marker) [data-testid="stExpander"]{
+  background:#FFFFFF !important;
+  border-color:#E1E1DE !important;
+}
+body:has(.owner-portal-marker) button{
+  border-radius:8px !important;
+}
+body:has(.owner-portal-marker) [data-testid="stButton"] button{
+  background:#222222 !important;
+  color:#FFFFFF !important;
+  border:1px solid #222222 !important;
+}
+body:has(.owner-portal-marker) input,
+body:has(.owner-portal-marker) textarea,
+body:has(.owner-portal-marker) [data-baseweb="select"] > div{
+  background:#FFFFFF !important;
+  color:#222222 !important;
+  border-color:#DADAD7 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1440,6 +1485,7 @@ def format_owner_order_time(value):
         return str(value)
 
 def owner_view():
+    st.markdown('<div class="owner-portal-marker"></div>', unsafe_allow_html=True)
     if not owner_login_gate(
         "Loaf Owner",
         "Sign in securely to manage the bakery linked to your Loaf account."
