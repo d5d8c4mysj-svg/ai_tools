@@ -409,6 +409,15 @@ body:has(.owner-login-marker) [data-testid="stFormSubmitButton"] button:hover{
   border-radius:0 !important;
 }
 
+
+/* Inline Loaf composer */
+[data-testid="stForm"]{
+  border:0 !important;
+}
+[data-testid="stForm"] [data-testid="stTextInput"] input{
+  min-height:48px !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -893,12 +902,18 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
     thinking_slot = st.empty()
 
-    # Native Streamlit chat composer: Enter sends and focus/keyboard behavior
-    # is handled by Streamlit rather than custom JavaScript.
-    user_input = st.chat_input(
-        f"Ask {display_business_name} anything...",
-        key=f"chat_input_{slug_from_url or 'bakery'}"
-    )
+    # Inline composer at the chat location. Pressing Enter submits the form.
+    with st.form("chat_form", clear_on_submit=True):
+        user_input = st.text_input(
+            "Message",
+            placeholder=f"Ask {display_business_name} anything...",
+            label_visibility="collapsed",
+            key=f"chat_text_{slug_from_url or 'bakery'}"
+        )
+        send_message = st.form_submit_button("↑")
+
+    if not send_message:
+        user_input = None
 
     # Stage 1: save the customer's message and rerun immediately.
     # This makes the sent message visible before the Cohere request starts.
