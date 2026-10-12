@@ -1444,6 +1444,96 @@ def owner_view():
     st.subheader(existing_business.get("business_name") or clean_slug)
     st.caption(f"Bakery link: {clean_slug}")
 
+    # ----- Owner order inbox -----
+    st.markdown("### Orders")
+    try:
+        owner_orders = (
+            supabase.table("orders")
+            .select("id,created_at,order_number,items,estimated_total,fulfillment,requested_datetime,customer_name,customer_contact,delivery_address,status")
+            .eq("bakery_id", existing_business["id"])
+            .order("created_at", desc=True)
+            .limit(50)
+            .execute()
+        ).data or []
+    except Exception:
+        owner_orders = []
+
+    pending_orders = [o for o in owner_orders if o.get("status") == "pending"]
+    other_orders = [o for o in owner_orders if o.get("status") != "pending"]
+
+    st.markdown(f"**New orders ({len(pending_orders)})**")
+
+    if not pending_orders:
+        st.caption("No new orders.")
+    else:
+        for o in pending_orders:
+            with st.container(border=True):
+                st.markdown(f"#### {o.get('order_number')}")
+                st.write(f"**₹{o.get('estimated_total')} · {str(o.get('fulfillment') or '').title()}**")
+                st.caption(str(o.get("requested_datetime") or ""))
+
+                for item in o.get("items") or []:
+                    line = f"{item.get('quantity', 1)} × {item.get('item', 'Item')}"
+                    st.write(line)
+                    if item.get("customizations"):
+                        st.caption(f"Note: {item.get('customizations')}")
+
+                st.write(f"**Customer:** {o.get('customer_name')}")
+                st.write(f"**Contact:** {o.get('customer_contact')}")
+                if o.get("delivery_address"):
+                    st.write(f"**Delivery address:** {o.get('delivery_address')}")
+
+                accept_col, decline_col = st.columns(2)
+                with accept_col:
+                    if st.button("Accept order", key=f"accept_order_{o['id']}", use_container_width=True):
+                        try:
+                            result = (
+                                supabase.table("orders")
+                                .update({"status": "accepted"})
+                                .eq("id", o["id"])
+                                .execute()
+                            )
+                            if result.data:
+                                st.success("Order accepted.")
+                                st.rerun()
+                            else:
+                                st.error("This order could not be updated.")
+                        except Exception:
+                            st.error("This order could not be updated.")
+                with decline_col:
+                    if st.button("Decline order", key=f"decline_order_{o['id']}", use_container_width=True):
+                        try:
+                            result = (
+                                supabase.table("orders")
+                                .update({"status": "declined"})
+                                .eq("id", o["id"])
+                                .execute()
+                            )
+                            if result.data:
+                                st.success("Order declined.")
+                                st.rerun()
+                            else:
+                                st.error("This order could not be updated.")
+                        except Exception:
+                            st.error("This order could not be updated.")
+
+    if other_orders:
+        with st.expander(f"Order history ({len(other_orders)})"):
+            for o in other_orders:
+                st.markdown(
+                    f"**{o.get('order_number')}** · "
+                    f"{str(o.get('status') or '').title()} · "
+                    f"₹{o.get('estimated_total')}"
+                )
+                st.caption(
+                    f"{str(o.get('fulfillment') or '').title()} · "
+                    f"{o.get('requested_datetime')} · {o.get('customer_name')}"
+                )
+                st.divider()
+
+    st.divider()
+    st.markdown("### Bakery settings")
+
     existing_menu = existing_business.get("menu") or []
     menu_df = pd.DataFrame(existing_menu) if existing_menu else pd.DataFrame(
         {"Item": [""], "Price": [0], "Ingredients": [""]}
