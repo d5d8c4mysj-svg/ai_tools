@@ -2431,3 +2431,4 @@ elif mode == "quickupdate":
     quick_update_view()
 else:
     customer_view()
+v
