@@ -963,6 +963,58 @@ def send_new_order_notification(business_name, owner_email, order_number, order,
         return False
 
 
+def send_custom_request_notification(business_name, owner_email, request_number, order):
+    api_key = st.secrets.get("RESEND_API_KEY")
+    if not api_key or not owner_email:
+        return False
+    first = (order.get("items") or [{}])[0]
+    body = (
+        f"New custom request for {business_name}\n\n"
+        f"{first.get('quantity',1)} x {first.get('item','Custom item')}\n"
+        f"{str(order.get('fulfillment') or '').title()} · {order.get('requested_datetime')}\n"
+        f"Customer: {order.get('customer_name')}\n\n"
+        "Availability and price have not been confirmed. Open Loaf to review the request."
+    )
+    try:
+        r=requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization":f"Bearer {api_key}","Content-Type":"application/json"},
+            json={
+                "from":"Loaf Requests <onboarding@resend.dev>",
+                "to":[owner_email],
+                "subject":f"New Loaf custom request · {request_number}",
+                "text":body,
+            },
+            timeout=10,
+        )
+        return r.ok
+    except Exception:
+        return False
+
+
+def submit_protected_custom_request(slug, order):
+    items = order.get("items") or []
+    first = items[0] if items else {}
+    requested_iso = order.get("requested_datetime_iso")
+    if not requested_iso:
+        raise ValueError("A valid requested date/time is required.")
+    params = {
+        "p_bakery_slug": slug,
+        "p_requested_item": first.get("item"),
+        "p_quantity": int(first.get("quantity") or 1),
+        "p_fulfillment": order.get("fulfillment"),
+        "p_requested_datetime": requested_iso,
+        "p_customer_name": order.get("customer_name"),
+        "p_customer_contact": order.get("customer_contact"),
+        "p_delivery_address": order.get("delivery_address") if order.get("fulfillment") == "delivery" else None,
+        "p_customer_notes": first.get("customizations") or None,
+    }
+    result = supabase.rpc("submit_loaf_custom_request", params).execute()
+    if not result.data:
+        raise ValueError("The custom request could not be saved.")
+    return result.data
+
+
 def submit_protected_order(slug, order):
     """Submit through protected RPC; customers never insert into orders directly."""
     requested_iso = order.get("requested_datetime_iso")
@@ -1203,6 +1255,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.order_saved = False
         st.session_state.order_number = None
         st.session_state.pending_custom_item = None
+        st.session_state.custom_request_stage = None
         st.session_state.orders_this_session = 0
         st.session_state.awaiting_assistant = False
 
@@ -1256,17 +1309,45 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             st.session_state.messages.append({"role": "user", "content": clean_user_input})
             st.session_state.display_messages.append({"role": "user", "content": clean_user_input})
 
+            # Explicit custom-request state machine. Short replies such as "5",
+            # "pickup" and contact details must always advance instead of depending on AI prose.
+            custom_stage = st.session_state.get("custom_request_stage")
+            current_custom = st.session_state.get("current_order") or {}
+            if current_custom.get("order_type") == "custom_request" and custom_stage == "quantity":
+                qty_match = re.search(r"\b(\d{1,3})\b", clean_user_input)
+                if qty_match:
+                    qty = int(qty_match.group(1))
+                    if 1 <= qty <= 100:
+                        current_custom["items"][0]["quantity"] = qty
+                        st.session_state.current_order = current_custom
+                        st.session_state.custom_request_stage = "datetime"
+                        reply = "Got it. What date and time would you like it?"
+                    else:
+                        reply = "Please choose a quantity between 1 and 100."
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
+                else:
+                    reply = "How many would you like? Please enter a number."
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
+
             # Resolve a pending off-menu offer deterministically.
             pending_custom = st.session_state.get("pending_custom_item")
             if pending_custom:
                 if re.search(r"(?i)\b(yes|yeah|yep|yup|sure|okay|ok|please|do it)\b", clean_user_input):
-                    reply = (
-                        f"Got it — I'll treat {pending_custom} as a custom request. "
-                        "What date and time would you like it?"
-                    )
+                    reply = f"Sure — how many {pending_custom}s would you like?"
+                    st.session_state.custom_request_stage = "quantity"
                     st.session_state.current_order = {
-                        "items": [{"item": pending_custom, "quantity": 1, "customizations": ""}],
+                        "items": [{"item": pending_custom, "quantity": None, "customizations": ""}],
                         "order_type": "custom_request",
+                        "requested_datetime": None,
+                        "requested_datetime_iso": None,
+                        "fulfillment": None,
+                        "customer_name": None,
+                        "customer_contact": None,
+                        "delivery_address": None,
                         "status": "in_progress",
                     }
                     st.session_state.pending_custom_item = None
@@ -1475,7 +1556,10 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     and not st.session_state.get("order_saved", False)
                 ):
                     try:
-                        saved = submit_protected_order(slug_from_url, parsed_order)
+                        if parsed_order.get("order_type") == "custom_request":
+                            saved = submit_protected_custom_request(slug_from_url, parsed_order)
+                        else:
+                            saved = submit_protected_order(slug_from_url, parsed_order)
                     except Exception:
                         parsed_order["status"] = "in_progress"
                         st.session_state.current_order = parsed_order
@@ -1484,31 +1568,36 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                             "Please check the item, date/time, and delivery details and try again."
                         )
                     else:
-                        db_order_number = saved.get("order_number")
-                        db_total = saved.get("total")
-                        parsed_order["estimated_total"] = db_total
+                        notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
                         parsed_order["status"] = "confirmed"
                         st.session_state.current_order = parsed_order
-                        st.session_state.order_number = db_order_number
                         st.session_state.order_saved = True
-                        st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
 
-                        # Notification address stays private. For the MVP/test bakery,
-                        # set ORDER_NOTIFICATION_EMAIL in Streamlit Secrets.
-                        notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
-                        send_new_order_notification(
-                            business_name,
-                            notification_email,
-                            db_order_number,
-                            parsed_order,
-                            db_total,
-                        )
-
-                        display_reply = (
-                            f"Order received! #{db_order_number}\n\n"
-                            f"Final total: ₹{db_total}. "
-                            "The bakery will review and accept or decline it."
-                        )
+                        if parsed_order.get("order_type") == "custom_request":
+                            request_number = saved.get("request_number")
+                            st.session_state.order_number = request_number
+                            send_custom_request_notification(
+                                business_name, notification_email, request_number, parsed_order
+                            )
+                            display_reply = (
+                                f"Custom request sent! #{request_number}\n\n"
+                                "The bakery will review availability and pricing. "
+                                "This is not a confirmed order yet."
+                            )
+                        else:
+                            db_order_number = saved.get("order_number")
+                            db_total = saved.get("total")
+                            parsed_order["estimated_total"] = db_total
+                            st.session_state.order_number = db_order_number
+                            st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
+                            send_new_order_notification(
+                                business_name, notification_email, db_order_number, parsed_order, db_total
+                            )
+                            display_reply = (
+                                f"Order received! #{db_order_number}\n\n"
+                                f"Final total: ₹{db_total}. "
+                                "The bakery will review and accept or decline it."
+                            )
                 elif notice_warning:
                     display_reply += f"\n\n{notice_warning}"
 
@@ -1782,6 +1871,21 @@ def owner_view():
     except Exception:
         owner_orders = []
 
+    try:
+        owner_custom_requests = (
+            supabase.table("custom_requests")
+            .select("id,created_at,request_number,requested_item,quantity,fulfillment,requested_datetime,customer_name,customer_contact,delivery_address,customer_notes,status")
+            .eq("bakery_id", existing_business["id"])
+            .order("created_at", desc=True)
+            .limit(50)
+            .execute()
+        ).data or []
+    except Exception:
+        owner_custom_requests = []
+
+    pending_custom_requests = [r for r in owner_custom_requests if r.get("status") == "pending"]
+    custom_history = [r for r in owner_custom_requests if r.get("status") != "pending"]
+
     pending_orders = [o for o in owner_orders if o.get("status") == "pending"]
     accepted_orders = [o for o in owner_orders if o.get("status") == "accepted"]
     history_orders = [o for o in owner_orders if o.get("status") != "pending"]
@@ -1806,13 +1910,15 @@ def owner_view():
             auth_sign_out()
             st.rerun()
 
-    m1, m2, m3 = st.columns(3)
+    m1, m2, m3, m4 = st.columns(4)
     with m1:
         st.metric("New orders", len(pending_orders))
     with m2:
-        st.metric("Accepted", len(accepted_orders))
+        st.metric("Custom requests", len(pending_custom_requests))
     with m3:
-        st.metric("Accepted order value", f"₹{today_total:,.0f}")
+        st.metric("Accepted", len(accepted_orders))
+    with m4:
+        st.metric("Accepted value", f"₹{today_total:,.0f}")
 
     st.markdown("## New orders")
     if not pending_orders:
@@ -1858,6 +1964,46 @@ def owner_view():
                             else: st.error("Could not update this order.")
                         except Exception:
                             st.error("Could not update this order.")
+
+    st.markdown("## Custom requests")
+    if not pending_custom_requests:
+        st.caption("No new custom requests.")
+    else:
+        for r in pending_custom_requests:
+            with st.container(border=True):
+                c1, c2 = st.columns([4,1])
+                with c1:
+                    st.markdown(f"### Custom request #{1000 + int(r.get('id',0))}")
+                with c2:
+                    st.markdown('<div class="status-pill pending">PENDING</div>', unsafe_allow_html=True)
+                st.markdown(f"**{r.get('quantity',1)} × {r.get('requested_item','Custom item')}**")
+                st.write(
+                    f"{str(r.get('fulfillment') or '').title()} · "
+                    f"{format_owner_order_time(r.get('requested_datetime'))}"
+                )
+                st.caption(f"{r.get('customer_name')} · {r.get('customer_contact')}")
+                if r.get("customer_notes"):
+                    st.caption(f"Notes: {r.get('customer_notes')}")
+                if r.get("delivery_address"):
+                    st.caption(f"Delivery: {r.get('delivery_address')}")
+                st.caption("Price and availability are not confirmed.")
+                a1,a2=st.columns(2)
+                with a1:
+                    if st.button("Accept request", key=f"accept_custom_{r['id']}", use_container_width=True, type="primary"):
+                        try:
+                            result=supabase.table("custom_requests").update({"status":"accepted"}).eq("id",r["id"]).execute()
+                            if result.data: st.rerun()
+                            else: st.error("Could not update this request.")
+                        except Exception:
+                            st.error("Could not update this request.")
+                with a2:
+                    if st.button("Decline request", key=f"decline_custom_{r['id']}", use_container_width=True):
+                        try:
+                            result=supabase.table("custom_requests").update({"status":"declined"}).eq("id",r["id"]).execute()
+                            if result.data: st.rerun()
+                            else: st.error("Could not update this request.")
+                        except Exception:
+                            st.error("Could not update this request.")
 
     if history_orders:
         st.markdown("## Order history")
