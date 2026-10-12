@@ -1296,7 +1296,7 @@ Delivery and pickup details: {delivery_info}
 Frequently asked questions: {faq_info}
 Business hours: {business_hours}
 The current date and time is: {current_time_str}. Use this to tell customers if the business is currently open or closed, and to sanity-check any pickup/delivery date they request.
-Advance notice required for custom orders: {advance_notice}. When a customer requests a date/time, always work out and state to the customer in your visible reply the exact number of hours between now ({current_time_str}) and their requested date/time, and compare that to the advance notice requirement -- do this out loud in the conversation, not silently, so the number is always visible and can be checked. If the requested time is sooner than required, politely warn the customer it may not be possible and ask if they'd like to proceed anyway or pick a later date.
+Advance notice required for custom orders: {advance_notice}. Apply this only to custom requests. If the requested custom-order time is too soon, briefly explain that it does not meet the required notice and ask for a later date/time.
 Items that are OUT OF STOCK today and must NOT be offered or confirmed: {sold_out_items if sold_out_items else "none"}.
 If asked about something outside this, direct customers to {contact}.
 Speak like a fast, friendly bakery ordering assistant, not a general chatbot.
@@ -1410,6 +1410,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         if clean_user_input:
             st.session_state.messages.append({"role": "user", "content": clean_user_input})
             st.session_state.display_messages.append({"role": "user", "content": clean_user_input})
+            st.session_state.last_user_input = clean_user_input
 
             # Complete custom-request state machine. Once a custom request starts,
             # Python owns progression so short replies cannot dead-end.
@@ -1623,9 +1624,15 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     st.caption(item["customizations"])
             st.divider()
             st.write(f"**Requested for:** {order.get('requested_datetime', 'not specified')}")
-            st.write(f"**Estimated total:** {order.get('estimated_total', 'N/A')}")
+            if order.get("order_type") != "custom_request":
+                st.write(f"**Estimated total:** {order.get('estimated_total', 'N/A')}")
             st.write(f"**Fulfillment:** {order.get('fulfillment', 'unspecified')}")
-            if order.get("status") == "confirmed":
+            if order.get("order_type") == "custom_request":
+                if order.get("status") == "confirmed":
+                    st.success(f"Custom request #{st.session_state.get('order_number')} sent")
+                else:
+                    st.info("Custom request in progress")
+            elif order.get("status") == "confirmed":
                 st.success(f"Order #{st.session_state.get('order_number')} received")
             else:
                 st.info("Order in progress")
@@ -1648,6 +1655,9 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
     # Stage 2: on the immediate rerun, the user's message is already visible.
     # Now show the cake and request the assistant response exactly once.
     if st.session_state.get("awaiting_assistant", False):
+        # Stage 2 happens on a fresh Streamlit rerun, so recover the user's
+        # submitted text from session state instead of relying on a Stage 1 local.
+        clean_user_input = str(st.session_state.get("last_user_input") or "").strip()
         thinking_slot.markdown(
             '<div class="pw-cake-loader" aria-label="Assistant is responding">'
             '<div class="pw-cake-dots"><span></span><span></span><span></span></div>'
