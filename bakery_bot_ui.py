@@ -421,7 +421,7 @@ body:has(.owner-login-marker) [data-testid="stFormSubmitButton"] button:hover{
 }
 
 
-/* Customer chat composer — unmistakably interactive */
+/* Customer chat composer: unmistakably interactive */
 div[data-testid="stForm"]:has(input[placeholder*="Ask "]) {
   border:0 !important;
   padding:0 !important;
@@ -748,6 +748,17 @@ def check_advance_notice(requested_datetime_iso, advance_notice_text):
 def is_custom_order(order):
     return str(order.get("order_type") or "retail").lower() == "custom"
 
+def compute_order_total(order, menu):
+    prices = {str(m.get("Item") or "").strip().lower(): m.get("Price") for m in (menu or [])}
+    total = 0
+    for it in order.get("items") or []:
+        try:
+            total += float(prices.get(str(it.get("item") or "").strip().lower())) * float(it.get("quantity") or 0)
+        except (TypeError, ValueError):
+            pass
+    return total
+
+
 def get_missing_order_fields(order):
     missing = []
     items = order.get("items", [])
@@ -962,8 +973,8 @@ def deterministic_checkout_reply(order):
     fulfillment = str(order.get("fulfillment") or "").title()
     contact = mask_contact(order.get("customer_contact"))
 
-    summary = "Confirm this order?\\n" + "\\n".join(item_lines)
-    summary += f"\\n- {fulfillment}\\n- {when}\\n- Contact: {contact}"
+    summary = "Confirm this order?\n" + "\n".join(item_lines)
+    summary += f"\n- {fulfillment}\n- {when}\n- Contact: {contact}"
     return summary, True
 
 
@@ -1170,6 +1181,14 @@ def send_custom_request_notification(business_name, owner_email, request_number,
         return False
 
 
+def with_ist(value):
+    """ISO string with an explicit offset. The model sends local times without one."""
+    dt = datetime.fromisoformat(str(value))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
+    return dt.isoformat()
+
+
 def submit_protected_custom_request(slug, order):
     items = order.get("items") or []
     first = items[0] if items else {}
@@ -1181,7 +1200,7 @@ def submit_protected_custom_request(slug, order):
         "p_requested_item": first.get("item"),
         "p_quantity": int(first.get("quantity") or 1),
         "p_fulfillment": order.get("fulfillment"),
-        "p_requested_datetime": requested_iso,
+        "p_requested_datetime": with_ist(requested_iso),
         "p_customer_name": order.get("customer_name"),
         "p_customer_contact": order.get("customer_contact"),
         "p_delivery_address": order.get("delivery_address") if order.get("fulfillment") == "delivery" else None,
@@ -1202,7 +1221,7 @@ def submit_protected_order(slug, order):
         "p_bakery_slug": slug,
         "p_items": order.get("items") or [],
         "p_fulfillment": order.get("fulfillment"),
-        "p_requested_datetime": requested_iso,
+        "p_requested_datetime": with_ist(requested_iso),
         "p_customer_name": order.get("customer_name"),
         "p_customer_contact": order.get("customer_contact"),
         "p_delivery_address": order.get("delivery_address") if order.get("fulfillment") == "delivery" else None,
@@ -1294,14 +1313,14 @@ def run_chatbot(business):
     sold_out_items = business["sold_out_items"]
     social_link = business["social_link"]
     menu_photo_urls = business.get("menu_photo_urls") or []
-    menu = business["menu"]
+    menu = business.get("menu") or []
 
     display_business_name = short_business_name(business_name)
     safe_business_name = html.escape(str(business_name))
     safe_display_name = html.escape(display_business_name)
 
     if "messages" not in st.session_state:
-        current_time_str = datetime.now().strftime("%A, %Y-%m-%d %I:%M %p")
+        current_time_str = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%A, %Y-%m-%d %I:%M %p")
 
         if fulfillment_options == "Pickup only":
             fulfillment_instructions = f"""This business offers PICKUP ONLY -- do not offer, mention, or ask about delivery under any circumstances. Do NOT ask the customer for a delivery address. Pickup happens at the business address: {address}."""
@@ -1533,10 +1552,11 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                 elif custom_stage == "confirm":
                     if re.search(r"\b(yes|yeah|yep|yup|confirm|send|sure|ok|okay)\b", low):
                         try:
-                            saved = submit_protected_custom_request(slug_from_url, current_custom)
+                            saved = submit_protected_custom_request(business["slug"], current_custom)
                             request_number = saved.get("request_number")
                             st.session_state.order_saved = True
                             st.session_state.order_number = request_number
+                            current_custom["status"] = "confirmed"
                             st.session_state.custom_request_stage = None
                             notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
                             send_custom_request_notification(business_name, notification_email, request_number, current_custom)
@@ -1559,7 +1579,7 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
             pending_custom = st.session_state.get("pending_custom_item")
             if pending_custom:
                 if re.search(r"(?i)\b(yes|yeah|yep|yup|sure|okay|ok|please|do it)\b", clean_user_input):
-                    reply = f"Sure — how many {pending_custom}s would you like?"
+                    reply = f"Sure. How many {pending_custom} would you like?"
                     st.session_state.custom_request_stage = "quantity"
                     st.session_state.current_order = {
                         "items": [{"item": pending_custom, "quantity": None, "customizations": ""}],
@@ -1759,6 +1779,8 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                 if parsed_order.get("order_type") in ("custom", "custom_request"):
                     raise json.JSONDecodeError("custom flow owned by Python", order_match.group(1), 0)
                 parsed_order = recover_name_contact(clean_user_input, parsed_order)
+                if not parsed_order.get("estimated_total"):
+                    parsed_order["estimated_total"] = compute_order_total(parsed_order, menu)
 
                 # Never let a relative date such as "tomorrow" silently acquire an
                 # invented clock time. If this turn supplied no explicit time and the
@@ -1826,9 +1848,9 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                 ):
                     try:
                         if parsed_order.get("order_type") == "custom_request":
-                            saved = submit_protected_custom_request(slug_from_url, parsed_order)
+                            saved = submit_protected_custom_request(business["slug"], parsed_order)
                         else:
-                            saved = submit_protected_order(slug_from_url, parsed_order)
+                            saved = submit_protected_order(business["slug"], parsed_order)
                     except Exception:
                         parsed_order["status"] = "in_progress"
                         st.session_state.current_order = parsed_order
@@ -1867,6 +1889,16 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                                 f"Final total: ₹{db_total}. "
                                 "The bakery will review and accept or decline it."
                             )
+                elif parsed_order.get("status") == "confirmed" and st.session_state.get("order_saved"):
+                    # The model re-sends the saved order on later turns (for example after
+                    # "thanks"). Only treat it as a new order when the contents differ.
+                    same_order = (
+                        previous_order.get("items") == parsed_order.get("items")
+                        and previous_order.get("requested_datetime_iso") == parsed_order.get("requested_datetime_iso")
+                    )
+                    if not same_order:
+                        st.session_state.current_order = previous_order or None
+                        display_reply = "That order has already been received. Open Your order and tap Start new order to place another."
                 elif notice_warning:
                     display_reply += f"\n\n{notice_warning}"
 
@@ -1998,24 +2030,6 @@ def owner_login_gate(title, caption):
     st.rerun()
 
 
-
-    st.markdown("""
-<script>
-(function(){
-  function focusLoafInput(){
-    const inputs = Array.from(document.querySelectorAll('input'));
-    const el = inputs.find(x => (x.placeholder || '').toLowerCase().includes('pink whisk'));
-    if(el && document.activeElement !== el){
-      el.focus({preventScroll:true});
-      try { el.setSelectionRange(el.value.length, el.value.length); } catch(e) {}
-    }
-  }
-  requestAnimationFrame(focusLoafInput);
-  setTimeout(focusLoafInput, 80);
-  setTimeout(focusLoafInput, 250);
-})();
-</script>
-""", unsafe_allow_html=True)
 
 def quick_update_view():
     if not owner_login_gate(
@@ -2222,7 +2236,7 @@ def owner_view():
 
     st.markdown("## New orders")
     if not pending_orders:
-        st.info("You're all caught up — no new orders.")
+        st.info("You're all caught up. No new orders.")
     else:
         for o in pending_orders:
             with st.container(border=True):
