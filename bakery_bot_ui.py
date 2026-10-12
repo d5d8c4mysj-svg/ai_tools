@@ -890,6 +890,47 @@ def recover_name_contact(text, order):
             order["customer_name"] = before
     return order
 
+def classify_checkout_intent(user_text):
+    """Classify only the customer's response to an already-rendered final order summary."""
+    classifier_prompt = f"""Classify this customer's response to a bakery order confirmation.
+
+Customer message: {json.dumps(str(user_text or ""))}
+
+Return exactly one word:
+CONFIRM = clearly wants to place/approve the displayed order
+CHANGE = wants to change any order detail
+QUESTION = asks a question before deciding
+CANCEL = wants to cancel/not place the order
+UNCLEAR = none of the above is clear
+
+Understand natural English, Hindi and Hinglish. Do not answer the customer. Return only the label."""
+    try:
+        result = co.chat(
+            model="command-r-plus-08-2024",
+            messages=[{"role": "user", "content": classifier_prompt}],
+        )
+        label = str(result.message.content[0].text or "").strip().upper()
+    except Exception:
+        return "UNCLEAR"
+    return label if label in {"CONFIRM", "CHANGE", "QUESTION", "CANCEL", "UNCLEAR"} else "UNCLEAR"
+
+
+def format_customer_order_time(order):
+    """Friendly display time for checkout; ISO remains the source of truth internally."""
+    iso_value = order.get("requested_datetime_iso")
+    if iso_value:
+        try:
+            dt = datetime.fromisoformat(str(iso_value).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
+            else:
+                dt = dt.astimezone(ZoneInfo("Asia/Kolkata"))
+            return dt.strftime("%a, %d %b · %I:%M %p").replace(" 0", " ")
+        except (ValueError, TypeError):
+            pass
+    return str(order.get("requested_datetime") or "Requested time")
+
+
 def deterministic_checkout_reply(order):
     """Python owns checkout progression after Cohere extracts structured state."""
     missing = get_missing_order_fields(order)
@@ -918,7 +959,7 @@ def deterministic_checkout_reply(order):
         name = item.get("item", "Item")
         item_lines.append(f"- {qty}x {name}")
 
-    when = order.get("requested_datetime") or "Requested time"
+    when = format_customer_order_time(order)
     fulfillment = str(order.get("fulfillment") or "").title()
     contact = mask_contact(order.get("customer_contact"))
 
@@ -1489,6 +1530,65 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                     st.session_state.display_messages.append({"role":"assistant","content":reply})
                     st.session_state.messages.append({"role":"assistant","content":reply})
                     st.rerun()
+
+            # Final normal-order confirmation:
+            # AI interprets natural language; Python performs the protected action.
+            current_normal = st.session_state.get("current_order") or {}
+            normal_ready = (
+                current_normal
+                and current_normal.get("order_type") not in ("custom", "custom_request")
+                and not get_missing_order_fields(current_normal)
+                and not st.session_state.get("order_saved", False)
+            )
+            if normal_ready:
+                checkout_intent = classify_checkout_intent(clean_user_input)
+
+                if checkout_intent == "CONFIRM":
+                    try:
+                        saved = submit_protected_order(business["slug"], current_normal)
+                    except Exception:
+                        reply = (
+                            "I couldn't securely save that order yet. "
+                            "Please check the item, date/time, and delivery details and try again."
+                        )
+                    else:
+                        db_order_number = saved.get("order_number")
+                        db_total = saved.get("total")
+                        current_normal["status"] = "confirmed"
+                        current_normal["estimated_total"] = db_total
+                        st.session_state.current_order = current_normal
+                        st.session_state.order_saved = True
+                        st.session_state.order_number = db_order_number
+                        st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
+                        notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
+                        send_new_order_notification(
+                            business_name, notification_email, db_order_number, current_normal, db_total
+                        )
+                        reply = (
+                            f"Order received! #{db_order_number}\n\n"
+                            f"Final total: ₹{db_total}. "
+                            "The bakery will review and accept or decline it."
+                        )
+                    st.session_state.display_messages.append({"role": "assistant", "content": reply})
+                    st.session_state.messages.append({"role": "assistant", "content": reply})
+                    st.session_state.pending_user_text = None
+                    st.session_state.awaiting_assistant = False
+                    st.rerun()
+
+                elif checkout_intent == "CANCEL":
+                    st.session_state.current_order = None
+                    st.session_state.order_saved = False
+                    st.session_state.order_number = None
+                    reply = "No problem. I haven't placed the order. What else can I help you with?"
+                    st.session_state.display_messages.append({"role": "assistant", "content": reply})
+                    st.session_state.messages.append({"role": "assistant", "content": reply})
+                    st.session_state.pending_user_text = None
+                    st.session_state.awaiting_assistant = False
+                    st.rerun()
+
+                # CHANGE / QUESTION / UNCLEAR intentionally continue to the normal
+                # conversational model below. It can answer or update the order,
+                # but cannot save anything unless a later turn is classified CONFIRM.
 
             # Resolve a pending off-menu offer deterministically.
             pending_custom = st.session_state.get("pending_custom_item")
