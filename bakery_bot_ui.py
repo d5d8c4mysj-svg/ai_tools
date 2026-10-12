@@ -787,6 +787,38 @@ def mask_contact(value):
         return "••••••" + digits[-4:]
     return "••••"
 
+def extract_custom_date(text):
+    """Return a date if the text names one (today, tomorrow, a weekday), else None."""
+    s = re.sub(r"\s+", " ", str(text or "").lower()).strip()
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    if "day after tomorrow" in s:
+        return (now + timedelta(days=2)).date()
+    if "tomorrow" in s:
+        return (now + timedelta(days=1)).date()
+    if "today" in s:
+        return now.date()
+    weekdays = {"monday":0,"tuesday":1,"wednesday":2,"thursday":3,"friday":4,"saturday":5,"sunday":6}
+    for name, num in weekdays.items():
+        if re.search(rf"\b{name}\b", s):
+            delta = (num - now.weekday()) % 7
+            if delta == 0 and "next " in s:
+                delta = 7
+            return (now + timedelta(days=delta)).date()
+    return None
+
+
+def extract_custom_time(text):
+    """Return (hour, minute) in 24-hour time if the text has a clock time, else None."""
+    s = str(text or "").lower()
+    m = re.search(r"\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b", s)
+    if m:
+        return int(m.group(1)) % 12 + (12 if m.group(3) == "pm" else 0), int(m.group(2) or 0)
+    m24 = re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", s)
+    if m24:
+        return int(m24.group(1)), int(m24.group(2))
+    return None
+
+
 def parse_custom_datetime(text):
     """Parse the common date/time phrases needed by the custom-request handoff.
     Returns (human_text, iso_text, needs_exact_time). Never invents a clock time.
@@ -1534,16 +1566,36 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         reply = "How many would you like? Please give me an approximate quantity."
 
                 elif custom_stage == "datetime":
-                    # Remember fulfillment even if the customer gives it early.
+                    # Date and time are independent slots. Either can arrive first.
+                    # Also remember fulfilment if the customer volunteers it early.
                     if re.search(r"\b(deliver|delivered|delivery)\b", low):
                         current_custom["fulfillment"] = "delivery"
                     elif re.search(r"\b(pickup|pick up|collect)\b", low):
                         current_custom["fulfillment"] = "pickup"
 
-                    human, iso_value, needs_time = parse_custom_datetime(clean_user_input)
-                    if iso_value:
-                        current_custom["requested_datetime"] = human
-                        current_custom["requested_datetime_iso"] = iso_value
+                    found_date = extract_custom_date(clean_user_input)
+                    found_time = extract_custom_time(clean_user_input)
+
+                    if found_date:
+                        current_custom["requested_date_iso"] = found_date.isoformat()
+                    if found_time:
+                        current_custom["requested_time_hour"] = int(found_time[0])
+                        current_custom["requested_time_minute"] = int(found_time[1])
+
+                    saved_date = current_custom.get("requested_date_iso")
+                    saved_hour = current_custom.get("requested_time_hour")
+                    saved_minute = current_custom.get("requested_time_minute")
+
+                    if saved_date and saved_hour is not None:
+                        day = datetime.fromisoformat(saved_date).date()
+                        dt = datetime(
+                            day.year, day.month, day.day,
+                            int(saved_hour), int(saved_minute or 0),
+                            tzinfo=ZoneInfo("Asia/Kolkata")
+                        )
+                        current_custom["requested_datetime"] = dt.strftime("%A, %d %b at %-I:%M %p")
+                        current_custom["requested_datetime_iso"] = dt.isoformat()
+
                         if current_custom.get("fulfillment") == "delivery":
                             st.session_state.custom_request_stage = "address"
                             reply = "Got it. What's the delivery address?"
@@ -1553,38 +1605,12 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         else:
                             st.session_state.custom_request_stage = "fulfillment"
                             reply = "Got it. Would you like pickup or delivery?"
-                    elif needs_time:
-                        # Persist the parsed calendar date separately. Do not rely on
-                        # reparsing the human display string on the next turn.
-                        if human:
-                            current_custom["requested_datetime"] = human
-                        now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
-                        if re.search(r"\bday after tomorrow\b", low):
-                            current_custom["requested_date_iso"] = (now_ist.date() + timedelta(days=2)).isoformat()
-                        elif re.search(r"\btomorrow\b", low):
-                            current_custom["requested_date_iso"] = (now_ist.date() + timedelta(days=1)).isoformat()
-                        elif re.search(r"\btoday\b", low):
-                            current_custom["requested_date_iso"] = now_ist.date().isoformat()
+                    elif saved_date:
                         reply = "What exact time would you like?"
+                    elif saved_hour is not None:
+                        reply = "Got it. What date would you need it?"
                     else:
-                        # Combine a later explicit time such as "4 pm" with the
-                        # previously persisted date.
-                        tm = re.search(r"\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b", low)
-                        saved_date_iso = current_custom.get("requested_date_iso")
-                        if tm and saved_date_iso:
-                            try:
-                                day = datetime.fromisoformat(saved_date_iso).date()
-                                h = int(tm.group(1)) % 12 + (12 if tm.group(3) == "pm" else 0)
-                                minute = int(tm.group(2) or 0)
-                                dt = datetime(day.year, day.month, day.day, h, minute, tzinfo=ZoneInfo("Asia/Kolkata"))
-                                current_custom["requested_datetime"] = dt.strftime("%A, %d %b at %-I:%M %p")
-                                current_custom["requested_datetime_iso"] = dt.isoformat()
-                                st.session_state.custom_request_stage = "fulfillment" if not current_custom.get("fulfillment") else ("address" if current_custom.get("fulfillment")=="delivery" else "identity")
-                                reply = "Would you like pickup or delivery?" if not current_custom.get("fulfillment") else ("What's the delivery address?" if current_custom.get("fulfillment")=="delivery" else "What's your name and contact number or email?")
-                            except Exception:
-                                reply = "Please tell me the date and exact time you need it."
-                        else:
-                            reply = "Please tell me the date and exact time you need it."
+                        reply = "Please tell me the date and time you need it."
 
                 elif custom_stage == "fulfillment":
                     if re.search(r"\b(deliver|delivered|delivery)\b", low):
