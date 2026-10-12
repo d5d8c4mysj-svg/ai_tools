@@ -646,6 +646,34 @@ body:has(.owner-portal-marker) textarea:focus{
   outline:none !important;
 }
 
+
+/* V38: stop generic owner button rules from corrupting Streamlit uploader internals */
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button,
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button:hover,
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button:focus{
+  background:#FFFFFF !important;
+  color:#222222 !important;
+  border:1px solid #D8D8D4 !important;
+  border-radius:8px !important;
+  padding:0.45rem 0.8rem !important;
+  width:auto !important;
+  min-width:auto !important;
+  height:auto !important;
+  min-height:38px !important;
+  box-shadow:none !important;
+  text-transform:none !important;
+  letter-spacing:normal !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button *{
+  color:#222222 !important;
+  font-family:Arial,sans-serif !important;
+  font-style:normal !important;
+  text-decoration:none !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button svg{
+  display:none !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
