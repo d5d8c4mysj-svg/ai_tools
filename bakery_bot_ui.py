@@ -2414,6 +2414,28 @@ def owner_view():
                         except Exception:
                             st.error("Could not update this request.")
 
+    if custom_history:
+        st.markdown("## Custom request history")
+        for r in custom_history[:15]:
+            status = str(r.get("status") or "").title()
+            with st.container(border=True):
+                h1, h2 = st.columns([4, 1])
+                with h1:
+                    st.markdown(f"**Custom request #{1000 + int(r.get('id', 0))}**")
+                    st.write(f"{r.get('quantity', 1)} × {r.get('requested_item', 'Custom item')}")
+                    st.caption(
+                        f"{r.get('customer_name') or ''} · "
+                        f"{format_owner_order_time(r.get('requested_datetime'))}"
+                    )
+                    if r.get("customer_contact"):
+                        st.caption(f"Contact: {r.get('customer_contact')}")
+                    if r.get("delivery_address"):
+                        st.caption(f"Delivery: {r.get('delivery_address')}")
+                    if r.get("customer_notes"):
+                        st.caption(f"Notes: {r.get('customer_notes')}")
+                with h2:
+                    st.markdown(f"**{status}**")
+
     if history_orders:
         st.markdown("## Order history")
         for o in history_orders[:15]:
