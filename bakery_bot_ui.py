@@ -787,6 +787,51 @@ def mask_contact(value):
         return "••••••" + digits[-4:]
     return "••••"
 
+def custom_missing_slots(order):
+    """Return missing custom-request fields independent of conversational order."""
+    missing = []
+    items = order.get("items") or []
+    first = items[0] if items else {}
+    if not first.get("item"):
+        missing.append("item")
+    if not first.get("quantity"):
+        missing.append("quantity")
+    if not order.get("requested_datetime_iso"):
+        missing.append("datetime")
+    if order.get("fulfillment") not in ("pickup", "delivery"):
+        missing.append("fulfillment")
+    if order.get("fulfillment") == "delivery" and not order.get("delivery_address"):
+        missing.append("address")
+    if not order.get("customer_name") or not order.get("customer_contact"):
+        missing.append("identity")
+    return missing
+
+def custom_next_question(order):
+    missing = custom_missing_slots(order)
+    if not missing:
+        first=(order.get("items") or [{}])[0]
+        lines = [
+            "Send this custom request?",
+            f"- {first.get('quantity',1)} × {first.get('item','Custom item')}",
+            f"- {str(order.get('fulfillment') or '').title()}",
+            f"- {order.get('requested_datetime')}",
+        ]
+        if order.get("delivery_address"):
+            lines.append(f"- Delivery: {order.get('delivery_address')}")
+        lines.append(f"- Contact: {mask_contact(order.get('customer_contact'))}")
+        lines.append("")
+        lines.append("Price and availability will be decided by the bakery.")
+        return "\n".join(lines), "confirm"
+    nxt=missing[0]
+    questions={
+        "quantity":"How many would you like?",
+        "datetime":"What date and time would you like it?",
+        "fulfillment":"Would you like pickup or delivery?",
+        "address":"What's the delivery address?",
+        "identity":"What's your name and contact number or email?",
+    }
+    return questions.get(nxt,"Could you tell me a little more?"), nxt
+
 def delivery_address_allowed(address, business):
     """Conservative MVP delivery validation using owner-configured city + areas."""
     address_norm = re.sub(r"\s+", " ", str(address or "").lower()).strip()
@@ -1413,106 +1458,75 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             st.session_state.messages.append({"role": "user", "content": clean_user_input})
             st.session_state.display_messages.append({"role": "user", "content": clean_user_input})
 
-            # Complete custom-request state machine. Once a custom request starts,
-            # Python owns progression so short replies cannot dead-end.
+            # Flexible custom-request slot filling: accept useful information in any order,
+            # remember it, then ask only for the next missing field.
             custom_stage = st.session_state.get("custom_request_stage")
             current_custom = st.session_state.get("current_order") or {}
             if current_custom.get("order_type") == "custom_request" and custom_stage:
-                reply = None
+                low = clean_user_input.lower()
+                first = (current_custom.get("items") or [{}])[0]
 
-                if custom_stage == "quantity":
-                    qty_match = re.search(r"\b(\d{1,3})\b", clean_user_input)
-                    if qty_match and 1 <= int(qty_match.group(1)) <= 100:
-                        current_custom["items"][0]["quantity"] = int(qty_match.group(1))
-                        st.session_state.custom_request_stage = "datetime"
-                        reply = "Got it. What date and time would you like it?"
-                    else:
-                        reply = "How many would you like? Please enter a number between 1 and 100."
+                # Quantity can arrive at any time.
+                qty_match = re.fullmatch(r"\s*(\d{1,3})\s*", clean_user_input)
+                if qty_match and not first.get("quantity"):
+                    qty=int(qty_match.group(1))
+                    if 1 <= qty <= 100:
+                        first["quantity"]=qty
+                        current_custom["items"][0]=first
 
-                elif custom_stage == "fulfillment":
-                    low = clean_user_input.lower()
-                    if "deliver" in low:
-                        current_custom["fulfillment"] = "delivery"
-                        st.session_state.custom_request_stage = "address"
-                        reply = "Sure. What's the delivery address?"
-                    elif "pickup" in low or "pick up" in low:
-                        current_custom["fulfillment"] = "pickup"
-                        st.session_state.custom_request_stage = "identity"
-                        reply = "What's your name and contact number or email?"
-                    else:
-                        reply = "Would you like pickup or delivery?"
+                # Fulfilment can arrive before/after time.
+                if re.search(r"\b(deliver|delivered|delivery)\b", low):
+                    current_custom["fulfillment"]="delivery"
+                elif re.search(r"\b(pickup|pick up|collect)\b", low):
+                    current_custom["fulfillment"]="pickup"
+                    current_custom["delivery_address"]=None
 
-                elif custom_stage == "address":
-                    # Do not demand street/house-number formatting: landmarks/campuses may be valid.
-                    address = clean_user_input.strip()
-                    if len(address) >= 5:
-                        eligibility = delivery_address_allowed(address, business)
-                        if eligibility is True:
-                            current_custom["delivery_address"] = address
-                            current_custom = recover_name_contact(clean_user_input, current_custom)
-                            if current_custom.get("customer_name") and current_custom.get("customer_contact"):
-                                st.session_state.custom_request_stage = "confirm"
-                            else:
-                                st.session_state.custom_request_stage = "identity"
-                            reply = (
-                                "Thanks. What's your name and contact number or email?"
-                                if st.session_state.custom_request_stage == "identity"
-                                else None
-                            )
-                        elif eligibility is False:
-                            city = business.get("delivery_city") or "the bakery's delivery city"
-                            areas = ", ".join(business.get("delivery_areas") or [])
-                            reply = (
-                                f"Sorry, delivery is currently available only in {city}"
-                                + (f" for these areas: {areas}." if areas else ".")
-                                + " Would you like pickup instead?"
-                            )
-                        else:
-                            reply = (
-                                "The bakery hasn't configured its delivery areas yet, "
-                                "so I can't safely confirm delivery. Would you like pickup instead?"
-                            )
-                    else:
-                        reply = "Please share the delivery location or address."
+                # Contact/name recovery can happen on any turn.
+                current_custom = recover_name_contact(clean_user_input, current_custom)
 
-                elif custom_stage == "identity":
-                    current_custom = recover_name_contact(clean_user_input, current_custom)
-                    if current_custom.get("customer_name") and current_custom.get("customer_contact"):
-                        st.session_state.custom_request_stage = "confirm"
-                    else:
-                        reply = "Please send your name and a contact number or email together."
+                # Address: only treat free text as address when delivery is selected and
+                # address is the missing slot; don't steal date/time/name messages.
+                missing_before = custom_missing_slots(current_custom)
+                if (
+                    current_custom.get("fulfillment") == "delivery"
+                    and "address" in missing_before
+                    and custom_stage == "address"
+                    and len(clean_user_input.strip()) >= 5
+                ):
+                    eligibility=delivery_address_allowed(clean_user_input.strip(), business)
+                    if eligibility is True:
+                        current_custom["delivery_address"]=clean_user_input.strip()
+                    elif eligibility is False:
+                        city=business.get("delivery_city") or "the configured delivery city"
+                        areas=", ".join(business.get("delivery_areas") or [])
+                        reply=(
+                            f"Sorry, delivery is currently available only in {city}"
+                            + (f" for these areas: {areas}." if areas else ".")
+                            + " You can choose pickup instead or give another delivery address."
+                        )
+                        st.session_state.current_order=current_custom
+                        st.session_state.display_messages.append({"role":"assistant","content":reply})
+                        st.session_state.messages.append({"role":"assistant","content":reply})
+                        st.rerun()
 
-                elif custom_stage == "confirm":
-                    low = clean_user_input.lower()
-                    if re.search(r"\b(yes|yeah|yep|yup|confirm|send|sure|ok|okay)\b", low):
-                        try:
-                            saved = submit_protected_custom_request(slug_from_url, current_custom)
-                            request_number = saved.get("request_number")
-                            st.session_state.order_saved = True
-                            st.session_state.order_number = request_number
-                            st.session_state.custom_request_stage = None
-                            notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
-                            send_custom_request_notification(
-                                business_name, notification_email, request_number, current_custom
-                            )
-                            reply = (
-                                f"Custom request sent! #{request_number}\n\n"
-                                "The bakery will review availability and pricing. "
-                                "This is not a confirmed order yet."
-                            )
-                        except Exception:
-                            reply = "I couldn't send the custom request yet. Please try confirming again."
-                    elif re.search(r"\b(no|cancel|nope|nah)\b", low):
-                        st.session_state.custom_request_stage = None
-                        st.session_state.current_order = None
-                        reply = "No problem. I haven't sent the request."
-                    else:
-                        reply = "Would you like me to send this custom request to the bakery?"
+                st.session_state.current_order=current_custom
 
-                st.session_state.current_order = current_custom
-
-                # Date/time parsing remains with Cohere, but all later stages are deterministic.
-                if reply:
+                # Exact date/time still benefits from natural-language parsing by Cohere.
+                # If datetime is missing and this message is not merely another captured slot,
+                # let the model parse it below. Otherwise respond deterministically now.
+                if "datetime" not in custom_missing_slots(current_custom):
+                    reply,next_stage=custom_next_question(current_custom)
+                    st.session_state.custom_request_stage=next_stage
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
+                elif (
+                    current_custom.get("fulfillment") in ("pickup","delivery")
+                    and not re.search(r"\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|am|pm|\d{1,2}:\d{2})\b", low)
+                ):
+                    # Example: customer says "pickup" while exact time is still missing.
+                    reply="Sure, pickup. What exact time would you like?"
+                    st.session_state.custom_request_stage="datetime"
                     st.session_state.display_messages.append({"role":"assistant","content":reply})
                     st.session_state.messages.append({"role":"assistant","content":reply})
                     st.rerun()
@@ -1755,8 +1769,9 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     and st.session_state.get("custom_request_stage") == "datetime"
                     and parsed_order.get("requested_datetime_iso")
                 ):
-                    st.session_state.custom_request_stage = "fulfillment"
-                    display_reply = "Got it. Would you like pickup or delivery?"
+                    reply, next_stage = custom_next_question(parsed_order)
+                    st.session_state.custom_request_stage = next_stage
+                    display_reply = reply
                     state_reply, ready_for_confirmation = display_reply, False
                 else:
                     state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
