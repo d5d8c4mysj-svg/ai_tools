@@ -1369,7 +1369,7 @@ CONVERSATION
 
 CUSTOM / OFF-MENU REQUESTS
 - If a requested item, variation, or modification is not clearly offered by the menu (for example sugar-free brownies), say it is not on the current menu and offer to send a custom request to the bakery.
-- Whenever you make that offer, append exactly this hidden line:
+- Whenever you offer a custom request or custom order, append exactly this hidden line:
 CUSTOM_REQUEST_OFFER: {{"item":"Exact requested item or modification"}}
 - Do not promise the bakery can make it. Do not quote a price. Do not say you will personally follow up.
 - After the customer accepts a custom request, Python handles the rest of that flow. Do not create ORDER_SUMMARY for off-menu/custom requests.
@@ -1803,17 +1803,31 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                 pass
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-        # Safety recovery if the AI offered a custom request but omitted the marker.
+        # Persist every visible off-menu/custom offer, even if the model omitted
+        # the hidden marker. Without this, a later "yes" can never enter the real
+        # Python custom-request flow and the model may only *say* it sent a request.
         if (
             not st.session_state.get("pending_custom_item")
-            and re.search(r"(?i)custom request", str(display_reply or ""))
+            and re.search(r"(?i)custom\s+(?:request|order)", str(display_reply or ""))
         ):
+            offered = None
             m = re.search(
-                r"(?i)(?:don't have|do not have)\s+(?:an?\s+)?(.+?)\s+(?:on|in)\s+(?:the\s+)?(?:current\s+)?menu",
+                r"(?i)(?:don't have|do not have)\s+(?:an?\s+)?(.+?)\s+(?:on|in)\s+(?:our\s+|the\s+)?(?:current\s+)?menu",
                 str(display_reply),
             )
             if m:
-                st.session_state.pending_custom_item = m.group(1).strip(" .?!")
+                offered = m.group(1).strip(" .?!")
+            if not offered:
+                latest = str(clean_user_input or "").strip()
+                latest = re.sub(
+                    r"(?i)^(?:hey[,!]?\s*)?(?:i\s+(?:want|need|would like)|can i (?:get|have)|do you have|have you got)\s+",
+                    "",
+                    latest,
+                ).strip(" .?!")
+                if latest and len(latest) <= 120:
+                    offered = latest
+            if offered:
+                st.session_state.pending_custom_item = offered
 
         # Never render an empty assistant bubble.
         if not str(display_reply).strip():
