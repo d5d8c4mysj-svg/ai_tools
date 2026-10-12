@@ -3,10 +3,13 @@ import cohere
 import pandas as pd
 import json
 import re
+import random
+import smtplib
 import requests
 import html
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from email.mime.text import MIMEText
 
 API_KEY = st.secrets["COHERE_API_KEY"]
 co = cohere.ClientV2(API_KEY)
@@ -616,13 +619,61 @@ body:has(.owner-portal-marker) hr{
 }
 
 
-/* Owner form focus */
+/* ===== V37 OWNER FORM CONTROL CLEANUP ===== */
+body:has(.owner-portal-marker) [data-testid="stFileUploader"]{
+  background:transparent !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button{
+  background:#FFFFFF !important;
+  color:#222222 !important;
+  border:1px solid #DADAD7 !important;
+  border-radius:8px !important;
+  box-shadow:none !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button::before,
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button::after{
+  content:none !important;
+  display:none !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button p{
+  color:#222222 !important;
+  margin:0 !important;
+}
 body:has(.owner-portal-marker) input:focus,
 body:has(.owner-portal-marker) textarea:focus{
   border-color:#BDBDB8 !important;
   box-shadow:0 0 0 1px #BDBDB8 !important;
   outline:none !important;
 }
+
+
+/* V38: stop generic owner button rules from corrupting Streamlit uploader internals */
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button,
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button:hover,
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button:focus{
+  background:#FFFFFF !important;
+  color:#222222 !important;
+  border:1px solid #D8D8D4 !important;
+  border-radius:8px !important;
+  padding:0.45rem 0.8rem !important;
+  width:auto !important;
+  min-width:auto !important;
+  height:auto !important;
+  min-height:38px !important;
+  box-shadow:none !important;
+  text-transform:none !important;
+  letter-spacing:normal !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button *{
+  color:#222222 !important;
+  font-family:Arial,sans-serif !important;
+  font-style:normal !important;
+  text-decoration:none !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button svg{
+  display:none !important;
+}
+
 
 /* ===== V39 DEFINITIVE FILE UPLOADER FIX ===== */
 body:has(.owner-portal-marker) [data-testid="stFileUploader"] *::before,
@@ -798,17 +849,6 @@ def custom_missing_slots(order):
         missing.append("identity")
     return missing
 
-def get_missing_custom_fields(order):
-    first=(order.get("items") or [{}])[0]
-    missing=[]
-    if not first.get("item"): missing.append("item")
-    if not first.get("quantity"): missing.append("quantity")
-    if not order.get("requested_datetime_iso"): missing.append("datetime")
-    if not order.get("fulfillment"): missing.append("fulfillment")
-    if order.get("fulfillment")=="delivery" and not order.get("delivery_address"): missing.append("address")
-    if not order.get("customer_name") or not order.get("customer_contact"): missing.append("identity")
-    return missing
-
 def custom_next_question(order):
     missing = custom_missing_slots(order)
     if not missing:
@@ -828,11 +868,7 @@ def custom_next_question(order):
     nxt=missing[0]
     questions={
         "quantity":"How many would you like?",
-        "datetime":(
-            "What exact time would you like?" if order.get("requested_date_iso") and order.get("requested_time_hour") is None
-            else "What date would you need it?" if order.get("requested_time_hour") is not None and not order.get("requested_date_iso")
-            else "What date and time would you like it?"
-        ),
+        "datetime":"What date and time would you like it?",
         "fulfillment":"Would you like pickup or delivery?",
         "address":"What's the delivery address?",
         "identity":"What's your name and contact number or email?",
@@ -901,157 +937,9 @@ def recover_name_contact(text, order):
     if contact_match and not order.get("customer_name"):
         before = s[:contact_match.start()].strip(" ,:-")
         before = re.sub(r"(?i)^(?:my name is|i am|i'm|name is)\s+", "", before).strip()
-        before = re.sub(r"(?i)\s+(?:and|&)$", "", before).strip(" ,:-")
         if before and len(before) <= 80:
             order["customer_name"] = before
     return order
-
-def extract_custom_quantity(text):
-    """Extract an order quantity, while not mistaking clock times for quantities."""
-    s = str(text or "").lower()
-    # Remove explicit clock expressions first (7 pm, 7:30 pm, 19:30).
-    s = re.sub(r"\b(?:1[0-2]|0?[1-9])(?::[0-5]\d)?\s*(?:am|pm)\b", " ", s)
-    s = re.sub(r"\b(?:[01]?\d|2[0-3]):[0-5]\d\b", " ", s)
-    # Prefer quantities near ordering language / item nouns.
-    m = re.search(r"\b(?:want|need|order|make|send|get|have)\s+(\d{1,3})\b", s)
-    if not m:
-        m = re.search(r"\b(\d{1,3})\s*(?:x|×|pieces?|pcs?|items?|tarts?|cakes?|brownies?|cookies?|muffins?|cupcakes?|matchas?)\b", s)
-    if not m:
-        # A bare number is acceptable only when the whole reply is essentially the number.
-        m = re.fullmatch(r"\s*(\d{1,3})\s*", s)
-    if m:
-        q = int(m.group(1))
-        return q if 1 <= q <= 100 else None
-    return None
-
-
-def enrich_custom_from_text(order, text, allow_quantity=True):
-    """Deterministically merge core customer-supplied slots from the actual message.
-    AI may understand intent/item, but cannot invent operational fields.
-    """
-    order = dict(order or {})
-    s = str(text or "").strip()
-    low = s.lower()
-    items = list(order.get("items") or [{}])
-    first = dict(items[0] if items else {})
-
-    if allow_quantity:
-        q = extract_custom_quantity(s)
-        if q is not None:
-            first["quantity"] = q
-    order["items"] = [first]
-
-    d = extract_custom_date(s)
-    if d:
-        order["requested_date_iso"] = d.isoformat()
-    tm = extract_custom_time(s)
-    if tm:
-        order["requested_time_hour"], order["requested_time_minute"] = tm
-
-    if re.search(r"\b(deliver|delivered|delivery)\b", low):
-        order["fulfillment"] = "delivery"
-    elif re.search(r"\b(pick\s*up|pickup|collect)\b", low):
-        order["fulfillment"] = "pickup"
-        order["delivery_address"] = None
-
-    # Name/contact recovery is deterministic and handles "Cookie and 983637827".
-    order = recover_name_contact(s, order)
-
-    if order.get("requested_date_iso") and order.get("requested_time_hour") is not None:
-        day = datetime.fromisoformat(order["requested_date_iso"]).date()
-        dt = datetime(
-            day.year, day.month, day.day,
-            int(order["requested_time_hour"]), int(order.get("requested_time_minute") or 0),
-            tzinfo=ZoneInfo("Asia/Kolkata")
-        )
-        order["requested_datetime"] = dt.strftime("%A, %d %b at %-I:%M %p")
-        order["requested_datetime_iso"] = dt.isoformat()
-    return order
-
-
-def make_custom_order(item):
-    return {
-        "items": [{"item": str(item).strip(), "quantity": None, "customizations": ""}],
-        "order_type": "custom_request",
-        "requested_datetime": None,
-        "requested_datetime_iso": None,
-        "fulfillment": None,
-        "customer_name": None,
-        "customer_contact": None,
-        "delivery_address": None,
-        "status": "in_progress",
-    }
-
-def apply_turn_to_custom_order(order, turn):
-    order=dict(order or {})
-    items=list(order.get("items") or [{}])
-    first=dict(items[0] if items else {})
-    if turn.get("item"): first["item"]=str(turn["item"]).strip()
-    q=turn.get("quantity")
-    if isinstance(q,int) and 1 <= q <= 100: first["quantity"]=q
-    if turn.get("notes"): first["customizations"]=str(turn["notes"]).strip()
-    order["items"]=[first]
-    if turn.get("fulfillment") in ("pickup","delivery"):
-        order["fulfillment"]=turn["fulfillment"]
-        if turn["fulfillment"]=="pickup": order["delivery_address"]=None
-    if turn.get("delivery_address"): order["delivery_address"]=str(turn["delivery_address"]).strip()
-    if turn.get("customer_name"): order["customer_name"]=str(turn["customer_name"]).strip()
-    if turn.get("customer_contact"): order["customer_contact"]=str(turn["customer_contact"]).strip()
-    if turn.get("date_text"):
-        d=extract_custom_date(turn["date_text"])
-        if d: order["requested_date_iso"]=d.isoformat()
-    if turn.get("time_text"):
-        tm=extract_custom_time(turn["time_text"])
-        if tm:
-            order["requested_time_hour"],order["requested_time_minute"]=tm
-    if order.get("requested_date_iso") and order.get("requested_time_hour") is not None:
-        day=datetime.fromisoformat(order["requested_date_iso"]).date()
-        dt=datetime(day.year,day.month,day.day,int(order["requested_time_hour"]),
-                    int(order.get("requested_time_minute") or 0),tzinfo=ZoneInfo("Asia/Kolkata"))
-        order["requested_datetime"]=dt.strftime("%A, %d %b at %-I:%M %p")
-        order["requested_datetime_iso"]=dt.isoformat()
-    return order
-
-def classify_checkout_intent(user_text):
-    """Classify only the customer's response to an already-rendered final order summary."""
-    classifier_prompt = f"""Classify this customer's response to a bakery order confirmation.
-
-Customer message: {json.dumps(str(user_text or ""))}
-
-Return exactly one word:
-CONFIRM = clearly wants to place/approve the displayed order
-CHANGE = wants to change any order detail
-QUESTION = asks a question before deciding
-CANCEL = wants to cancel/not place the order
-UNCLEAR = none of the above is clear
-
-Understand natural English, Hindi and Hinglish. Do not answer the customer. Return only the label."""
-    try:
-        result = co.chat(
-            model="command-r-plus-08-2024",
-            messages=[{"role": "user", "content": classifier_prompt}],
-        )
-        label = str(result.message.content[0].text or "").strip().upper()
-    except Exception:
-        return "UNCLEAR"
-    return label if label in {"CONFIRM", "CHANGE", "QUESTION", "CANCEL", "UNCLEAR"} else "UNCLEAR"
-
-
-def format_customer_order_time(order):
-    """Friendly display time for checkout; ISO remains the source of truth internally."""
-    iso_value = order.get("requested_datetime_iso")
-    if iso_value:
-        try:
-            dt = datetime.fromisoformat(str(iso_value).replace("Z", "+00:00"))
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
-            else:
-                dt = dt.astimezone(ZoneInfo("Asia/Kolkata"))
-            return dt.strftime("%a, %d %b · %I:%M %p").replace(" 0", " ")
-        except (ValueError, TypeError):
-            pass
-    return str(order.get("requested_datetime") or "Requested time")
-
 
 def deterministic_checkout_reply(order):
     """Python owns checkout progression after Cohere extracts structured state."""
@@ -1081,7 +969,7 @@ def deterministic_checkout_reply(order):
         name = item.get("item", "Item")
         item_lines.append(f"- {qty}x {name}")
 
-    when = format_customer_order_time(order)
+    when = order.get("requested_datetime") or "Requested time"
     fulfillment = str(order.get("fulfillment") or "").title()
     contact = mask_contact(order.get("customer_contact"))
 
@@ -1345,6 +1233,40 @@ def submit_protected_order(slug, order):
     return result.data
 
 
+def send_order_email(order, business_name, business_email, order_number):
+    body_lines = [f"New confirmed order #{order_number} for {business_name}:", ""]
+    for item in order.get("items", []):
+        line = f"- {item.get('quantity', 1)} x {item.get('item', 'Unknown')}"
+        if item.get("customizations"):
+            line += f" ({item['customizations']})"
+        body_lines.append(line)
+    body_lines.append("")
+    body_lines.append(f"Order type: {order.get('order_type', 'retail')}")
+    body_lines.append(f"Requested date/time: {order.get('requested_datetime', 'not specified')}")
+    body_lines.append(f"Estimated total: {order.get('estimated_total', 'N/A')}")
+    body_lines.append(f"Fulfillment: {order.get('fulfillment', 'unspecified')}")
+    body_lines.append("")
+    body_lines.append(f"Customer name: {order.get('customer_name', 'not provided')}")
+    body_lines.append(f"Customer contact: {order.get('customer_contact', 'not provided')}")
+
+    customer_contact = order.get("customer_contact", "")
+    if "@" not in customer_contact:
+        digits_only = re.sub(r"\D", "", customer_contact)
+        if len(digits_only) >= 10:
+            body_lines.append(f"Message customer on WhatsApp: https://wa.me/{digits_only}")
+
+    msg = MIMEText("\n".join(body_lines))
+    msg["Subject"] = f"New Order #{order_number} - {business_name}"
+    msg["From"] = st.secrets["EMAIL_ADDRESS"]
+    msg["To"] = business_email
+    if "@" in customer_contact:
+        msg["Reply-To"] = customer_contact
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(st.secrets["EMAIL_ADDRESS"], st.secrets["EMAIL_PASSWORD"])
+        server.send_message(msg)
+
+
 def short_business_name(name):
     display_name = str(name)
     for suffix in [" Bakery Test", " Bakery", " Test"]:
@@ -1391,14 +1313,14 @@ def run_chatbot(business):
     sold_out_items = business["sold_out_items"]
     social_link = business["social_link"]
     menu_photo_urls = business.get("menu_photo_urls") or []
-    menu = business.get("menu") or []
+    menu = business["menu"]
 
     display_business_name = short_business_name(business_name)
     safe_business_name = html.escape(str(business_name))
     safe_display_name = html.escape(display_business_name)
 
     if "messages" not in st.session_state:
-        current_time_str = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%A, %Y-%m-%d %I:%M %p")
+        current_time_str = datetime.now().strftime("%A, %Y-%m-%d %I:%M %p")
 
         if fulfillment_options == "Pickup only":
             fulfillment_instructions = f"""This business offers PICKUP ONLY -- do not offer, mention, or ask about delivery under any circumstances. Do NOT ask the customer for a delivery address. Pickup happens at the business address: {address}."""
@@ -1407,55 +1329,94 @@ def run_chatbot(business):
         else:
             fulfillment_instructions = f"""This business offers BOTH pickup and delivery. Ask the customer which they'd prefer. If pickup, no address is needed (pickup is at {address}). If delivery, ask for their delivery address."""
 
-        prompt = f"""You are the customer-facing bakery assistant for {business_name}.
+        prompt = f"""You are a friendly ordering assistant for {business_name}.
+CRITICAL ORDERING RULES:
+- Standard products already listed on the menu are RETAIL orders, even if named Cake, Cheesecake or Cupcake. Never invent a custom-cake rule for them.
+- order_type is "custom" ONLY when the customer explicitly requests a bespoke/custom cake or meaningful customization. Otherwise use "retail".
+- The bakery's advance-notice rule applies ONLY to custom orders.
+- HARD RULE FOR RETAIL MENU ORDERS: completely ignore advance_notice. Do NOT calculate hours of notice, mention notice, say "24 hours' notice", compare the request with the custom-order notice period, or warn about advance notice in any way.
+- For a normal menu request with a date but no exact time, ask only the next missing operational detail. Example: "I want a brownie tomorrow" -> ask pickup or delivery; after that, ask "What time tomorrow?"
+- Do not say an order "can be done", "will be ready", or is available until required details have been collected and relevant stored availability/business-hour rules permit it.
+- Never invent bakery policies, preparation requirements, availability, dates or times.
+- Never promise "I will check with the bakery/team and get back to you."
+- Never invent a pickup/delivery time. If the customer gives a date but no exact clock time, ask for the time and keep requested_datetime_iso null. If they give a time but no date, ask for the date.
+- "Morning", "afternoon", "evening", "later" and similar are too vague; ask for an exact time.
+- Do not proactively ask about customizations for a normal menu order.
+- Do not ask "anything else?" once required details are complete.
+- Use exactly ONE final confirmation step, and ONLY after ALL required fields are present: items with quantity, fulfillment, exact requested date/time, customer name, customer contact, and delivery address when delivery is selected.
+- NEVER ask "Confirm this order?" while customer_name or customer_contact is missing.
+- Required-field sequence for a normal retail order: item -> pickup/delivery -> exact date/time -> delivery address if needed -> name/contact -> ONE final summary -> confirmation.
+- After an exact retail pickup/delivery time is supplied, do NOT calculate or mention how many hours/minutes away it is. Move directly to the next missing required field.
+- For retail orders, never say phrases such as "23 hours from now", "24 hours away", "hours and minutes from now", or any equivalent countdown.
+- The final summary should be concise and should not expose the full contact value.
+- Ask exactly: "Confirm this order?"
+- Do not set status to "confirmed" until the customer explicitly says yes/confirm after that summary.
+- Keep checkout replies short. Do not argue with the customer or repeat a policy.
+- In visible summaries, mask contact details; do not echo the full phone number/email.
+- After secure submission, say the order is RECEIVED, not accepted/confirmed by the bakery.
 
-SOURCE OF TRUTH
-- Menu: {menu}
-- Address: {address}
-- Fulfillment: {fulfillment_options}
-- Delivery info: {delivery_info}
-- FAQ: {faq_info}
-- Business hours: {business_hours}
-- Sold out today: {sold_out_items if sold_out_items else "none"}
-- Social link: {social_link if social_link else "not provided"}
-- Current India date/time: {current_time_str}
+You know the menu includes {menu}, including each item's price and ingredients. If a customer asks what something is made of or about allergens, answer using the ingredients listed.
+The business address is {address}.
+Delivery and pickup details: {delivery_info}
+{fulfillment_instructions}
+Frequently asked questions: {faq_info}
+Business hours: {business_hours}
+The current date and time is: {current_time_str}. Use this to tell customers if the business is currently open or closed, and to sanity-check any pickup/delivery date they request.
+Advance notice required for custom orders: {advance_notice}. When a customer requests a date/time, always work out and state to the customer in your visible reply the exact number of hours between now ({current_time_str}) and their requested date/time, and compare that to the advance notice requirement -- do this out loud in the conversation, not silently, so the number is always visible and can be checked. If the requested time is sooner than required, politely warn the customer it may not be possible and ask if they'd like to proceed anyway or pick a later date.
+Items that are OUT OF STOCK today and must NOT be offered or confirmed: {sold_out_items if sold_out_items else "none"}.
+If asked about something outside this, direct customers to {contact}.
+Speak like a fast, friendly bakery ordering assistant, not a general chatbot.
+VISIBLE REPLY LENGTH IS A HARD RULE:
+- Greetings such as "hi", "hey", "heyyy": ONE short sentence only, maximum 15 words. Example: "Heyyy! What are you craving today?"
+- Unclear/random messages such as "blabla": ONE short sentence only, maximum 18 words. Example: "I didn't quite catch that. What are you looking for?"
+- Simple menu, price, ingredient, availability, or business questions: maximum 2 short sentences.
+- Recommendations: suggest at most 2 products, then ask ONE short question.
+- During an order: ask only for the NEXT missing detail. Do not ask several questions at once.
+- Normal visible replies should stay under 35 words.
+- Only exceed 35 words when necessary for allergen uncertainty, an important ordering constraint, or a final order summary.
+- Never add a second paragraph just to sound friendly.
+- Ask only ONE useful next question at a time.
+- Do not list the whole menu unless the customer asks to see the menu or several options are genuinely needed.
+- If recommending products, suggest at most 2 relevant menu items, include their prices when useful, and then ask one short follow-up such as whether they want one added.
+- If the customer simply says "hi", "hey", or similar, greet them briefly and ask what they are craving. Do not explain all your capabilities.
+- Do not repeat information the customer already gave you.
+- Do not repeatedly say "I'd be happy to help", "absolutely", "certainly", or other filler.
+- Do not mention that you are an AI.
+- If the customer asks something unrelated to ordering, answer briefly when appropriate, then naturally steer back to the bakery.
+- For ingredient or allergen questions, answer only from the listed menu/FAQ information. If the information is insufficient, say you cannot confirm and direct them to the business instead of guessing.
+- The product photos and menu are already visible on this page. If a customer asks to see products/photos, tell them they can browse the products below. Only mention the social link if they specifically ask for Instagram, the website, or more photos.
+- When collecting an order, move efficiently through missing details instead of explaining the ordering process.
+- Keep confirmation messages concise, but clearly state the important order details before final confirmation.
+Match the customer's language style naturally: English, Hindi, or Hinglish.
+Never use em dashes in your replies.
 
-CONVERSATION
-- Reply to every customer message. Never return a blank reply.
-- Match English, Hindi, or Hinglish naturally.
-- Keep replies short and ask only one useful next question.
-- Answer menu, ingredient, recommendation, hours and business questions only from the supplied data.
-- Never invent prices, availability, policies, ingredients, delivery coverage, dates, or times.
+Only treat an order as BULK if the customer orders MORE THAN 10 of a single item, or explicitly mentions an event, party, or wholesale quantity. A normal order of a few items (even 2-3 of something) is always a regular RETAIL order, not bulk -- do not mention deposits or extra lead time for ordinary small orders.
 
-CUSTOM / OFF-MENU REQUESTS
-- If a requested item, variation, or modification is not clearly offered by the menu, explain that and offer a custom request.
-- Understand the customer's reply using the full conversation context. They may use any natural wording, English, Hindi, Hinglish, typos, or provide several details at once.
-- Never claim a custom request was sent unless Python later confirms that Supabase saved it.
-- For EVERY turn involving an off-menu/custom request, append exactly one hidden machine-readable line at the END:
-CUSTOM_STATE: {{"action":"offer|start|update|confirm|cancel|question","item":null,"quantity":null,"date_text":null,"time_text":null,"fulfillment":null,"delivery_address":null,"customer_name":null,"customer_contact":null,"notes":null}}
-- NEVER output CUSTOM_REQUEST_OFFER. That protocol is obsolete. CUSTOM_STATE is the only custom-request machine protocol.
-- action=start when the customer wants to begin/send the custom request.
-- action=update when they provide/change request details.
-- action=confirm only when they clearly approve the final custom-request summary.
-- action=cancel when they decline/cancel.
-- action=question when they are asking something rather than progressing the request.
-- Extract only values actually supplied by the customer; use null for missing values.
-- In CUSTOM_STATE, quantity/date_text/time_text/fulfillment/delivery_address/customer_name/customer_contact MUST describe only the CURRENT customer message, never repeat or infer them from earlier turns. Python remembers earlier values.
-- Python validates and saves. You do not write to the database and do not invent missing details.
-- Do not create ORDER_SUMMARY for custom requests.
+The business's social media / website link is: {social_link if social_link else "not provided"}. The menu and product photos are already visible on this page, so do not send customers to social media just to browse products. Share the social/website link only if they specifically ask for it or want additional external information.
 
-NORMAL MENU ORDERS
-- Only use ORDER_SUMMARY for actual on-menu retail/bulk orders.
-- Standard menu products remain retail even if their name contains Cake, Cheesecake or Cupcake.
-- Ask only for missing operational details. Do not ask about customizations unless the customer requests one.
-- Required fields: items/quantities, pickup or delivery, exact date/time, delivery address when needed, customer name and contact.
-- Never invent an exact time from a vague date/daypart.
-- Do not set status=confirmed until the customer explicitly confirms the final summary.
-- The application/database validates prices and saves orders; do not claim an order is accepted by the bakery.
+Customers may write to you in English, Hindi, or Hinglish (a natural mix of Hindi and English, written in Roman script). Always reply in the same style the customer is using, naturally. Don't force pure English or pure Hindi if the customer is mixing languages.
 
-For an active normal order, append this machine-readable block at the END of the reply:
-ORDER_SUMMARY: {{"items":[{{"item":"name","quantity":1,"customizations":""}}],"fulfillment":"pickup or delivery or unspecified","order_type":"retail or bulk","requested_datetime":"human-readable date/time or empty string","requested_datetime_iso":"exact ISO timestamp or empty string","estimated_total":0,"customer_name":"name or empty string","customer_contact":"phone/email or empty string","status":"in_progress or confirmed"}}
-Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
+If a customer asks for an item that is NOT on the menu, do not just say no and move on. Let them know that exact item isn't on the current menu, but that you'll check with the business owner about whether it could be made available, and that you'll follow up to confirm. Do NOT add off-menu items to the order, the ORDER_SUMMARY items list, or the estimated total -- only confirmed, on-menu items go in there. If the customer also ordered other items that ARE on the menu in the same message, proceed normally with those and separately mention that the off-menu item needs an owner check.
+
+You can also take orders. When a customer wants to order something, ask any clarifying questions you need: quantity, size, flavor, customizations (like "no nuts" or a message written on a cake), and the date/time they want it, following the fulfillment rules above. Before the order is confirmed, also ask for the customer's name and a phone number or email so the business can reach them if needed. Use the menu prices to calculate a running estimated total.
+
+Before setting "status" to "confirmed", you must have ALL of the following explicitly confirmed with the customer -- do not assume, guess, or let any of them quietly drop as the conversation moves on:
+- Every item, with quantity
+- Size/weight where relevant to the item
+- Any customizations (explicitly confirmed, even if the answer is "none")
+- Fulfillment method (pickup or delivery, per the options actually offered)
+- Requested date/time
+- Customer name
+- Customer contact info (phone or email)
+If ANY of these is missing or still unspecified, do NOT confirm the order -- keep "status" as "in_progress" and ask for whatever is missing next.
+
+Once you have enough detail on the CURRENT state of their order (even if it's not finished, even if they might add more), append a hidden summary block to the END of your reply in exactly this format, with no other text after it:
+
+ORDER_SUMMARY: {{"items": [{{"item": "name", "quantity": 1, "customizations": "notes or empty string"}}], "fulfillment": "pickup or delivery or unspecified", "order_type": "retail or bulk", "requested_datetime": "date/time text or empty string", "requested_datetime_iso": "YYYY-MM-DDTHH:MM:SS in 24-hour time, based on the current date/time given above, or empty string if not yet known", "estimated_total": 0, "customer_name": "name or empty string", "customer_contact": "phone or email or empty string", "status": "in_progress or confirmed"}}
+
+The requested_datetime_iso field must always be a precise, computed date and time (year-month-day and hour:minute:second), worked out from the current date/time given above plus whatever the customer said (e.g. "tomorrow at 2pm", "in two days", "next Saturday") -- never leave it as vague text; convert it to an exact timestamp.
+
+Only set "status" to "confirmed" once the customer has explicitly confirmed AND every field in the checklist above is filled in. Always include ALL items discussed so far in this block, not just the newest one, so it reflects the full running order. If there is no order-related content yet, do not include this block at all."""
 
         st.session_state.messages = [{"role": "system", "content": prompt}]
         st.session_state.display_messages = []
@@ -1463,12 +1424,8 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
         st.session_state.order_email_sent = False
         st.session_state.order_saved = False
         st.session_state.order_number = None
-        st.session_state.pending_custom_item = None
-        st.session_state.pending_custom_draft = None
-        st.session_state.custom_request_stage = None
         st.session_state.orders_this_session = 0
         st.session_state.awaiting_assistant = False
-        st.session_state.pending_user_text = None
 
     # Header
     st.markdown(
@@ -1496,15 +1453,13 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
 
     thinking_slot = st.empty()
 
-    # Clear, full-width chat composer with a visible send button.
     with st.form("chat_form", clear_on_submit=True):
-        chat_col, send_col = st.columns([12, 1], gap="small")
+        chat_col, send_col = st.columns([12, 1])
         with chat_col:
             user_input = st.text_input(
                 "Message",
                 placeholder=f"Ask {display_business_name} anything...",
-                label_visibility="collapsed",
-                key=f"chat_text_{slug_from_url or 'bakery'}"
+                label_visibility="collapsed"
             )
         with send_col:
             send_message = st.form_submit_button("↑", use_container_width=True)
@@ -1519,23 +1474,6 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
         if clean_user_input:
             st.session_state.messages.append({"role": "user", "content": clean_user_input})
             st.session_state.display_messages.append({"role": "user", "content": clean_user_input})
-            st.session_state.pending_user_text = clean_user_input
-
-            # Consolidated custom-request handoff. Once a customer accepts an
-            # off-menu request, Python owns the flow end-to-end. Cohere is no longer
-            # allowed to replace or lose custom-request state between turns.
-            current_custom = st.session_state.get("current_order") or {}
-            custom_stage = st.session_state.get("custom_request_stage")
-            requested_item, is_menu_item = detect_requested_product(clean_user_input, menu)
-            if (not st.session_state.get("pending_custom_item")
-                and not (st.session_state.get("current_order") or {}).get("order_type") == "custom_request"
-                and requested_item and is_menu_item is False):
-                st.session_state.pending_custom_item = requested_item
-                reply = custom_request_prompt(requested_item, business_name)
-                st.session_state.display_messages.append({"role":"assistant","content":reply})
-                st.session_state.messages.append({"role":"assistant","content":reply})
-                st.rerun()
-
             st.session_state.awaiting_assistant = True
             st.rerun()
 
@@ -1600,7 +1538,7 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
     # Order summary
     order = st.session_state.get("current_order")
     order_count = len(order.get("items", [])) if order and order.get("items") else 0
-    order_label = (f"Your custom request ({order_count} item{'s' if order_count != 1 else ''})" if order and order.get("order_type") == "custom_request" else f"Your order ({order_count} item{'s' if order_count != 1 else ''})")
+    order_label = f"Your order ({order_count} item{'s' if order_count != 1 else ''})"
     with st.expander(order_label, expanded=bool(order_count)):
         if order_count:
             for item in order["items"]:
@@ -1609,15 +1547,9 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                     st.caption(item["customizations"])
             st.divider()
             st.write(f"**Requested for:** {order.get('requested_datetime', 'not specified')}")
-            if order.get("order_type") != "custom_request":
-                st.write(f"**Estimated total:** {order.get('estimated_total', 'N/A')}")
+            st.write(f"**Estimated total:** {order.get('estimated_total', 'N/A')}")
             st.write(f"**Fulfillment:** {order.get('fulfillment', 'unspecified')}")
-            if order.get("order_type") == "custom_request":
-                if order.get("status") == "confirmed":
-                    st.success(f"Custom request #{st.session_state.get('order_number')} sent")
-                else:
-                    st.info("Custom request in progress")
-            elif order.get("status") == "confirmed":
+            if order.get("status") == "confirmed":
                 st.success(f"Order #{st.session_state.get('order_number')} received")
             else:
                 st.info("Order in progress")
@@ -1626,7 +1558,7 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
 
         if order_count > 0:
             if st.button("Start new order", key="top_start_new_order"):
-                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "pending_user_text", "pending_custom_item", "pending_custom_draft", "custom_request_stage"]:
+                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
@@ -1640,7 +1572,6 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
     # Stage 2: on the immediate rerun, the user's message is already visible.
     # Now show the cake and request the assistant response exactly once.
     if st.session_state.get("awaiting_assistant", False):
-        clean_user_input = str(st.session_state.get("pending_user_text") or "").strip()
         thinking_slot.markdown(
             '<div class="pw-cake-loader" aria-label="Assistant is responding">'
             '<div class="pw-cake-dots"><span></span><span></span><span></span></div>'
@@ -1658,7 +1589,6 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
         except Exception:
             thinking_slot.empty()
             st.session_state.awaiting_assistant = False
-            st.session_state.pending_user_text = None
             st.session_state.display_messages.append({
                 "role": "assistant",
                 "content": "Sorry, I'm having trouble responding right now. Please try again in a moment."
@@ -1668,160 +1598,6 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
         thinking_slot.empty()
         order_match = re.search(r"ORDER_SUMMARY:\s*(\{.*\})", bot_reply, re.DOTALL)
         display_reply = bot_reply
-
-        # One-call custom-request protocol: the same conversational AI that sees
-        # full chat context emits a hidden state update. Python validates/actions it.
-        custom_state = None
-        custom_match = re.search(r"CUSTOM_STATE:\s*(\{.*?\})\s*$", bot_reply or "", re.S)
-        if custom_match:
-            try:
-                custom_state = json.loads(custom_match.group(1))
-            except Exception:
-                custom_state = None
-            display_reply = re.sub(r"\n?CUSTOM_STATE:\s*\{.*?\}\s*$", "", display_reply, flags=re.S).strip()
-
-        # Backward-compatibility guard: if the model ever emits the obsolete
-        # marker on an acceptance turn, translate it into the current Python state.
-        legacy_custom = re.search(r"CUSTOM_REQUEST_OFFER:\s*(\{.*?\})", bot_reply or "", re.S)
-        if custom_state is None and legacy_custom:
-            try:
-                legacy_data = json.loads(legacy_custom.group(1))
-                legacy_item = str(legacy_data.get("item") or "").strip()
-                if legacy_item:
-                    custom_state = {
-                        "action":"start",
-                        "item":legacy_item,
-                        "quantity":None,
-                        "date_text":None,
-                        "time_text":None,
-                        "fulfillment":None,
-                        "delivery_address":None,
-                        "customer_name":None,
-                        "customer_contact":None,
-                        "notes":None,
-                    }
-            except Exception:
-                pass
-
-        # Never expose obsolete/internal machine markers to customers.
-        display_reply = re.sub(
-            r"\n?CUSTOM_REQUEST_OFFER:\s*\{.*?\}\s*",
-            "",
-            display_reply,
-            flags=re.S,
-        ).strip()
-
-        if isinstance(custom_state, dict):
-            action = str(custom_state.get("action") or "").lower()
-            pending_item = st.session_state.get("pending_custom_item")
-            current_custom = st.session_state.get("current_order") or {}
-            actual_text = clean_user_input
-
-            if action == "offer":
-                offered = custom_state.get("item")
-                if offered:
-                    st.session_state.pending_custom_item = str(offered).strip()
-                    # Preserve quantity/date/time/fulfillment/contact the customer already
-                    # supplied in the ORIGINAL request. Do not make them repeat it later.
-                    draft = make_custom_order(str(offered).strip())
-                    draft = enrich_custom_from_text(draft, actual_text, allow_quantity=True)
-                    st.session_state.pending_custom_draft = draft
-
-            elif action == "start":
-                item = custom_state.get("item") or pending_item
-                if item:
-                    draft = st.session_state.get("pending_custom_draft")
-                    if not (draft and (draft.get("items") or [{}])[0].get("item")):
-                        draft = make_custom_order(item)
-                    current_custom = dict(draft)
-                    # Merge ONLY fields actually present in this acceptance message.
-                    current_custom = enrich_custom_from_text(current_custom, actual_text, allow_quantity=True)
-                    # Notes may be semantic; core operational fields above remain deterministic.
-                    if custom_state.get("notes"):
-                        current_custom["items"][0]["customizations"] = str(custom_state["notes"]).strip()
-                    st.session_state.current_order = current_custom
-                    st.session_state.pending_custom_item = None
-                    st.session_state.pending_custom_draft = None
-                    reply, next_stage = custom_next_question(current_custom)
-                    st.session_state.custom_request_stage = next_stage
-                    display_reply = reply
-
-            elif action == "update" and current_custom.get("order_type") == "custom_request":
-                # Never trust AI-extracted quantity/date/time/fulfillment/name/contact blindly.
-                # Parse those from the customer's literal message.
-                current_custom = enrich_custom_from_text(current_custom, actual_text, allow_quantity=True)
-                if custom_state.get("notes"):
-                    current_custom["items"][0]["customizations"] = str(custom_state["notes"]).strip()
-                st.session_state.current_order = current_custom
-
-                # Validate delivery only after a literal address exists.
-                if current_custom.get("fulfillment") == "delivery" and current_custom.get("delivery_address"):
-                    eligibility = delivery_address_allowed(current_custom["delivery_address"], business)
-                    if eligibility is False:
-                        current_custom["delivery_address"] = None
-                        city = business.get("delivery_city") or "the configured delivery city"
-                        areas = ", ".join(business.get("delivery_areas") or [])
-                        display_reply = (
-                            f"Sorry, delivery is currently available only in {city}"
-                            + (f" for these areas: {areas}." if areas else ".")
-                            + " You can choose pickup instead or give another delivery address."
-                        )
-                        st.session_state.custom_request_stage = "address"
-                    else:
-                        reply, next_stage = custom_next_question(current_custom)
-                        st.session_state.custom_request_stage = next_stage
-                        display_reply = reply
-                else:
-                    reply, next_stage = custom_next_question(current_custom)
-                    st.session_state.custom_request_stage = next_stage
-                    display_reply = reply
-
-            elif action == "cancel":
-                st.session_state.pending_custom_item = None
-                st.session_state.pending_custom_draft = None
-                if current_custom.get("order_type") == "custom_request":
-                    st.session_state.current_order = None
-                    st.session_state.custom_request_stage = None
-                display_reply = "No problem. I haven't sent the custom request."
-
-            elif action == "confirm" and current_custom.get("order_type") == "custom_request":
-                # Merge any literal corrections supplied in the confirmation message first.
-                current_custom = enrich_custom_from_text(current_custom, actual_text, allow_quantity=True)
-                st.session_state.current_order = current_custom
-                missing = get_missing_custom_fields(current_custom)
-                if missing:
-                    reply, next_stage = custom_next_question(current_custom)
-                    st.session_state.custom_request_stage = next_stage
-                    display_reply = reply
-                else:
-                    try:
-                        saved = submit_protected_custom_request(business["slug"], current_custom)
-                        request_number = saved.get("request_number")
-                        current_custom["status"] = "confirmed"
-                        st.session_state.current_order = current_custom
-                        st.session_state.order_saved = True
-                        st.session_state.order_number = request_number
-                        st.session_state.custom_request_stage = None
-                        send_custom_request_notification(
-                            business_name, st.secrets.get("ORDER_NOTIFICATION_EMAIL"),
-                            request_number, current_custom
-                        )
-                        display_reply = (
-                            f"Custom request sent! #{request_number}\n\n"
-                            "The bakery will contact you to discuss the details, final price and payment."
-                        )
-                    except Exception:
-                        display_reply = "I couldn't send the custom request just yet. Please try confirming again."
-
-        # Deterministic safety net for an ACTIVE custom request: even if the model
-        # omits CUSTOM_STATE on a detail turn, never lose the customer's data or stall.
-        active_custom = st.session_state.get("current_order") or {}
-        if active_custom.get("order_type") == "custom_request" and not isinstance(custom_state, dict):
-            active_custom = enrich_custom_from_text(active_custom, clean_user_input, allow_quantity=True)
-            st.session_state.current_order = active_custom
-            reply, next_stage = custom_next_question(active_custom)
-            st.session_state.custom_request_stage = next_stage
-            display_reply = reply
 
         # Guardrail: standard menu conversations must not surface custom-order
         # advance-notice commentary even if the model slips.
@@ -1841,24 +1617,6 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
             display_reply = bot_reply[:order_match.start()].strip()
             try:
                 parsed_order = json.loads(order_match.group(1))
-                # Custom/off-menu requests are owned exclusively by the Python state machine.
-                # Ignore any accidental custom summary emitted by the model.
-                if parsed_order.get("order_type") in ("custom", "custom_request"):
-                    raise json.JSONDecodeError("custom flow owned by Python", order_match.group(1), 0)
-                parsed_order = recover_name_contact(clean_user_input, parsed_order)
-                if not parsed_order.get("estimated_total"):
-                    parsed_order["estimated_total"] = compute_order_total(parsed_order, menu)
-
-                # Never let a relative date such as "tomorrow" silently acquire an
-                # invented clock time. If this turn supplied no explicit time and the
-                # prior order still had no exact time, keep datetime incomplete.
-                previous_order = st.session_state.get("current_order") or {}
-                if (
-                    not has_explicit_time(clean_user_input)
-                    and not previous_order.get("requested_datetime_iso")
-                    and re.search(r"(?i)\b(today|tomorrow|day after tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", clean_user_input)
-                ):
-                    parsed_order["requested_datetime_iso"] = None
 
                 if parsed_order.get("status") == "confirmed" and get_missing_order_fields(parsed_order):
                     parsed_order["status"] = "in_progress"
@@ -1883,17 +1641,12 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
 
                 st.session_state.current_order = parsed_order
 
-                # ORDER_SUMMARY is only for normal menu orders.
-                state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
-                if parsed_order.get("status") != "confirmed":
-                    display_reply = state_reply
-
                 if (
                     parsed_order.get("status") == "confirmed"
                     and not st.session_state.get("order_saved", False)
                 ):
                     try:
-                        saved = submit_protected_order(business["slug"], parsed_order)
+                        saved = submit_protected_order(slug_from_url, parsed_order)
                     except Exception:
                         parsed_order["status"] = "in_progress"
                         st.session_state.current_order = parsed_order
@@ -1902,34 +1655,19 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                             "Please check the item, date/time, and delivery details and try again."
                         )
                     else:
-                        notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
-                        parsed_order["status"] = "confirmed"
-                        st.session_state.current_order = parsed_order
-                        st.session_state.order_saved = True
-
                         db_order_number = saved.get("order_number")
                         db_total = saved.get("total")
                         parsed_order["estimated_total"] = db_total
+                        parsed_order["status"] = "confirmed"
+                        st.session_state.current_order = parsed_order
                         st.session_state.order_number = db_order_number
+                        st.session_state.order_saved = True
                         st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
-                        send_new_order_notification(
-                            business_name, notification_email, db_order_number, parsed_order, db_total
-                        )
                         display_reply = (
                             f"Order received! #{db_order_number}\n\n"
                             f"Final total: ₹{db_total}. "
                             "The bakery will review and accept or decline it."
                         )
-                elif parsed_order.get("status") == "confirmed" and st.session_state.get("order_saved"):
-                    # The model re-sends the saved order on later turns (for example after
-                    # "thanks"). Only treat it as a new order when the contents differ.
-                    same_order = (
-                        previous_order.get("items") == parsed_order.get("items")
-                        and previous_order.get("requested_datetime_iso") == parsed_order.get("requested_datetime_iso")
-                    )
-                    if not same_order:
-                        st.session_state.current_order = previous_order or None
-                        display_reply = "That order has already been received. Open Your order and tap Start new order to place another."
                 elif notice_warning:
                     display_reply += f"\n\n{notice_warning}"
 
@@ -1937,61 +1675,48 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                 pass
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-        # Persist every visible off-menu/custom offer, even if the model omitted
-        # the hidden marker. Without this, a later "yes" can never enter the real
-        # Python custom-request flow and the model may only *say* it sent a request.
-        if (
-            not st.session_state.get("pending_custom_item")
-            and re.search(r"(?i)custom\s+(?:request|order)", str(display_reply or ""))
-        ):
-            offered = None
-            m = re.search(
-                r"(?i)(?:don't have|do not have)\s+(?:an?\s+)?(.+?)\s+(?:on|in)\s+(?:our\s+|the\s+)?(?:current\s+)?menu",
-                str(display_reply),
-            )
-            if m:
-                offered = m.group(1).strip(" .?!")
-            if not offered:
-                latest = str(clean_user_input or "").strip()
-                latest = re.sub(
-                    r"(?i)^(?:hey[,!]?\s*)?(?:i\s+(?:want|need|would like)|can i (?:get|have)|do you have|have you got)\s+",
-                    "",
-                    latest,
-                ).strip(" .?!")
-                if latest and len(latest) <= 120:
-                    offered = latest
-            if offered:
-                st.session_state.pending_custom_item = offered
+        # Deterministic checkout guard: the model may try to confirm before
+        # collecting customer details. Replace that with the next required question.
+        current_for_guard = st.session_state.get("current_order") or {}
+        missing_for_guard = get_missing_order_fields(current_for_guard)
+        if "Confirm this order?" in str(display_reply) and missing_for_guard:
+            if "fulfillment method" in missing_for_guard:
+                display_reply = "Would you like pickup or delivery?"
+            elif "delivery address" in missing_for_guard:
+                display_reply = "What's the delivery address?"
+            elif "requested date/time" in missing_for_guard:
+                display_reply = "What date and time would you like?"
+            elif "customer name" in missing_for_guard and "customer contact" in missing_for_guard:
+                display_reply = "What's your name and contact number or email?"
+            elif "customer name" in missing_for_guard:
+                display_reply = "What's your name?"
+            elif "customer contact" in missing_for_guard:
+                display_reply = "What's your contact number or email?"
 
-        # Never render an empty assistant bubble.
+        # Cohere may sometimes return only hidden ORDER_SUMMARY JSON after
+        # extracting a reply such as "4 pm". Never show an empty assistant bubble.
         if not str(display_reply).strip():
-            latest_text = str(clean_user_input or "").lower()
-            if re.search(r"\b(can|could|would)\s+(?:u|you|the bakery)\s+(?:make|do)\b", latest_text):
-                display_reply = (
-                    "It isn't on the current menu, but I can help you send it as a custom "
-                    "request to the bakery. Would you like to do that?"
-                )
+            current = st.session_state.get("current_order") or {}
+            missing_now = get_missing_order_fields(current)
+            if "fulfillment method" in missing_now:
+                display_reply = "Would you like pickup or delivery?"
+            elif "delivery address" in missing_now:
+                display_reply = "What's the delivery address?"
+            elif "requested date/time" in missing_now:
+                display_reply = "What date and time would you like?"
+            elif "customer name" in missing_now and "customer contact" in missing_now:
+                display_reply = "What's your name and contact number or email?"
+            elif "customer name" in missing_now:
+                display_reply = "What's your name?"
+            elif "customer contact" in missing_now:
+                display_reply = "What's your contact number or email?"
             else:
-                current = st.session_state.get("current_order") or {}
-                if current:
-                    display_reply, _ = deterministic_checkout_reply(current)
-                else:
-                    display_reply = (
-                        "I didn't quite catch that. You can ask about the menu, ingredients, "
-                        "recommendations, opening hours, pickup or delivery, or place an order."
-                    )
-
-        if not str(display_reply or "").strip():
-            display_reply = (
-                "I didn't quite catch that. You can ask me about the menu, ingredients, "
-                "recommendations, pickup or delivery, opening hours, or place an order."
-            )
+                display_reply = "Please confirm the order details to continue."
 
         st.session_state.display_messages.append(
             {"role": "assistant", "content": display_reply}
         )
         st.session_state.awaiting_assistant = False
-        st.session_state.pending_user_text = None
         st.rerun()
 
     st.markdown('<div class="loaf-footer">Powered by Loaf</div>', unsafe_allow_html=True)
