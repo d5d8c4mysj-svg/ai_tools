@@ -618,6 +618,34 @@ body:has(.owner-portal-marker) hr{
   margin:28px 0 !important;
 }
 
+
+/* ===== V37 OWNER FORM CONTROL CLEANUP ===== */
+body:has(.owner-portal-marker) [data-testid="stFileUploader"]{
+  background:transparent !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button{
+  background:#FFFFFF !important;
+  color:#222222 !important;
+  border:1px solid #DADAD7 !important;
+  border-radius:8px !important;
+  box-shadow:none !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button::before,
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button::after{
+  content:none !important;
+  display:none !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button p{
+  color:#222222 !important;
+  margin:0 !important;
+}
+body:has(.owner-portal-marker) input:focus,
+body:has(.owner-portal-marker) textarea:focus{
+  border-color:#BDBDB8 !important;
+  box-shadow:0 0 0 1px #BDBDB8 !important;
+  outline:none !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
