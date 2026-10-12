@@ -7,6 +7,7 @@ import random
 import smtplib
 import html
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from email.mime.text import MIMEText
 
 API_KEY = st.secrets["COHERE_API_KEY"]
@@ -592,6 +593,28 @@ body:has(.owner-portal-marker) [data-testid="stMetric"]{
 body:has(.owner-portal-marker) h2{font-size:21px !important;margin-top:30px !important;}
 body:has(.owner-portal-marker) [data-testid="stVerticalBlockBorderWrapper"]{
   padding:4px !important;margin-bottom:12px !important;
+}
+
+
+/* ===== V24 OWNER CLEANUP ===== */
+body:has(.owner-portal-marker) .block-container{
+  padding-top:28px !important;
+}
+.owner-dashboard-head{
+  margin:0 0 22px !important;
+}
+.owner-dashboard-head h1{
+  margin:5px 0 5px !important;
+}
+body:has(.owner-portal-marker) [data-testid="stMetric"]{
+  min-height:108px;
+}
+body:has(.owner-portal-marker) h3{
+  margin-top:26px !important;
+  font-size:17px !important;
+}
+body:has(.owner-portal-marker) hr{
+  margin:28px 0 !important;
 }
 
 </style>
@@ -1349,18 +1372,6 @@ def customer_view():
 def owner_login_gate(title, caption):
     """Shared Supabase Auth login for bakery owners."""
     if current_owner_id():
-        st.markdown(
-            '<div class="owner-login-shell">'
-            '<div class="owner-login-brand">LOAF</div>'
-            f'<div class="owner-login-title">{html.escape(title)}</div>'
-            f'<div class="owner-login-copy">{html.escape(caption)}</div>'
-            '</div>',
-            unsafe_allow_html=True
-        )
-        st.caption(f"Signed in as {st.session_state.get('owner_email', 'bakery owner')}")
-        if st.button("Sign out", key=f"signout_{title}"):
-            auth_sign_out()
-            st.rerun()
         return True
 
     st.markdown(
@@ -1553,8 +1564,6 @@ def owner_view():
         existing_business = choices[selected]
 
     clean_slug = existing_business["slug"]
-    st.subheader(existing_business.get("business_name") or clean_slug)
-    st.caption(f"Bakery link: {clean_slug}")
 
     # ----- Loaf owner dashboard -----
     try:
@@ -1574,18 +1583,24 @@ def owner_view():
     history_orders = [o for o in owner_orders if o.get("status") != "pending"]
     today_total = sum(float(o.get("estimated_total") or 0) for o in accepted_orders)
 
-    st.markdown(
-        f"""
-        <div class="owner-dashboard-head">
-          <div>
-            <div class="owner-kicker">LOAF</div>
-            <h1>{html.escape(existing_business.get("business_name") or clean_slug)}</h1>
-            <p>Manage incoming orders and your bakery details.</p>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    head_left, head_right = st.columns([5, 1])
+    with head_left:
+        st.markdown(
+            f"""
+            <div class="owner-dashboard-head">
+              <div class="owner-kicker">LOAF</div>
+              <h1>{html.escape(existing_business.get("business_name") or clean_slug)}</h1>
+              <p>Manage incoming orders and your bakery details.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    with head_right:
+        st.write("")
+        st.write("")
+        if st.button("Sign out", key="owner_dashboard_signout", use_container_width=True):
+            auth_sign_out()
+            st.rerun()
 
     m1, m2, m3 = st.columns(3)
     with m1:
@@ -1593,7 +1608,7 @@ def owner_view():
     with m2:
         st.metric("Accepted", len(accepted_orders))
     with m3:
-        st.metric("Accepted value", f"₹{today_total:,.0f}")
+        st.metric("Accepted order value", f"₹{today_total:,.0f}")
 
     st.markdown("## New orders")
     if not pending_orders:
@@ -1657,8 +1672,10 @@ def owner_view():
             )
 
     st.divider()
-    st.markdown("### Bakery settings")
+    st.markdown("## Bakery settings")
+    st.caption("Update what customers see and what Loaf uses while taking orders.")
 
+    st.markdown("### Menu")
     existing_menu = existing_business.get("menu") or []
     menu_df = pd.DataFrame(existing_menu) if existing_menu else pd.DataFrame(
         {"Item": [""], "Price": [0], "Ingredients": [""]}
@@ -1669,6 +1686,7 @@ def owner_view():
         menu_df = menu_df[editor_cols]
     menu = st.data_editor(menu_df, num_rows="dynamic")
 
+    st.markdown("### Business details")
     business_name = st.text_input(
         "Business name",
         value=str(existing_business.get("business_name") or "")
@@ -1682,6 +1700,7 @@ def owner_view():
         value=str(existing_business.get("address") or "")
     )
 
+    st.markdown("### Fulfilment & availability")
     fulfillment_values = ["Pickup only", "Delivery only", "Both pickup and delivery"]
     current_fulfillment = existing_business.get("fulfillment_options")
     fulfillment_index = (
