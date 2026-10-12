@@ -861,6 +861,7 @@ def clear_checkout_transients():
     st.session_state.pending_custom_item = None
     st.session_state.custom_request_stage = None
     st.session_state.awaiting_assistant = False
+    st.session_state.confirmation_order_snapshot = None
 
 def submit_completed_checkout(order, business_name, slug_from_url):
     """The only function allowed to turn a completed checkout into visible success."""
@@ -1415,6 +1416,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.orders_this_session = 0
         st.session_state.awaiting_assistant = False
         st.session_state.awaiting_final_confirmation = False
+        st.session_state.confirmation_order_snapshot = None
 
     # Header
     st.markdown(
@@ -1469,7 +1471,11 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
             # FINAL CONFIRMATION RUNS BEFORE every other route.
             # A complete stored checkout is authoritative; Cohere cannot reconfirm or submit it.
-            existing_order = st.session_state.get("current_order") or {}
+            existing_order = (
+                st.session_state.get("confirmation_order_snapshot")
+                or st.session_state.get("current_order")
+                or {}
+            )
             confirms_now = re.search(
                 r"(?i)\b(yes|yeah|yep|yup|confirm|confirmed|sure|ok|okay|go ahead|place it|send it|do it)\b",
                 clean_user_input,
@@ -1731,7 +1737,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
         if order_count > 0:
             if st.button("Start new order", key="top_start_new_order"):
-                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "awaiting_final_confirmation", "pending_custom_item", "custom_request_stage", "last_user_input"]:
+                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "awaiting_final_confirmation", "pending_custom_item", "custom_request_stage", "last_user_input", "confirmation_order_snapshot"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
@@ -1874,6 +1880,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     ready_for_confirmation and parsed_order.get("status") != "confirmed"
                 )
                 if st.session_state.awaiting_final_confirmation:
+                    st.session_state.confirmation_order_snapshot = dict(parsed_order)
                     st.session_state.pending_custom_item = None
                 if notice_warning:
                     display_reply += f"\n\n{notice_warning}"
