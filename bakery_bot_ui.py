@@ -703,6 +703,23 @@ def mask_contact(value):
         return "••••••" + digits[-4:]
     return "••••"
 
+def delivery_address_allowed(address, business):
+    """Conservative MVP delivery validation using owner-configured city + areas."""
+    address_norm = re.sub(r"\s+", " ", str(address or "").lower()).strip()
+    city = str(business.get("delivery_city") or "").lower().strip()
+    areas = [str(x).lower().strip() for x in (business.get("delivery_areas") or []) if str(x).strip()]
+    if not city or not areas:
+        return None  # owner has not configured enough information; do not guess
+    city_ok = city in address_norm
+    area_ok = any(area in address_norm for area in areas)
+    if area_ok and (city_ok or city not in address_norm):
+        # Locality match is enough when user omits the city; configured area belongs to configured city.
+        return True
+    if city and any(token in address_norm for token in [city]):
+        return False
+    # Address may explicitly name another city or may simply be ambiguous.
+    return False
+
 def menu_item_names(menu):
     return [str(x.get("Item") or "").strip() for x in (menu or []) if x.get("Item")]
 
@@ -900,7 +917,7 @@ def get_business(slug):
     try:
         result = (
             supabase.table("public_bakeries")
-            .select("id,slug,business_name,address,fulfillment_options,delivery_info,faq_info,business_hours,advance_notice,sold_out_items,social_link,menu,menu_photo_urls")
+            .select("id,slug,business_name,address,fulfillment_options,delivery_info,delivery_city,delivery_areas,faq_info,business_hours,advance_notice,sold_out_items,social_link,menu,menu_photo_urls")
             .eq("slug", slug)
             .limit(1)
             .execute()
@@ -1345,18 +1362,32 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     # Do not demand street/house-number formatting: landmarks/campuses may be valid.
                     address = clean_user_input.strip()
                     if len(address) >= 5:
-                        current_custom["delivery_address"] = address
-                        # Recover a contact if the customer volunteered it with the address.
-                        current_custom = recover_name_contact(clean_user_input, current_custom)
-                        if current_custom.get("customer_name") and current_custom.get("customer_contact"):
-                            st.session_state.custom_request_stage = "confirm"
+                        eligibility = delivery_address_allowed(address, business)
+                        if eligibility is True:
+                            current_custom["delivery_address"] = address
+                            current_custom = recover_name_contact(clean_user_input, current_custom)
+                            if current_custom.get("customer_name") and current_custom.get("customer_contact"):
+                                st.session_state.custom_request_stage = "confirm"
+                            else:
+                                st.session_state.custom_request_stage = "identity"
+                            reply = (
+                                "Thanks. What's your name and contact number or email?"
+                                if st.session_state.custom_request_stage == "identity"
+                                else None
+                            )
+                        elif eligibility is False:
+                            city = business.get("delivery_city") or "the bakery's delivery city"
+                            areas = ", ".join(business.get("delivery_areas") or [])
+                            reply = (
+                                f"Sorry, delivery is currently available only in {city}"
+                                + (f" for these areas: {areas}." if areas else ".")
+                                + " Would you like pickup instead?"
+                            )
                         else:
-                            st.session_state.custom_request_stage = "identity"
-                        reply = (
-                            "Thanks. What's your name and contact number or email?"
-                            if st.session_state.custom_request_stage == "identity"
-                            else None
-                        )
+                            reply = (
+                                "The bakery hasn't configured its delivery areas yet, "
+                                "so I can't safely confirm delivery. Would you like pickup instead?"
+                            )
                     else:
                         reply = "Please share the delivery location or address."
 
@@ -2198,6 +2229,18 @@ def owner_view():
         "FAQ / common questions",
         value=str(existing_business.get("faq_info") or "")
     )
+    delivery_city = st.text_input(
+        "Delivery city",
+        value=str(existing_business.get("delivery_city") or ""),
+        placeholder="e.g. Dehradun"
+    )
+    delivery_areas = st.text_input(
+        "Delivery areas (comma separated)",
+        value=", ".join(existing_business.get("delivery_areas") or []),
+        placeholder="e.g. Prem Nagar, Kandoli, Bidholi, UPES"
+    )
+    st.caption("Loaf will only accept delivery addresses in this city and these listed areas.")
+
     business_hours = st.text_input(
         "Business hours",
         value=str(existing_business.get("business_hours") or "")
@@ -2246,6 +2289,8 @@ def owner_view():
             "address": address,
             "fulfillment_options": fulfillment_options,
             "delivery_info": delivery_info,
+                    "delivery_city": delivery_city.strip() or None,
+                    "delivery_areas": [x.strip() for x in delivery_areas.split(",") if x.strip()],
             "faq_info": faq_info,
             "business_hours": business_hours,
             "advance_notice": advance_notice,
