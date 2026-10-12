@@ -674,6 +674,34 @@ body:has(.owner-portal-marker) [data-testid="stFileUploader"] button svg{
   display:none !important;
 }
 
+
+/* ===== V39 DEFINITIVE FILE UPLOADER FIX ===== */
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] *::before,
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] *::after{
+  content:none !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button{
+  font-size:0 !important;
+  width:auto !important;
+  min-width:88px !important;
+  padding:9px 14px !important;
+  background:#FFFFFF !important;
+  border:1px solid #D8D8D4 !important;
+  border-radius:8px !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button::after{
+  content:"Upload" !important;
+  display:inline !important;
+  font-size:14px !important;
+  font-family:Arial,sans-serif !important;
+  font-style:normal !important;
+  font-weight:400 !important;
+  color:#222222 !important;
+}
+body:has(.owner-portal-marker) [data-testid="stFileUploader"] button *{
+  display:none !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
