@@ -1377,7 +1377,8 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         st.session_state.custom_request_stage = None
                         st.session_state.pending_custom_item = None
                         st.session_state.awaiting_assistant = False
-                    except Exception:
+                    except Exception as e:
+                        print("LOAF_SUBMIT_ERROR:", repr(e))
                         reply = (
                             "I couldn't securely submit that yet. Nothing has been sent. "
                             "Please try confirming again."
@@ -2431,4 +2432,3 @@ elif mode == "quickupdate":
     quick_update_view()
 else:
     customer_view()
-v
