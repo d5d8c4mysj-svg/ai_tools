@@ -1081,10 +1081,25 @@ def run_chatbot(business):
             fulfillment_instructions = f"""This business offers BOTH pickup and delivery. Ask the customer which they'd prefer. If pickup, no address is needed (pickup is at {address}). If delivery, ask for their delivery address."""
 
         prompt = f"""You are a friendly ordering assistant for {business_name}.
-CRITICAL ORDERING RULES:
-- PRODUCT EXTRACTION: Understand the product/item the customer is requesting from natural language, regardless of what kind of food/product it is. Do not rely on a fixed catalogue of bakery item types.
+CORE ROLE:
+You are the bakery's conversational assistant. Respond naturally to EVERY customer message, including greetings, fragments, menu questions, ingredient questions, recommendations, hours, delivery questions, off-menu requests, and order requests.
+
+INTENT ROUTING:
+1. CASUAL / GREETING: respond naturally and briefly.
+2. MENU / PRODUCT QUESTION: answer only from the supplied real menu and business data.
+3. RECOMMENDATION: recommend only real menu items and explain briefly why.
+4. BUSINESS INFO: answer only from supplied hours, delivery, pickup, FAQ, address and other bakery data.
+5. OFF-MENU / UNKNOWN PRODUCT: if the requested product is not clearly on the supplied menu, say it is not on the current menu and offer to send it as a custom request. Never invent availability or price.
+6. ORDER INTENT: extract structured order state, then let the application/database handle validation and submission.
+7. UNCLEAR: ask one short clarification question.
+
+PRODUCT EXTRACTION:
+Understand requested products from natural language regardless of what kind of food/product they are. Do not rely on a fixed catalogue of bakery item types. A fragment such as "a lemon tart" is meaningful and must receive a response.
 - If the customer appears to be requesting something and it is not an exact/clear match to the supplied menu, identify the requested item by name and respond that it is not on the current menu, then offer a custom request. Never silently stop.
 - Never invent that an unknown item exists on the menu.
+- UNIVERSAL RESPONSE CONTRACT: Never return an empty visible reply. Every customer turn must produce a useful visible response, even if no order is in progress.
+- Do not force ordinary conversation into checkout. Only produce/update ORDER_SUMMARY when the customer is actually ordering or modifying an order.
+- If the customer asks about ingredients, allergens, prices, hours, pickup/delivery, recommendations, or menu availability, answer the question first instead of starting checkout unless they clearly ask to order.
 - Standard products already listed on the menu are RETAIL orders, even if named Cake, Cheesecake or Cupcake. Never invent a custom-cake rule for them.
 - OFF-MENU CUSTOM REQUEST RULE: When a requested item is not on the menu, say so briefly. If the customer asks "can you make it?", "can the bakery make it?", or similar, NEVER go silent. Reply: "It isn't on the current menu, but I can help you send it as a custom request to the bakery. Would you like to do that?"
 - Never claim an off-menu item is available, never invent its price, and never promise the bakery will make it.
@@ -1515,14 +1530,14 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     display_reply, _ = deterministic_checkout_reply(current)
                 else:
                     display_reply = (
-                        "I didn't quite catch what you'd like. "
-                        "Tell me the item you're looking for, and I'll check the bakery's menu."
+                        "I didn't quite catch that. You can ask about the menu, ingredients, "
+                        "recommendations, opening hours, pickup or delivery, or place an order."
                     )
 
         if not str(display_reply or "").strip():
             display_reply = (
-                "I didn't quite catch that. Tell me what you'd like, "
-                "and I'll check whether it's on the bakery's menu."
+                "I didn't quite catch that. You can ask me about the menu, ingredients, "
+                "recommendations, pickup or delivery, opening hours, or place an order."
             )
 
         st.session_state.display_messages.append(
