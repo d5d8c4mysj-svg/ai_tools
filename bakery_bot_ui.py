@@ -3,13 +3,10 @@ import cohere
 import pandas as pd
 import json
 import re
-import random
-import smtplib
 import requests
 import html
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from email.mime.text import MIMEText
 
 API_KEY = st.secrets["COHERE_API_KEY"]
 co = cohere.ClientV2(API_KEY)
@@ -619,61 +616,13 @@ body:has(.owner-portal-marker) hr{
 }
 
 
-/* ===== V37 OWNER FORM CONTROL CLEANUP ===== */
-body:has(.owner-portal-marker) [data-testid="stFileUploader"]{
-  background:transparent !important;
-}
-body:has(.owner-portal-marker) [data-testid="stFileUploader"] button{
-  background:#FFFFFF !important;
-  color:#222222 !important;
-  border:1px solid #DADAD7 !important;
-  border-radius:8px !important;
-  box-shadow:none !important;
-}
-body:has(.owner-portal-marker) [data-testid="stFileUploader"] button::before,
-body:has(.owner-portal-marker) [data-testid="stFileUploader"] button::after{
-  content:none !important;
-  display:none !important;
-}
-body:has(.owner-portal-marker) [data-testid="stFileUploader"] button p{
-  color:#222222 !important;
-  margin:0 !important;
-}
+/* Owner form focus */
 body:has(.owner-portal-marker) input:focus,
 body:has(.owner-portal-marker) textarea:focus{
   border-color:#BDBDB8 !important;
   box-shadow:0 0 0 1px #BDBDB8 !important;
   outline:none !important;
 }
-
-
-/* V38: stop generic owner button rules from corrupting Streamlit uploader internals */
-body:has(.owner-portal-marker) [data-testid="stFileUploader"] button,
-body:has(.owner-portal-marker) [data-testid="stFileUploader"] button:hover,
-body:has(.owner-portal-marker) [data-testid="stFileUploader"] button:focus{
-  background:#FFFFFF !important;
-  color:#222222 !important;
-  border:1px solid #D8D8D4 !important;
-  border-radius:8px !important;
-  padding:0.45rem 0.8rem !important;
-  width:auto !important;
-  min-width:auto !important;
-  height:auto !important;
-  min-height:38px !important;
-  box-shadow:none !important;
-  text-transform:none !important;
-  letter-spacing:normal !important;
-}
-body:has(.owner-portal-marker) [data-testid="stFileUploader"] button *{
-  color:#222222 !important;
-  font-family:Arial,sans-serif !important;
-  font-style:normal !important;
-  text-decoration:none !important;
-}
-body:has(.owner-portal-marker) [data-testid="stFileUploader"] button svg{
-  display:none !important;
-}
-
 
 /* ===== V39 DEFINITIVE FILE UPLOADER FIX ===== */
 body:has(.owner-portal-marker) [data-testid="stFileUploader"] *::before,
@@ -1233,40 +1182,6 @@ def submit_protected_order(slug, order):
     return result.data
 
 
-def send_order_email(order, business_name, business_email, order_number):
-    body_lines = [f"New confirmed order #{order_number} for {business_name}:", ""]
-    for item in order.get("items", []):
-        line = f"- {item.get('quantity', 1)} x {item.get('item', 'Unknown')}"
-        if item.get("customizations"):
-            line += f" ({item['customizations']})"
-        body_lines.append(line)
-    body_lines.append("")
-    body_lines.append(f"Order type: {order.get('order_type', 'retail')}")
-    body_lines.append(f"Requested date/time: {order.get('requested_datetime', 'not specified')}")
-    body_lines.append(f"Estimated total: {order.get('estimated_total', 'N/A')}")
-    body_lines.append(f"Fulfillment: {order.get('fulfillment', 'unspecified')}")
-    body_lines.append("")
-    body_lines.append(f"Customer name: {order.get('customer_name', 'not provided')}")
-    body_lines.append(f"Customer contact: {order.get('customer_contact', 'not provided')}")
-
-    customer_contact = order.get("customer_contact", "")
-    if "@" not in customer_contact:
-        digits_only = re.sub(r"\D", "", customer_contact)
-        if len(digits_only) >= 10:
-            body_lines.append(f"Message customer on WhatsApp: https://wa.me/{digits_only}")
-
-    msg = MIMEText("\n".join(body_lines))
-    msg["Subject"] = f"New Order #{order_number} - {business_name}"
-    msg["From"] = st.secrets["EMAIL_ADDRESS"]
-    msg["To"] = business_email
-    if "@" in customer_contact:
-        msg["Reply-To"] = customer_contact
-
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(st.secrets["EMAIL_ADDRESS"], st.secrets["EMAIL_PASSWORD"])
-        server.send_message(msg)
-
-
 def short_business_name(name):
     display_name = str(name)
     for suffix in [" Bakery Test", " Bakery", " Test"]:
@@ -1684,9 +1599,15 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                     st.caption(item["customizations"])
             st.divider()
             st.write(f"**Requested for:** {order.get('requested_datetime', 'not specified')}")
-            st.write(f"**Estimated total:** {order.get('estimated_total', 'N/A')}")
+            if order.get("order_type") != "custom_request":
+                st.write(f"**Estimated total:** {order.get('estimated_total', 'N/A')}")
             st.write(f"**Fulfillment:** {order.get('fulfillment', 'unspecified')}")
-            if order.get("status") == "confirmed":
+            if order.get("order_type") == "custom_request":
+                if order.get("status") == "confirmed":
+                    st.success(f"Custom request #{st.session_state.get('order_number')} sent")
+                else:
+                    st.info("Custom request in progress")
+            elif order.get("status") == "confirmed":
                 st.success(f"Order #{st.session_state.get('order_number')} received")
             else:
                 st.info("Order in progress")
@@ -1816,41 +1737,17 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
 
                 st.session_state.current_order = parsed_order
 
-                # If every custom-request slot is complete, Python owns the final
-                # confirmation wording and state. Never let it become "Confirm this order?".
-                if parsed_order.get("order_type") == "custom_request" and not custom_missing_slots(parsed_order):
-                    display_reply, next_stage = custom_next_question(parsed_order)
-                    st.session_state.custom_request_stage = "confirm"
-                    parsed_order["status"] = "in_progress"
-                    st.session_state.current_order = parsed_order
-                    state_reply, ready_for_confirmation = display_reply, False
-                elif (
-                    parsed_order.get("order_type") == "custom_request"
-                    and st.session_state.get("custom_request_stage") == "datetime"
-                    and parsed_order.get("requested_datetime_iso")
-                ):
-                    reply, next_stage = custom_next_question(parsed_order)
-                    st.session_state.custom_request_stage = next_stage
-                    display_reply = reply
-                    state_reply, ready_for_confirmation = display_reply, False
-                else:
-                    state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
-                if (
-                    parsed_order.get("order_type") != "custom_request"
-                    or st.session_state.get("custom_request_stage") != "confirm"
-                ):
-                    if parsed_order.get("status") != "confirmed":
-                        display_reply = state_reply
+                # ORDER_SUMMARY is only for normal menu orders.
+                state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
+                if parsed_order.get("status") != "confirmed":
+                    display_reply = state_reply
 
                 if (
                     parsed_order.get("status") == "confirmed"
                     and not st.session_state.get("order_saved", False)
                 ):
                     try:
-                        if parsed_order.get("order_type") == "custom_request":
-                            saved = submit_protected_custom_request(business["slug"], parsed_order)
-                        else:
-                            saved = submit_protected_order(business["slug"], parsed_order)
+                        saved = submit_protected_order(business["slug"], parsed_order)
                     except Exception:
                         parsed_order["status"] = "in_progress"
                         st.session_state.current_order = parsed_order
@@ -1864,31 +1761,19 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
                         st.session_state.current_order = parsed_order
                         st.session_state.order_saved = True
 
-                        if parsed_order.get("order_type") == "custom_request":
-                            request_number = saved.get("request_number")
-                            st.session_state.order_number = request_number
-                            send_custom_request_notification(
-                                business_name, notification_email, request_number, parsed_order
-                            )
-                            display_reply = (
-                                f"Custom request sent! #{request_number}\n\n"
-                                "The bakery will review availability and pricing. "
-                                "This is not a confirmed order yet."
-                            )
-                        else:
-                            db_order_number = saved.get("order_number")
-                            db_total = saved.get("total")
-                            parsed_order["estimated_total"] = db_total
-                            st.session_state.order_number = db_order_number
-                            st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
-                            send_new_order_notification(
-                                business_name, notification_email, db_order_number, parsed_order, db_total
-                            )
-                            display_reply = (
-                                f"Order received! #{db_order_number}\n\n"
-                                f"Final total: ₹{db_total}. "
-                                "The bakery will review and accept or decline it."
-                            )
+                        db_order_number = saved.get("order_number")
+                        db_total = saved.get("total")
+                        parsed_order["estimated_total"] = db_total
+                        st.session_state.order_number = db_order_number
+                        st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
+                        send_new_order_notification(
+                            business_name, notification_email, db_order_number, parsed_order, db_total
+                        )
+                        display_reply = (
+                            f"Order received! #{db_order_number}\n\n"
+                            f"Final total: ₹{db_total}. "
+                            "The bakery will review and accept or decline it."
+                        )
                 elif parsed_order.get("status") == "confirmed" and st.session_state.get("order_saved"):
                     # The model re-sends the saved order on later turns (for example after
                     # "thanks"). Only treat it as a new order when the contents differ.
@@ -1904,24 +1789,6 @@ Do not append ORDER_SUMMARY when there is no normal menu order in progress."""
 
             except json.JSONDecodeError:
                 pass
-
-        current_custom = st.session_state.get("current_order") or {}
-        if (
-            current_custom.get("order_type") == "custom_request"
-            and st.session_state.get("custom_request_stage") == "confirm"
-            and current_custom.get("customer_name")
-            and current_custom.get("customer_contact")
-        ):
-            first = (current_custom.get("items") or [{}])[0]
-            display_reply = (
-                "Send this custom request?\n"
-                f"- {first.get('quantity',1)} × {first.get('item','Custom item')}\n"
-                f"- {str(current_custom.get('fulfillment') or '').title()}\n"
-                f"- {current_custom.get('requested_datetime')}\n"
-                + (f"- Delivery: {current_custom.get('delivery_address')}\n" if current_custom.get("delivery_address") else "")
-                + f"- Contact: {mask_contact(current_custom.get('customer_contact'))}\n\n"
-                "The bakery will contact you to finalize the details, price and payment."
-            )
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
         # Safety recovery if the AI offered a custom request but omitted the marker.
