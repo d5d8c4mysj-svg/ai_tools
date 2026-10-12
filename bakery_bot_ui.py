@@ -390,6 +390,25 @@ body:has(.owner-login-marker) [data-testid="stFormSubmitButton"] button:hover{
   .owner-login-shell{margin-top:46px !important;}
 }
 
+
+/* Native Streamlit chat composer, styled to match Loaf */
+[data-testid="stChatInput"]{
+  border:1px solid var(--line) !important;
+  border-radius:0 !important;
+  background:var(--cream) !important;
+  box-shadow:none !important;
+}
+[data-testid="stChatInput"] textarea{
+  font-family:"Archivo",sans-serif !important;
+  color:var(--ink) !important;
+  background:transparent !important;
+}
+[data-testid="stChatInput"] button{
+  background:#7A2E35 !important;
+  color:#fff !important;
+  border-radius:0 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -874,19 +893,12 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
     thinking_slot = st.empty()
 
-    with st.form("chat_form", clear_on_submit=True):
-        chat_col, send_col = st.columns([12, 1])
-        with chat_col:
-            user_input = st.text_input(
-                "Message",
-                placeholder=f"Ask {display_business_name} anything...",
-                label_visibility="collapsed"
-            )
-        with send_col:
-            send_message = st.form_submit_button("↑", use_container_width=True)
-
-    if not send_message:
-        user_input = None
+    # Native Streamlit chat composer: Enter sends and focus/keyboard behavior
+    # is handled by Streamlit rather than custom JavaScript.
+    user_input = st.chat_input(
+        f"Ask {display_business_name} anything...",
+        key=f"chat_input_{slug_from_url or 'bakery'}"
+    )
 
     # Stage 1: save the customer's message and rerun immediately.
     # This makes the sent message visible before the Cohere request starts.
@@ -1464,4 +1476,3 @@ elif mode == "quickupdate":
     quick_update_view()
 else:
     customer_view()
-
