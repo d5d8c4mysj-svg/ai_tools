@@ -461,6 +461,45 @@ div[data-testid="stForm"]:has(input[placeholder*="Ask "]) [data-testid="stFormSu
   }
 }
 
+
+/* Final customer composer: clean, light, minimal */
+div[data-testid="stForm"]:has(input[placeholder*="Ask "]) {
+  border:0 !important;
+  padding:0 !important;
+  margin-top:14px !important;
+  background:transparent !important;
+}
+div[data-testid="stForm"]:has(input[placeholder*="Ask "]) input {
+  height:50px !important;
+  padding:0 16px !important;
+  background:#FFFDF8 !important;
+  border:1px solid #D8CEC5 !important;
+  border-radius:10px !important;
+  font-size:15px !important;
+  color:#3A2928 !important;
+  box-shadow:none !important;
+}
+div[data-testid="stForm"]:has(input[placeholder*="Ask "]) input:focus {
+  border-color:#B8AAA0 !important;
+  box-shadow:none !important;
+}
+div[data-testid="stForm"]:has(input[placeholder*="Ask "]) input::placeholder {
+  color:#8B8580 !important;
+  opacity:1 !important;
+}
+div[data-testid="stForm"]:has(input[placeholder*="Ask "]) [data-testid="stFormSubmitButton"] button {
+  height:50px !important;
+  min-height:50px !important;
+  width:100% !important;
+  border:0 !important;
+  border-radius:10px !important;
+  background:#7A2E35 !important;
+  color:#FFF !important;
+  font-size:17px !important;
+  font-weight:600 !important;
+  box-shadow:none !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
