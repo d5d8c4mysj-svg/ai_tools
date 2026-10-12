@@ -1425,7 +1425,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             if (
                 existing_order
                 and not existing_missing
-                and st.session_state.get("awaiting_final_confirmation", False)
                 and not st.session_state.get("order_saved", False)
                 and confirms_now
             ):
@@ -1735,7 +1734,6 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         if (
             existing_order
             and not existing_missing
-            and st.session_state.get("awaiting_final_confirmation", False)
             and not st.session_state.get("order_saved", False)
             and confirmation_words
         ):
@@ -1897,6 +1895,8 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     )
 
                 st.session_state.current_order = parsed_order
+                if not get_missing_order_fields(parsed_order):
+                    st.session_state.pending_custom_item = None
 
                 if (
                     parsed_order.get("order_type") == "custom_request"
