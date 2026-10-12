@@ -1309,26 +1309,92 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             st.session_state.messages.append({"role": "user", "content": clean_user_input})
             st.session_state.display_messages.append({"role": "user", "content": clean_user_input})
 
-            # Explicit custom-request state machine. Short replies such as "5",
-            # "pickup" and contact details must always advance instead of depending on AI prose.
+            # Complete custom-request state machine. Once a custom request starts,
+            # Python owns progression so short replies cannot dead-end.
             custom_stage = st.session_state.get("custom_request_stage")
             current_custom = st.session_state.get("current_order") or {}
-            if current_custom.get("order_type") == "custom_request" and custom_stage == "quantity":
-                qty_match = re.search(r"\b(\d{1,3})\b", clean_user_input)
-                if qty_match:
-                    qty = int(qty_match.group(1))
-                    if 1 <= qty <= 100:
-                        current_custom["items"][0]["quantity"] = qty
-                        st.session_state.current_order = current_custom
+            if current_custom.get("order_type") == "custom_request" and custom_stage:
+                reply = None
+
+                if custom_stage == "quantity":
+                    qty_match = re.search(r"\b(\d{1,3})\b", clean_user_input)
+                    if qty_match and 1 <= int(qty_match.group(1)) <= 100:
+                        current_custom["items"][0]["quantity"] = int(qty_match.group(1))
                         st.session_state.custom_request_stage = "datetime"
                         reply = "Got it. What date and time would you like it?"
                     else:
-                        reply = "Please choose a quantity between 1 and 100."
-                    st.session_state.display_messages.append({"role":"assistant","content":reply})
-                    st.session_state.messages.append({"role":"assistant","content":reply})
-                    st.rerun()
-                else:
-                    reply = "How many would you like? Please enter a number."
+                        reply = "How many would you like? Please enter a number between 1 and 100."
+
+                elif custom_stage == "fulfillment":
+                    low = clean_user_input.lower()
+                    if "deliver" in low:
+                        current_custom["fulfillment"] = "delivery"
+                        st.session_state.custom_request_stage = "address"
+                        reply = "Sure. What's the delivery address?"
+                    elif "pickup" in low or "pick up" in low:
+                        current_custom["fulfillment"] = "pickup"
+                        st.session_state.custom_request_stage = "identity"
+                        reply = "What's your name and contact number or email?"
+                    else:
+                        reply = "Would you like pickup or delivery?"
+
+                elif custom_stage == "address":
+                    # Do not demand street/house-number formatting: landmarks/campuses may be valid.
+                    address = clean_user_input.strip()
+                    if len(address) >= 5:
+                        current_custom["delivery_address"] = address
+                        # Recover a contact if the customer volunteered it with the address.
+                        current_custom = recover_name_contact(clean_user_input, current_custom)
+                        if current_custom.get("customer_name") and current_custom.get("customer_contact"):
+                            st.session_state.custom_request_stage = "confirm"
+                        else:
+                            st.session_state.custom_request_stage = "identity"
+                        reply = (
+                            "Thanks. What's your name and contact number or email?"
+                            if st.session_state.custom_request_stage == "identity"
+                            else None
+                        )
+                    else:
+                        reply = "Please share the delivery location or address."
+
+                elif custom_stage == "identity":
+                    current_custom = recover_name_contact(clean_user_input, current_custom)
+                    if current_custom.get("customer_name") and current_custom.get("customer_contact"):
+                        st.session_state.custom_request_stage = "confirm"
+                    else:
+                        reply = "Please send your name and a contact number or email together."
+
+                elif custom_stage == "confirm":
+                    low = clean_user_input.lower()
+                    if re.search(r"\b(yes|yeah|yep|yup|confirm|send|sure|ok|okay)\b", low):
+                        try:
+                            saved = submit_protected_custom_request(slug_from_url, current_custom)
+                            request_number = saved.get("request_number")
+                            st.session_state.order_saved = True
+                            st.session_state.order_number = request_number
+                            st.session_state.custom_request_stage = None
+                            notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
+                            send_custom_request_notification(
+                                business_name, notification_email, request_number, current_custom
+                            )
+                            reply = (
+                                f"Custom request sent! #{request_number}\n\n"
+                                "The bakery will review availability and pricing. "
+                                "This is not a confirmed order yet."
+                            )
+                        except Exception:
+                            reply = "I couldn't send the custom request yet. Please try confirming again."
+                    elif re.search(r"\b(no|cancel|nope|nah)\b", low):
+                        st.session_state.custom_request_stage = None
+                        st.session_state.current_order = None
+                        reply = "No problem. I haven't sent the request."
+                    else:
+                        reply = "Would you like me to send this custom request to the bakery?"
+
+                st.session_state.current_order = current_custom
+
+                # Date/time parsing remains with Cohere, but all later stages are deterministic.
+                if reply:
                     st.session_state.display_messages.append({"role":"assistant","content":reply})
                     st.session_state.messages.append({"role":"assistant","content":reply})
                     st.rerun()
@@ -1547,7 +1613,17 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     )
 
                 st.session_state.current_order = parsed_order
-                state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
+
+                if (
+                    parsed_order.get("order_type") == "custom_request"
+                    and st.session_state.get("custom_request_stage") == "datetime"
+                    and parsed_order.get("requested_datetime_iso")
+                ):
+                    st.session_state.custom_request_stage = "fulfillment"
+                    display_reply = "Got it. Would you like pickup or delivery?"
+                    state_reply, ready_for_confirmation = display_reply, False
+                else:
+                    state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
                 if parsed_order.get("status") != "confirmed":
                     display_reply = state_reply
 
@@ -1603,6 +1679,24 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
             except json.JSONDecodeError:
                 pass
+
+        current_custom = st.session_state.get("current_order") or {}
+        if (
+            current_custom.get("order_type") == "custom_request"
+            and st.session_state.get("custom_request_stage") == "confirm"
+            and current_custom.get("customer_name")
+            and current_custom.get("customer_contact")
+        ):
+            first = (current_custom.get("items") or [{}])[0]
+            display_reply = (
+                "Send this custom request?\n"
+                f"- {first.get('quantity',1)} × {first.get('item','Custom item')}\n"
+                f"- {str(current_custom.get('fulfillment') or '').title()}\n"
+                f"- {current_custom.get('requested_datetime')}\n"
+                + (f"- Delivery: {current_custom.get('delivery_address')}\n" if current_custom.get("delivery_address") else "")
+                + f"- Contact: {mask_contact(current_custom.get('customer_contact'))}\n\n"
+                "Price and availability will be decided by the bakery."
+            )
 
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
         # Never render an empty assistant bubble.
