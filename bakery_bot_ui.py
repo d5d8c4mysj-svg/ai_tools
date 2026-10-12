@@ -752,6 +752,21 @@ def recover_name_contact(text, order):
             order["customer_name"] = before
     return order
 
+def confirmation_reply_is_yes(text):
+    s = re.sub(r"\s+", " ", str(text or "").lower()).strip()
+    patterns = [
+        r"\byes+\b", r"\byeah+\b", r"\byep+\b", r"\byup+\b",
+        r"\buh[\s-]*huh\b", r"\bmm[\s-]*hmm\b", r"\bmhm+\b",
+        r"\bok(?:ay)?\b", r"\bsure\b", r"\bconfirm(?:ed)?\b",
+        r"\bgo ahead\b", r"\bsend it\b", r"\bplace it\b", r"\bdo it\b",
+        r"\bhaan+\b", r"\bha[nm]+\b",
+    ]
+    return any(re.search(p, s) for p in patterns)
+
+def confirmation_reply_is_no(text):
+    s = re.sub(r"\s+", " ", str(text or "").lower()).strip()
+    return bool(re.search(r"\b(no+|nope|nah|cancel|nevermind|never mind|don't|do not)\b", s))
+
 def deterministic_checkout_reply(order):
     """Python owns checkout progression after Cohere extracts structured state."""
     missing = get_missing_order_fields(order)
@@ -784,8 +799,8 @@ def deterministic_checkout_reply(order):
     fulfillment = str(order.get("fulfillment") or "").title()
     contact = mask_contact(order.get("customer_contact"))
 
-    summary = "Confirm this order?\\n" + "\\n".join(item_lines)
-    summary += f"\\n- {fulfillment}\\n- {when}\\n- Contact: {contact}"
+    summary = "Confirm this order?\n" + "\n".join(item_lines)
+    summary += f"\n- {fulfillment}\n- {when}\n- Contact: {contact}"
     return summary, True
 
 
@@ -1261,6 +1276,8 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.custom_request_stage = None
         st.session_state.orders_this_session = 0
         st.session_state.awaiting_assistant = False
+        st.session_state.checkout_stage = None
+        st.session_state.confirmation_order = None
 
     # Header
     st.markdown(
@@ -1312,6 +1329,79 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             st.session_state.messages.append({"role": "user", "content": clean_user_input})
             st.session_state.display_messages.append({"role": "user", "content": clean_user_input})
             st.session_state.last_user_input = clean_user_input
+
+            # HARD FINAL CONFIRMATION GATE.
+            # Once the summary is shown, this runs before every other router and before Cohere.
+            if st.session_state.get("checkout_stage") == "confirm":
+                confirm_order = st.session_state.get("confirmation_order") or st.session_state.get("current_order") or {}
+                if confirmation_reply_is_yes(clean_user_input):
+                    try:
+                        notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
+                        if confirm_order.get("order_type") == "custom_request":
+                            saved = submit_protected_custom_request(slug_from_url, confirm_order)
+                            request_number = saved.get("request_number")
+                            if not request_number:
+                                raise RuntimeError("No custom request number returned.")
+                            confirm_order["status"] = "confirmed"
+                            st.session_state.current_order = confirm_order
+                            st.session_state.order_saved = True
+                            st.session_state.order_number = request_number
+                            send_custom_request_notification(
+                                business_name, notification_email, request_number, confirm_order
+                            )
+                            reply = (
+                                f"Custom request sent! #{request_number}\\n\\n"
+                                "The bakery will contact you to discuss availability, details, final price and payment."
+                            )
+                        else:
+                            saved = submit_protected_order(slug_from_url, confirm_order)
+                            order_number = saved.get("order_number")
+                            total = saved.get("total")
+                            if not order_number:
+                                raise RuntimeError("No order number returned.")
+                            confirm_order["status"] = "confirmed"
+                            confirm_order["estimated_total"] = total
+                            st.session_state.current_order = confirm_order
+                            st.session_state.order_saved = True
+                            st.session_state.order_number = order_number
+                            st.session_state.orders_this_session = st.session_state.get("orders_this_session", 0) + 1
+                            send_new_order_notification(
+                                business_name, notification_email, order_number, confirm_order, total
+                            )
+                            reply = (
+                                f"Order received! #{order_number}\\n\\n"
+                                f"Final total: ₹{total}. The bakery will review and accept or decline it."
+                            )
+                        st.session_state.checkout_stage = None
+                        st.session_state.confirmation_order = None
+                        st.session_state.custom_request_stage = None
+                        st.session_state.pending_custom_item = None
+                        st.session_state.awaiting_assistant = False
+                    except Exception:
+                        reply = (
+                            "I couldn't securely submit that yet. Nothing has been sent. "
+                            "Please try confirming again."
+                        )
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
+
+                if confirmation_reply_is_no(clean_user_input):
+                    st.session_state.checkout_stage = None
+                    st.session_state.confirmation_order = None
+                    st.session_state.current_order = None
+                    st.session_state.custom_request_stage = None
+                    st.session_state.pending_custom_item = None
+                    st.session_state.order_saved = False
+                    reply = "No problem. I haven't submitted it."
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
+
+                reply = "Please confirm whether you'd like me to send this, or say no to cancel."
+                st.session_state.display_messages.append({"role":"assistant","content":reply})
+                st.session_state.messages.append({"role":"assistant","content":reply})
+                st.rerun()
 
             # Complete custom-request state machine. Once a custom request starts,
             # Python owns progression so short replies cannot dead-end.
@@ -1368,7 +1458,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     else:
                         reply = "Please send your name and a contact number or email together."
 
-                elif custom_stage == "confirm":
+                elif custom_stage == "confirm" and st.session_state.get("checkout_stage") != "confirm":
                     low = clean_user_input.lower()
                     if re.search(r"\b(yes|yeah|yep|yup|confirm|send|sure|ok|okay)\b", low):
                         try:
@@ -1523,7 +1613,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
         if order_count > 0:
             if st.button("Start new order", key="top_start_new_order"):
-                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "last_user_input", "pending_custom_item", "custom_request_stage"]:
+                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "last_user_input", "pending_custom_item", "custom_request_stage", "checkout_stage", "confirmation_order"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
@@ -1649,6 +1739,10 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
                 if parsed_order.get("status") != "confirmed":
                     display_reply = state_reply
+                if ready_for_confirmation and parsed_order.get("status") != "confirmed":
+                    st.session_state.checkout_stage = "confirm"
+                    st.session_state.confirmation_order = dict(parsed_order)
+                    st.session_state.pending_custom_item = None
 
                 if (
                     parsed_order.get("status") == "confirmed"
