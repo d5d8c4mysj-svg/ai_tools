@@ -1093,7 +1093,12 @@ CRITICAL ORDERING RULES:
 - Standard products already listed on the menu are RETAIL orders, even if named Cake, Cheesecake or Cupcake. Never invent a custom-cake rule for them.
 - OFF-MENU CUSTOM REQUEST RULE: When a requested item is not on the menu, say so briefly. If the customer asks "can you make it?", "can the bakery make it?", or similar, NEVER go silent. Reply: "It isn't on the current menu, but I can help you send it as a custom request to the bakery. Would you like to do that?"
 - Never claim an off-menu item is available, never invent its price, and never promise the bakery will make it.
-- If the customer says yes to an off-menu custom request, collect the requested item, quantity, pickup/delivery, exact date/time, name/contact, and delivery address if needed. Make clear that availability and price require bakery approval.
+- AMBIGUOUS TIME RULE: If a customer gives a bare hour such as "4", use the bakery's stored business hours to resolve AM vs PM. If exactly one interpretation falls within opening hours, use that interpretation without asking another confirmation. Example: if Wednesday hours include 4 PM but not 4 AM, "4" means 4 PM.
+- If both AM and PM interpretations are valid within stored business hours, ask which one they mean.
+- If neither interpretation is within business hours, say the bakery is closed then and ask for another time.
+- Never suggest or confirm a time outside the bakery's stored business hours.
+- If the customer says yes to an off-menu custom request, collect the requested item, quantity, exact date/time, pickup/delivery, name/contact, and delivery address if needed. Make clear that availability and price require bakery approval.
+- Once the custom-request date/time is known, move directly to pickup/delivery, then name/contact, then one final "Send this custom request?" summary. Do not ask "anything else?" and do not show a price.
 - Do not pass an off-menu item into the normal menu-order confirmation flow.
 - order_type is "custom" ONLY when the customer explicitly requests a bespoke/custom cake or meaningful customization. Otherwise use "retail".
 - The bakery's advance-notice rule applies ONLY to custom orders.
