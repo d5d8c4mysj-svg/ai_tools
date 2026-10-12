@@ -703,6 +703,40 @@ def mask_contact(value):
         return "••••••" + digits[-4:]
     return "••••"
 
+def menu_item_names(menu):
+    return [str(x.get("Item") or "").strip() for x in (menu or []) if x.get("Item")]
+
+def detect_requested_product(text, menu):
+    """Conservative product detector used before Cohere ordering logic."""
+    s = str(text or "").lower().strip()
+    # First match known menu items.
+    for name in menu_item_names(menu):
+        if name.lower() in s:
+            return name, True
+
+    # Then detect obvious food-order noun phrases without pretending every chat is an order.
+    m = re.search(
+        r"(?i)\b(?:order|want|have|get|make)\s+(?:me\s+)?(?:an?\s+|\d+\s+)?"
+        r"([a-z][a-z\s-]{1,45}?(?:pie|cake|cheesecake|brownie|brownies|cookie|cookies|cupcake|cupcakes|tiramisu|roll|rolls))\b",
+        s,
+    )
+    if m:
+        requested = re.sub(r"\s+", " ", m.group(1)).strip()
+        # Known menu aliases/plurals.
+        for name in menu_item_names(menu):
+            nl=name.lower()
+            if requested in nl or nl in requested:
+                return name, True
+        return requested.title(), False
+    return None, None
+
+def custom_request_prompt(item_name, business_name):
+    return (
+        f"{item_name} isn't on the current menu. "
+        f"I can send it to {business_name} as a custom request instead. "
+        "Would you like me to?"
+    )
+
 def has_explicit_time(text):
     """True only when the customer's text contains a clock-like time."""
     s = str(text or "").lower()
@@ -1153,6 +1187,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.order_email_sent = False
         st.session_state.order_saved = False
         st.session_state.order_number = None
+        st.session_state.pending_custom_item = None
         st.session_state.orders_this_session = 0
         st.session_state.awaiting_assistant = False
 
@@ -1205,6 +1240,39 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         if clean_user_input:
             st.session_state.messages.append({"role": "user", "content": clean_user_input})
             st.session_state.display_messages.append({"role": "user", "content": clean_user_input})
+
+            # Resolve a pending off-menu offer deterministically.
+            pending_custom = st.session_state.get("pending_custom_item")
+            if pending_custom:
+                if re.search(r"(?i)\b(yes|yeah|yep|yup|sure|okay|ok|please|do it)\b", clean_user_input):
+                    reply = (
+                        f"Got it — I'll treat {pending_custom} as a custom request. "
+                        "What date and time would you like it?"
+                    )
+                    st.session_state.current_order = {
+                        "items": [{"item": pending_custom, "quantity": 1, "customizations": ""}],
+                        "order_type": "custom_request",
+                        "status": "in_progress",
+                    }
+                    st.session_state.pending_custom_item = None
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
+                if re.search(r"(?i)\b(no|nope|nah|cancel|never mind|nevermind)\b", clean_user_input):
+                    reply = "No problem. What else would you like?"
+                    st.session_state.pending_custom_item = None
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
+
+            requested_item, is_menu_item = detect_requested_product(clean_user_input, menu)
+            if requested_item and is_menu_item is False:
+                st.session_state.pending_custom_item = requested_item
+                reply = custom_request_prompt(requested_item, business_name)
+                st.session_state.display_messages.append({"role":"assistant","content":reply})
+                st.session_state.messages.append({"role":"assistant","content":reply})
+                st.rerun()
+
             st.session_state.awaiting_assistant = True
             st.rerun()
 
