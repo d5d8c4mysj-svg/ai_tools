@@ -703,6 +703,29 @@ def mask_contact(value):
         return "••••••" + digits[-4:]
     return "••••"
 
+def has_explicit_time(text):
+    """True only when the customer's text contains a clock-like time."""
+    s = str(text or "").lower()
+    return bool(re.search(r"\b(?:[01]?\d|2[0-3])(?::[0-5]\d)?\s*(?:am|pm)\b", s)
+                or re.search(r"\b(?:[01]?\d|2[0-3]):[0-5]\d\b", s))
+
+def recover_name_contact(text, order):
+    """Recover obvious 'Name + phone/email' input if model extraction misses it."""
+    s = str(text or "").strip()
+    if not s:
+        return order
+    email = re.search(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", s, re.I)
+    phone = re.search(r"(?<!\d)(?:\+?\d[\d\s-]{7,}\d)(?!\d)", s)
+    contact_match = email or phone
+    if contact_match and not order.get("customer_contact"):
+        order["customer_contact"] = re.sub(r"[\s-]", "", contact_match.group(0)) if phone else contact_match.group(0)
+    if contact_match and not order.get("customer_name"):
+        before = s[:contact_match.start()].strip(" ,:-")
+        before = re.sub(r"(?i)^(?:my name is|i am|i'm|name is)\s+", "", before).strip()
+        if before and len(before) <= 80:
+            order["customer_name"] = before
+    return order
+
 def deterministic_checkout_reply(order):
     """Python owns checkout progression after Cohere extracts structured state."""
     missing = get_missing_order_fields(order)
@@ -711,6 +734,9 @@ def deterministic_checkout_reply(order):
         return "Would you like pickup or delivery?", False
 
     if "requested date/time" in missing:
+        human_date = str(order.get("requested_datetime") or "").strip()
+        if human_date and not order.get("requested_datetime_iso"):
+            return f"What time would you like {human_date.lower()}?", False
         return "What date and time would you like?", False
 
     if "delivery address" in missing:
@@ -1318,6 +1344,18 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             display_reply = bot_reply[:order_match.start()].strip()
             try:
                 parsed_order = json.loads(order_match.group(1))
+                parsed_order = recover_name_contact(clean_user_input, parsed_order)
+
+                # Never let a relative date such as "tomorrow" silently acquire an
+                # invented clock time. If this turn supplied no explicit time and the
+                # prior order still had no exact time, keep datetime incomplete.
+                previous_order = st.session_state.get("current_order") or {}
+                if (
+                    not has_explicit_time(clean_user_input)
+                    and not previous_order.get("requested_datetime_iso")
+                    and re.search(r"(?i)\b(today|tomorrow|day after tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", clean_user_input)
+                ):
+                    parsed_order["requested_datetime_iso"] = None
 
                 if parsed_order.get("status") == "confirmed" and get_missing_order_fields(parsed_order):
                     parsed_order["status"] = "in_progress"
