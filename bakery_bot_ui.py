@@ -1405,10 +1405,12 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         st.session_state.pending_custom_item = None
                         st.session_state.awaiting_assistant = False
                     except Exception as e:
-                        print("LOAF_SUBMIT_ERROR:", repr(e))
+                        error_type = type(e).__name__
+                        error_text = str(e)
+                        print(f"LOAF_SUBMIT_ERROR [{error_type}]: {error_text}")
                         reply = (
-                            "I couldn't securely submit that yet. Nothing has been sent. "
-                            "Please try confirming again."
+                            "Submission failed before anything was sent. "
+                            f"Diagnostic: {error_type}: {error_text}"
                         )
                     st.session_state.display_messages.append({"role":"assistant","content":reply})
                     st.session_state.messages.append({"role":"assistant","content":reply})
