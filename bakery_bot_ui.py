@@ -707,28 +707,20 @@ def menu_item_names(menu):
     return [str(x.get("Item") or "").strip() for x in (menu or []) if x.get("Item")]
 
 def detect_requested_product(text, menu):
-    """Conservative product detector used before Cohere ordering logic."""
+    """
+    Known menu items are matched deterministically.
+    Unknown-item extraction is left to Cohere; no hard-coded food catalogue.
+    """
     s = str(text or "").lower().strip()
-    # First match known menu items.
     for name in menu_item_names(menu):
-        if name.lower() in s:
+        nl = name.lower()
+        if nl in s:
             return name, True
-
-    # Then detect obvious food-order noun phrases without pretending every chat is an order.
-    m = re.search(
-        r"(?i)\b(?:order|want|have|get|make)\s+(?:me\s+)?(?:an?\s+|\d+\s+)?"
-        r"([a-z][a-z\s-]{1,45}?(?:pie|cake|cheesecake|brownie|brownies|cookie|cookies|cupcake|cupcakes|tiramisu|roll|rolls))\b",
-        s,
-    )
-    if m:
-        requested = re.sub(r"\s+", " ", m.group(1)).strip()
-        # Known menu aliases/plurals.
-        for name in menu_item_names(menu):
-            nl=name.lower()
-            if requested in nl or nl in requested:
-                return name, True
-        return requested.title(), False
+        # tolerate simple singular/plural wording for known menu items
+        if nl.rstrip("s") and nl.rstrip("s") in s:
+            return name, True
     return None, None
+
 
 def custom_request_prompt(item_name, business_name):
     return (
@@ -1090,6 +1082,9 @@ def run_chatbot(business):
 
         prompt = f"""You are a friendly ordering assistant for {business_name}.
 CRITICAL ORDERING RULES:
+- PRODUCT EXTRACTION: Understand the product/item the customer is requesting from natural language, regardless of what kind of food/product it is. Do not rely on a fixed catalogue of bakery item types.
+- If the customer appears to be requesting something and it is not an exact/clear match to the supplied menu, identify the requested item by name and respond that it is not on the current menu, then offer a custom request. Never silently stop.
+- Never invent that an unknown item exists on the menu.
 - Standard products already listed on the menu are RETAIL orders, even if named Cake, Cheesecake or Cupcake. Never invent a custom-cake rule for them.
 - OFF-MENU CUSTOM REQUEST RULE: When a requested item is not on the menu, say so briefly. If the customer asks "can you make it?", "can the bakery make it?", or similar, NEVER go silent. Reply: "It isn't on the current menu, but I can help you send it as a custom request to the bakery. Would you like to do that?"
 - Never claim an off-menu item is available, never invent its price, and never promise the bakery will make it.
@@ -1519,7 +1514,16 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 if current:
                     display_reply, _ = deterministic_checkout_reply(current)
                 else:
-                    display_reply = "What would you like to order?"
+                    display_reply = (
+                        "I didn't quite catch what you'd like. "
+                        "Tell me the item you're looking for, and I'll check the bakery's menu."
+                    )
+
+        if not str(display_reply or "").strip():
+            display_reply = (
+                "I didn't quite catch that. Tell me what you'd like, "
+                "and I'll check whether it's on the bakery's menu."
+            )
 
         st.session_state.display_messages.append(
             {"role": "assistant", "content": display_reply}
