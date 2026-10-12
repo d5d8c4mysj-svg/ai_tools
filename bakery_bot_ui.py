@@ -1007,6 +1007,14 @@ def send_custom_request_notification(business_name, owner_email, request_number,
         return False
 
 
+def with_ist(value):
+    """Return an ISO datetime with an explicit Asia/Kolkata offset for Supabase timestamptz."""
+    dt = datetime.fromisoformat(str(value))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
+    return dt.isoformat()
+
+
 def submit_protected_custom_request(slug, order):
     items = order.get("items") or []
     first = items[0] if items else {}
@@ -1018,7 +1026,7 @@ def submit_protected_custom_request(slug, order):
         "p_requested_item": first.get("item"),
         "p_quantity": int(first.get("quantity") or 1),
         "p_fulfillment": order.get("fulfillment"),
-        "p_requested_datetime": requested_iso,
+        "p_requested_datetime": with_ist(requested_iso),
         "p_customer_name": order.get("customer_name"),
         "p_customer_contact": order.get("customer_contact"),
         "p_delivery_address": order.get("delivery_address") if order.get("fulfillment") == "delivery" else None,
@@ -1039,7 +1047,7 @@ def submit_protected_order(slug, order):
         "p_bakery_slug": slug,
         "p_items": order.get("items") or [],
         "p_fulfillment": order.get("fulfillment"),
-        "p_requested_datetime": requested_iso,
+        "p_requested_datetime": with_ist(requested_iso),
         "p_customer_name": order.get("customer_name"),
         "p_customer_contact": order.get("customer_contact"),
         "p_delivery_address": order.get("delivery_address") if order.get("fulfillment") == "delivery" else None,
