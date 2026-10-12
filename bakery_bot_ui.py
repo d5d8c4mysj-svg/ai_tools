@@ -1554,20 +1554,29 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                             st.session_state.custom_request_stage = "fulfillment"
                             reply = "Got it. Would you like pickup or delivery?"
                     elif needs_time:
-                        # Keep the date text so a later '7 pm' can be combined with it.
+                        # Persist the parsed calendar date separately. Do not rely on
+                        # reparsing the human display string on the next turn.
                         if human:
                             current_custom["requested_datetime"] = human
+                        now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+                        if re.search(r"\bday after tomorrow\b", low):
+                            current_custom["requested_date_iso"] = (now_ist.date() + timedelta(days=2)).isoformat()
+                        elif re.search(r"\btomorrow\b", low):
+                            current_custom["requested_date_iso"] = (now_ist.date() + timedelta(days=1)).isoformat()
+                        elif re.search(r"\btoday\b", low):
+                            current_custom["requested_date_iso"] = now_ist.date().isoformat()
                         reply = "What exact time would you like?"
                     else:
-                        # If we already have a date from a previous turn, combine it with an explicit time.
+                        # Combine a later explicit time such as "4 pm" with the
+                        # previously persisted date.
                         tm = re.search(r"\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b", low)
-                        saved_date = current_custom.get("requested_datetime")
-                        if tm and saved_date:
+                        saved_date_iso = current_custom.get("requested_date_iso")
+                        if tm and saved_date_iso:
                             try:
-                                day = datetime.strptime(saved_date, "%A, %d %b").replace(year=datetime.now(ZoneInfo("Asia/Kolkata")).year).date()
-                                h=int(tm.group(1))%12 + (12 if tm.group(3)=="pm" else 0)
-                                minute=int(tm.group(2) or 0)
-                                dt=datetime(day.year,day.month,day.day,h,minute,tzinfo=ZoneInfo("Asia/Kolkata"))
+                                day = datetime.fromisoformat(saved_date_iso).date()
+                                h = int(tm.group(1)) % 12 + (12 if tm.group(3) == "pm" else 0)
+                                minute = int(tm.group(2) or 0)
+                                dt = datetime(day.year, day.month, day.day, h, minute, tzinfo=ZoneInfo("Asia/Kolkata"))
                                 current_custom["requested_datetime"] = dt.strftime("%A, %d %b at %-I:%M %p")
                                 current_custom["requested_datetime_iso"] = dt.isoformat()
                                 st.session_state.custom_request_stage = "fulfillment" if not current_custom.get("fulfillment") else ("address" if current_custom.get("fulfillment")=="delivery" else "identity")
