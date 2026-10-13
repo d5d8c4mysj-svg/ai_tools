@@ -1712,7 +1712,18 @@ def loaf_route_customer_turn(text, nlu, active, pending_menu, pending_custom,
     if intent == 'cancel' and not data.get('fulfillment') and not explicit_product:
         return 'Okay, nothing has been submitted. What else can I help with?',{},None,None,False
     # A menu inquiry is not an order. Store a pending offer for contextual acceptance.
-    is_question = intent == 'question' or (loaf_is_product_question(raw) and not loaf_is_order_intent(raw))
+    # The NLU label alone is not enough to route an active checkout to
+    # free-form chat. A short slot answer ('one', 'delivery', 'Saturday')
+    # must always stay in the checkout router.
+    explicit_question = bool(re.search(
+        r'(?i)(?:\\?|\\b(?:what|why|how|when|where|which|do you|can you|'
+        r'is there|are there|kya|kitna|kaise)\\b)', raw
+    ))
+    is_question = (
+        (intent == 'question' and (not active.get('items') or explicit_question))
+        or (loaf_is_product_question(raw) and not loaf_is_order_intent(raw)
+            and explicit_question)
+    )
     if explicit_menu and is_question:
         sold = {re.sub(r'[^a-z0-9]+',' ',x.lower()).strip()
                 for x in str(sold_out_items or '').split(',') if x.strip()}
@@ -2402,8 +2413,18 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             follow_up, _ = loaf_order_prompt(
                 active_checkout, menu, delivery_city, delivery_areas, fulfillment_options
             )
-            if follow_up and follow_up not in display_reply:
-                display_reply = display_reply.rstrip() + "\n\n" + follow_up
+            # Cohere can answer an actual side question, but must not generate
+            # its own competing checkout questions. Show exactly one canonical
+            # next-step question, in a separate paragraph.
+            display_reply = re.sub(
+                r'(?im)^.*(?:how many .*would you like|'
+                r'would you like pickup or delivery|'
+                r'what date and time would you like|'
+                r'what.*contact number or email).*\\??\\s*$',
+                '', display_reply
+            ).strip()
+            if follow_up:
+                display_reply = (display_reply + "\n\n" if display_reply else "") + follow_up
         st.session_state.display_messages.append(
             {"role": "assistant", "content": display_reply}
         )
