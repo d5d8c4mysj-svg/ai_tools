@@ -681,7 +681,7 @@ def get_missing_order_fields(order):
         missing.append("fulfillment method")
     if order.get("fulfillment") == "delivery" and not order.get("delivery_address"):
         missing.append("delivery address")
-    if not order.get("requested_datetime"):
+    if not order.get("requested_datetime_iso"):
         missing.append("requested date/time")
     if not order.get("customer_name"):
         missing.append("customer name")
@@ -729,6 +729,18 @@ def custom_request_prompt(item_name, business_name):
         "Would you like me to?"
     )
 
+def has_explicit_quantity(text):
+    """True when the customer explicitly supplied a quantity this turn."""
+    s = str(text or "").lower()
+    if re.search(r"(?<!\d)\d{1,3}(?!\d)", s):
+        return True
+    words = {
+        "one","two","three","four","five","six","seven","eight","nine","ten",
+        "eleven","twelve","dozen","a dozen","half dozen"
+    }
+    return any(re.search(rf"\b{re.escape(w)}\b", s) for w in words)
+
+
 def has_explicit_time(text):
     """True only when the customer's text contains a clock-like time."""
     s = str(text or "").lower()
@@ -770,6 +782,10 @@ def confirmation_reply_is_no(text):
 def deterministic_checkout_reply(order):
     """Python owns checkout progression after Cohere extracts structured state."""
     missing = get_missing_order_fields(order)
+
+    if "item quantity" in missing:
+        item_name = ((order.get("items") or [{}])[0].get("item") or "that item")
+        return f"How many {item_name} would you like?", False
 
     if "fulfillment method" in missing:
         return "Would you like pickup or delivery?", False
@@ -1729,10 +1745,53 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 parsed_order = json.loads(order_match.group(1))
                 parsed_order = recover_name_contact(clean_user_input, parsed_order)
 
+                prior_for_qty = st.session_state.get("current_order") or {}
+                if prior_for_qty.get("order_type") != "custom_request":
+                    prior_items = prior_for_qty.get("items") or []
+                    parsed_items_now = parsed_order.get("items") or []
+                    if prior_items and not prior_items[0].get("quantity"):
+                        qm = re.fullmatch(r"\s*(\d{1,3})\s*", clean_user_input)
+                        if qm:
+                            qty = int(qm.group(1))
+                            if 1 <= qty <= 100:
+                                if not parsed_items_now:
+                                    parsed_order["items"] = [dict(prior_items[0])]
+                                    parsed_items_now = parsed_order["items"]
+                                parsed_items_now[0]["quantity"] = qty
+
                 # Never let a relative date such as "tomorrow" silently acquire an
                 # invented clock time. If this turn supplied no explicit time and the
                 # prior order still had no exact time, keep datetime incomplete.
                 previous_order = st.session_state.get("current_order") or {}
+
+                # NORMAL MENU ORDERS ONLY: never silently assume quantity=1 when the
+                # customer did not state a quantity. Custom-request flow is untouched.
+                if parsed_order.get("order_type") != "custom_request":
+                    parsed_items = parsed_order.get("items") or []
+                    previous_items = previous_order.get("items") or []
+                    if parsed_items and not previous_items and not has_explicit_quantity(clean_user_input):
+                        parsed_items[0]["quantity"] = None
+                        parsed_order["estimated_total"] = None
+
+                # Preserve a date-only answer (today/tomorrow/weekday) as human state,
+                # while keeping ISO incomplete until the customer supplies a clock time.
+                date_only = re.search(
+                    r"(?i)\b(today|tomorrow|day after tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+                    clean_user_input,
+                )
+                if date_only and not has_explicit_time(clean_user_input):
+                    parsed_order["requested_datetime"] = date_only.group(1)
+                    parsed_order["requested_datetime_iso"] = None
+
+                # If the next turn supplies only a time, keep the previously stored date
+                # available to Cohere/Python instead of losing the partial date state.
+                if (
+                    has_explicit_time(clean_user_input)
+                    and previous_order.get("requested_datetime")
+                    and not parsed_order.get("requested_datetime")
+                ):
+                    parsed_order["requested_datetime"] = previous_order.get("requested_datetime")
+
                 if (
                     not has_explicit_time(clean_user_input)
                     and not previous_order.get("requested_datetime_iso")
