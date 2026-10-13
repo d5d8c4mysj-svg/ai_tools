@@ -807,8 +807,10 @@ def loaf_understand_message(message, menu, order=None, pending_menu=None, pendin
     existing deterministic flow remains available.
     """
     now = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
+    expected_question = loaf_order_prompt(order, menu)[0] if (order or {}).get("items") else None
     context = {
-        "message": str(message), "current_order": order or {},
+        "message": str(message), "expected_question": expected_question,
+        "current_order": order or {},
         "pending_menu": pending_menu, "pending_custom": pending_custom,
         "menu_items": [str(x.get("Item")) for x in menu if x.get("Item")],
         "local_time": now,
@@ -832,7 +834,14 @@ needs_clarification: true if the message is genuinely ambiguous
 Rules: Do not invent any detail. Do not interpret a time as quantity, an address
 as a name, or a question as an order. Do not claim an order is placed. If the
 customer changes the product, reference the newest product, not older offers.
-For a standalone number after a quantity question, interpret it as quantity.
+The expected_question is the question the assistant is currently waiting to
+have answered. Interpret short answers in that context, not as fresh orders.
+If expected_question requests name or contact, a person name like Whisky,
+Cookie, Brownie, or Cherry is NOT a product. "Whisky is my name" corrects
+the name; never set off_menu_product or product for such an answer.
+When expected_question asks for quantity, a standalone number is quantity.
+A new order or product switch requires a clear explicit product request.
+Do not infer an order from a greeting, name, or address.
 If a customer asks about an item, use question rather than order unless they
 express ordering intent. When unclear, set needs_clarification=true."""
     try:
@@ -1952,6 +1961,89 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             question = loaf_is_product_question(clean_user_input)
             order_intent = loaf_is_order_intent(clean_user_input)
             edit_intent = loaf_is_edit_request(clean_user_input)
+            # CONTACT STAGE IS NOT PRODUCT DISCOVERY.
+            # Read contact fields before asking the language model to classify
+            # product intent. Names may overlap with food or brand names.
+            contact_stage = False
+            if active.get("items"):
+                expected_prompt, _ = loaf_order_prompt(
+                    active, menu, delivery_city, delivery_areas, fulfillment_options
+                )
+                contact_stage = expected_prompt in (
+                    "What's your name and contact number or email?",
+                    "What's your name?",
+                    "What's your contact number or email?",
+                )
+            if contact_stage:
+                # This is a contact answer unless the user explicitly requests
+                # a product change. Do not classify names as off-menu items.
+                explicit_switch = bool(re.search(
+                    r"(?i)\\b(?:instead|actually|change (?:the )?(?:item|order)|"
+                    r"i (?:want|would like) to (?:order|buy)|"
+                    r"(?:mujhe|mujhko) .*chahiye)\\b", clean_user_input
+                ))
+                changing_checkout = bool(re.search(
+                    r"(?i)\b(?:cancel|stop|never mind|pickup|pick up|delivery|"
+                    r"deliver|instead|change|make it|tomorrow|today|"
+                    r"monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+                    clean_user_input
+                ))
+                if not explicit_switch and not changing_checkout:
+                    updated = dict(active)
+                    updated["items"] = [dict(i) for i in active.get("items", [])]
+                    updated = recover_name_contact(clean_user_input, updated)
+                    raw = clean_user_input.strip()
+                    # Extract an explicit name even when a phone number follows.
+                    # This overrides the broad name-before-phone recovery helper.
+                    explicit_name = re.search(
+                        r"(?i)\b(?:my name is|name is|mera naam(?: hai)?)\s+"
+                        r"([A-Za-z][A-Za-z .'-]{0,79}?)(?=\s+(?:and|aur|my number|phone|contact)\b|\s+\+?\d{8,15}\b|[,;]|$)",
+                        raw
+                    )
+                    reverse_name = re.search(
+                        r"(?i)^\s*([A-Za-z][A-Za-z .'-]{0,79}?)\s+is my name\b",
+                        raw
+                    )
+                    if explicit_name or reverse_name:
+                        updated["customer_name"] = (explicit_name or reverse_name).group(1).strip()
+                    # Explicit name correction or standalone name at name stage.
+                    correction = re.fullmatch(
+                        r"(?i)\s*([A-Za-z][A-Za-z .'-]{1,79}?)\s+is my name[.! ]*",
+                        raw
+                    )
+                    name_match = re.fullmatch(
+                        r"(?i)\s*(?:my name is|name is|i am|i'm|mera naam|naam)\s+"
+                        r"([A-Za-z][A-Za-z .'-]{1,79})[.! ]*",
+                        raw
+                    )
+                    if correction or name_match:
+                        name = (correction or name_match).group(1).strip(" .,! ")
+                        updated["customer_name"] = name
+                    elif not updated.get("customer_name"):
+                        # A name followed by an invalid/short phone number is
+                        # still a name; ask for a valid contact separately.
+                        named_contact = re.fullmatch(
+                            r"(?i)\s*([A-Za-z][A-Za-z .'-]{1,79}?)\s+(?:and|aur|&)\s+\+?[0-9 -]{6,17}\s*",
+                            raw
+                        )
+                        if named_contact:
+                            updated["customer_name"] = named_contact.group(1).strip()
+                        candidate = re.sub(
+                            r"(?i)^(?:my name is|name is|mera naam|i am|i'm)\\s+",
+                            "", raw
+                        ).strip(" .,! ")
+                        if re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,79}", candidate):
+                            updated["customer_name"] = candidate
+                    st.session_state.current_order = updated
+                    reply, ready = loaf_order_prompt(
+                        updated, menu, delivery_city, delivery_areas, fulfillment_options
+                    )
+                    if ready:
+                        st.session_state.checkout_stage = "confirm"
+                        st.session_state.confirmation_order = dict(updated)
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
             # Interpret before deciding whether a submitted customer wants a new order.
             understanding = loaf_understand_message(
                 clean_user_input, menu, active,
