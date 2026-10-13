@@ -1635,6 +1635,18 @@ def render_chat_message(role, content, business_name):
     )
 
 
+def loaf_clean_custom_offer_reply(reply, pending_item):
+    """Only ask for approval when an off-menu item has not yet been accepted."""
+    if not pending_item:
+        return reply
+    item = str(pending_item).strip()
+    item = item[0].upper() + item[1:] if item else item
+    return (
+        f"{item} is not on the current menu. "
+        "Would you like to send a custom request to the bakery?"
+    )
+
+
 def loaf_route_customer_turn(text, nlu, active, pending_menu, pending_custom,
                              menu, delivery_city, delivery_areas, fulfillment_options,
                              sold_out_items='', order_saved=False):
@@ -2381,6 +2393,13 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             )
             if m:
                 st.session_state.pending_custom_item = m.group(1).strip(" .?!")
+
+        # An unaccepted custom offer must ask ONE question only. Cohere
+        # sometimes asks for quantity prematurely, which creates duplicate
+        # quantity questions after the customer accepts the offer.
+        pending_offer = st.session_state.get("pending_custom_item")
+        if pending_offer and not (st.session_state.get("current_order") or {}).get("items"):
+            display_reply = loaf_clean_custom_offer_reply(display_reply, pending_offer)
 
         # Never render an empty assistant bubble.
         if not str(display_reply).strip():
