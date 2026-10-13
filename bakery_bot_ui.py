@@ -822,6 +822,32 @@ def parse_retail_datetime(text, previous_order=None):
 
     return None, None, None, None
 
+def delivery_address_is_allowed(address, delivery_city, delivery_areas):
+    """Validate a delivery address against the bakery owner's configured areas.
+
+    Areas are matched as normalized phrases inside the customer's address. If the
+    owner has not configured delivery areas, this check does not invent a restriction.
+    """
+    raw = str(address or "").strip()
+    areas = [str(x).strip() for x in (delivery_areas or []) if str(x).strip()]
+    city = str(delivery_city or "").strip()
+    if not raw:
+        return False
+    if not areas and not city:
+        return True
+
+    def norm(value):
+        return re.sub(r"[^a-z0-9]+", " ", str(value).lower()).strip()
+
+    addr = norm(raw)
+    area_ok = True if not areas else any(norm(area) in addr for area in areas)
+    # Do not require the city to be typed when a configured delivery area already
+    # matches (customers often enter only locality/road/campus names). If there are
+    # no configured areas, fall back to the configured city.
+    city_ok = True if areas else (norm(city) in addr if city else True)
+    return area_ok and city_ok
+
+
 def recover_name_contact(text, order):
     """Recover obvious 'Name + phone/email' input if model extraction misses it."""
     s = str(text or "").strip()
@@ -1006,7 +1032,7 @@ def get_business(slug):
     try:
         result = (
             supabase.table("public_bakeries")
-            .select("id,slug,business_name,address,fulfillment_options,delivery_info,faq_info,business_hours,advance_notice,sold_out_items,social_link,menu,menu_photo_urls")
+            .select("id,slug,business_name,address,fulfillment_options,delivery_info,delivery_city,delivery_areas,faq_info,business_hours,advance_notice,sold_out_items,social_link,menu,menu_photo_urls")
             .eq("slug", slug)
             .limit(1)
             .execute()
@@ -1243,6 +1269,8 @@ def run_chatbot(business):
     address = business["address"]
     fulfillment_options = business["fulfillment_options"]
     delivery_info = business["delivery_info"]
+    delivery_city = business.get("delivery_city") or ""
+    delivery_areas = business.get("delivery_areas") or []
     faq_info = business["faq_info"]
     business_hours = business["business_hours"]
     advance_notice = business["advance_notice"]
@@ -1324,6 +1352,8 @@ Understand requested products from natural language regardless of what kind of f
 You know the menu includes {menu}, including each item's price and ingredients. If a customer asks what something is made of or about allergens, answer using the ingredients listed.
 The business address is {address}.
 Delivery and pickup details: {delivery_info}
+Delivery city: {delivery_city or "not configured"}
+Delivery areas: {delivery_areas if delivery_areas else "not configured"}
 {fulfillment_instructions}
 Frequently asked questions: {faq_info}
 Business hours: {business_hours}
@@ -1885,6 +1915,52 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 # prior order still had no exact time, keep datetime incomplete.
                 previous_order = st.session_state.get("current_order") or {}
 
+                # NORMAL ORDER STATE MERGE:
+                # Cohere may omit fields on short follow-up turns (for example an address).
+                # Preserve already-collected checkout state unless this turn explicitly
+                # supplies a replacement for that field. This prevents checkout from
+                # moving backwards and asking for quantity/date/time again.
+                if previous_order and parsed_order.get("order_type") != "custom_request":
+                    low_input = clean_user_input.lower()
+                    explicit_qty = has_explicit_quantity(clean_user_input)
+                    explicit_dt = bool(
+                        has_explicit_time(clean_user_input)
+                        or re.search(r"(?i)\b(today|tomorrow|day after tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|now)\b", clean_user_input)
+                    )
+                    explicit_fulfillment = bool(re.search(r"(?i)\b(pick\s*up|pickup|deliver(?:y|ed)?)\b", clean_user_input))
+
+                    # Preserve the existing item and quantity on unrelated follow-ups.
+                    prev_items = previous_order.get("items") or []
+                    new_items = parsed_order.get("items") or []
+                    if prev_items:
+                        if not new_items:
+                            parsed_order["items"] = [dict(x) for x in prev_items]
+                            new_items = parsed_order["items"]
+                        elif not explicit_qty and prev_items[0].get("quantity"):
+                            new_items[0]["quantity"] = prev_items[0].get("quantity")
+                        if prev_items[0].get("item") and new_items:
+                            new_items[0]["item"] = prev_items[0].get("item")
+
+                    if not explicit_fulfillment and previous_order.get("fulfillment") in ("pickup", "delivery"):
+                        parsed_order["fulfillment"] = previous_order.get("fulfillment")
+
+                    if not explicit_dt:
+                        for key in ("requested_datetime", "requested_datetime_iso", "retail_date_iso", "retail_date_label"):
+                            if previous_order.get(key):
+                                parsed_order[key] = previous_order.get(key)
+
+                    # Keep an already-collected delivery address unless the current turn
+                    # is itself being used to collect/change the address.
+                    if previous_order.get("delivery_address") and not parsed_order.get("delivery_address"):
+                        parsed_order["delivery_address"] = previous_order.get("delivery_address")
+
+                    for key in ("customer_name", "customer_contact"):
+                        if previous_order.get(key) and not parsed_order.get(key):
+                            parsed_order[key] = previous_order.get(key)
+
+                    if previous_order.get("order_type") and not parsed_order.get("order_type"):
+                        parsed_order["order_type"] = previous_order.get("order_type")
+
                 # NORMAL MENU ORDERS ONLY: never silently assume quantity=1 when the
                 # customer did not state a quantity. Custom-request flow is untouched.
                 if parsed_order.get("order_type") != "custom_request":
@@ -1951,6 +2027,32 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 ):
                     parsed_order["requested_datetime_iso"] = None
 
+                # DELIVERY AREA GATE: never keep an address outside the bakery's
+                # configured delivery areas. This uses owner settings, not AI judgment.
+                delivery_area_warning = None
+                if (
+                    parsed_order.get("order_type") != "custom_request"
+                    and parsed_order.get("fulfillment") == "delivery"
+                    and parsed_order.get("delivery_address")
+                    and not delivery_address_is_allowed(
+                        parsed_order.get("delivery_address"), delivery_city, delivery_areas
+                    )
+                ):
+                    bad_address = str(parsed_order.get("delivery_address") or "").strip()
+                    parsed_order["delivery_address"] = None
+                    areas_text = ", ".join(str(x) for x in delivery_areas if str(x).strip())
+                    if areas_text:
+                        delivery_area_warning = (
+                            f"Sorry, we don't currently deliver to {bad_address}. "
+                            f"We deliver to: {areas_text}. Please share an address in one of these areas, "
+                            "or say pickup."
+                        )
+                    else:
+                        delivery_area_warning = (
+                            f"Sorry, we don't currently deliver to {bad_address}. "
+                            "Please provide another delivery address or say pickup."
+                        )
+
                 if parsed_order.get("status") == "confirmed" and get_missing_order_fields(parsed_order):
                     parsed_order["status"] = "in_progress"
 
@@ -1984,6 +2086,8 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     state_reply, ready_for_confirmation = display_reply, False
                 else:
                     state_reply, ready_for_confirmation = deterministic_checkout_reply(parsed_order)
+                if delivery_area_warning:
+                    state_reply, ready_for_confirmation = delivery_area_warning, False
                 if parsed_order.get("status") != "confirmed":
                     display_reply = state_reply
                 if ready_for_confirmation and parsed_order.get("status") != "confirmed":
