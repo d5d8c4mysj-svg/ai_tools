@@ -887,6 +887,10 @@ def loaf_apply_understanding(order, data, menu, delivery_city, delivery_areas, f
         return order, "What would you like to order?", False
     item = order["items"][0]
     quantity = data.get("quantity")
+    # An existing quantity is never replaced by an incidental number in a
+    # time, address or contact reply. Require an explicit quantity change.
+    if item.get("quantity") and data.get("quantity_action") not in ("add", "subtract"):
+        quantity = None
     if quantity is not None:
         operation = data.get("quantity_action")
         previous = item.get("quantity")
@@ -2044,6 +2048,41 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     st.session_state.display_messages.append({"role":"assistant","content":reply})
                     st.session_state.messages.append({"role":"assistant","content":reply})
                     st.rerun()
+            # FULFILLMENT SLOT: a clear pickup/delivery answer is authoritative.
+            # This prevents a model response with missing fields from looping.
+            if active.get("items") and re.fullmatch(
+                r"(?i)\s*(?:pickup|pick up|delivery|delivered|deliver|"
+                r"pickup it is|delivery it is|pick up kar lunga|deliver kar do)[.! ]*",
+                clean_user_input
+            ):
+                updated, reply, ready = loaf_apply_turn(
+                    active, clean_user_input, menu, delivery_city,
+                    delivery_areas, fulfillment_options
+                )
+                st.session_state.current_order = updated
+                if ready:
+                    st.session_state.checkout_stage = "confirm"
+                    st.session_state.confirmation_order = dict(updated)
+                st.session_state.display_messages.append({"role":"assistant", "content":reply})
+                st.session_state.messages.append({"role":"assistant", "content":reply})
+                st.rerun()
+            # DATE/TIME SLOT: resolve clear date/time answers before the model.
+            # The model must not turn "Saturday 7pm" into a new order, lose
+            # delivery, or overwrite the existing product and quantity.
+            if active.get("items") and active.get("items", [{}])[0].get("quantity") and active.get("fulfillment") and not active.get("requested_datetime_iso"):
+                _, candidate_iso, candidate_day, _ = parse_retail_datetime(clean_user_input, active)
+                if candidate_iso or candidate_day:
+                    updated, reply, ready = loaf_apply_turn(
+                        active, clean_user_input, menu, delivery_city,
+                        delivery_areas, fulfillment_options
+                    )
+                    st.session_state.current_order = updated
+                    if ready:
+                        st.session_state.checkout_stage = "confirm"
+                        st.session_state.confirmation_order = dict(updated)
+                    st.session_state.display_messages.append({"role":"assistant", "content":reply})
+                    st.session_state.messages.append({"role":"assistant", "content":reply})
+                    st.rerun()
             # Interpret before deciding whether a submitted customer wants a new order.
             understanding = loaf_understand_message(
                 clean_user_input, menu, active,
@@ -2133,6 +2172,22 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         pending_custom if intent == "accept" and understanding.get("answer_refers_to_pending")
                         else None
                     )
+                    if active.get("items") and (chosen or custom_name):
+                        current_product = active["items"][0].get("item")
+                        new_product = chosen or custom_name
+                        if new_product != current_product:
+                            # A model's guessed product is not permission to
+                            # reset a live order. Require explicit product intent.
+                            explicit_switch = bool(
+                                loaf_is_order_intent(clean_user_input)
+                                or loaf_is_edit_request(clean_user_input)
+                            ) and bool(
+                                loaf_match_menu_item(clean_user_input, menu)
+                                or re.search(r"(?i)\b(?:instead|change|different|another|actually|order|want|need)\b", clean_user_input)
+                            )
+                            if not explicit_switch:
+                                chosen = None
+                                custom_name = None
                     if chosen or custom_name:
                         if not active or (
                             (active.get("items") or [{}])[0].get("item") != (chosen or custom_name)
