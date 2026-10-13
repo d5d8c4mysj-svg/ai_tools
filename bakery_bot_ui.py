@@ -1681,6 +1681,8 @@ def loaf_route_customer_turn(text, nlu, active, pending_menu, pending_custom,
         email = re.search(r'\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b', raw, re.I)
         if (phone or email) and loaf_valid_contact((phone or email).group(0)):
             updated['customer_contact'] = (phone or email).group(0)
+        if not loaf_valid_contact(updated.get('customer_contact')):
+            updated['customer_contact'] = None
         name_correction = re.search(r'(?i)^\s*(.*?)\s+is my name[.! ]*$',raw)
         if name_correction:
             updated['customer_name'] = name_correction.group(1).strip()
@@ -1691,6 +1693,16 @@ def loaf_route_customer_turn(text, nlu, active, pending_menu, pending_custom,
             if re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,79}",candidate):
                 updated['customer_name'] = candidate
         reply,_ = loaf_order_prompt(updated,menu,delivery_city,delivery_areas,fulfillment_options)
+        if updated.get('customer_name') and not loaf_valid_contact(updated.get('customer_contact')):
+            candidate = re.search(r'(?<!\d)(?:\+?\d[\d -]{6,}\d)(?!\d)', raw)
+            if candidate:
+                count = len(re.sub(r'\D', '', candidate.group(0)))
+                if count < 10:
+                    reply = (f"Thanks, {updated['customer_name']}! That phone number has {count} digits. "
+                             "Please provide a valid 10-digit mobile number or an email address.")
+                else:
+                    reply = (f"Thanks, {updated['customer_name']}! That phone number isn't valid. "
+                             "Please provide a valid mobile number or an email address.")
         return reply,updated,pending_menu,pending_custom,False
     # Finalized orders cannot be changed by a casual reply.
     if order_saved:
