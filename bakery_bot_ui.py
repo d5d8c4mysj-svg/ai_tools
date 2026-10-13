@@ -900,7 +900,7 @@ def loaf_order_prompt(order, menu, delivery_city='', delivery_areas=None, fulfil
         return "What's your name and contact number or email?",False
     if not order.get('customer_name'):
         return "What's your name?",False
-    if not order.get('customer_contact'):
+    if not loaf_valid_contact(order.get('customer_contact')):
         return "What's your contact number or email?",False
     label='Send this custom request?' if order.get('order_type')=='custom_request' else 'Confirm this order?'
     summary=f"{label}\n- {first['quantity']} x {first['item']}\n- {order['fulfillment'].title()}\n- {order['requested_datetime']}"
@@ -926,6 +926,13 @@ def loaf_apply_turn(order, text, menu, delivery_city='', delivery_areas=None, fu
     elif re.search(r'\b(change|make it|instead|quantity)\b',low):
         q=loaf_quantity(s)
         if q:item['quantity']=q
+    allowed_methods = str(fulfillment_options or 'Both').lower()
+    if 'pickup only' in allowed_methods and re.search(r'\b(deliver|delivery|delivered)\b',low):
+        order['fulfillment']='pickup'
+        return order,'This bakery offers pickup only. What date and time would you like?',False
+    if 'delivery only' in allowed_methods and re.search(r'\b(pick\s*up|pickup|collect)\b',low):
+        order['fulfillment']='delivery'
+        return order,'This bakery offers delivery only. What date and time would you like?',False
     if re.search(r'\b(pick\s*up|pickup|collect)\b',low):
         order['fulfillment']='pickup'
         order['delivery_address']=None
@@ -1009,7 +1016,7 @@ def loaf_apply_turn(order, text, menu, delivery_city='', delivery_areas=None, fu
         order=recover_name_contact(s,order)
         if not order.get('customer_name') and re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,79}",s) and not re.search(r'\b(?:yes|okay|no|pickup|delivery)\b',low):
             order['customer_name']=re.sub(r"(?i)^(?:my name is|name is|i am|i'm)\s+",'',s).strip()
-        if not order.get('customer_contact'):
+        if not loaf_valid_contact(order.get('customer_contact')):
             email=re.search(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",s,re.I)
             phone=re.search(r"(?<!\d)(?:\+?\d[\d -]{8,}\d)(?!\d)",s)
             if email or phone:order['customer_contact']=(email or phone).group(0).strip()
@@ -1035,7 +1042,10 @@ def delivery_address_is_allowed(address, delivery_city, delivery_areas):
         return re.sub(r"[^a-z0-9]+", " ", str(value).lower()).strip()
 
     addr = norm(raw)
-    area_ok = True if not areas else any(norm(area) in addr for area in areas)
+    area_ok = True if not areas else any(
+        bool(re.search(r"(?:^| )" + re.escape(norm(area)) + r"(?: |$)", addr))
+        for area in areas if norm(area)
+    )
     # Do not require the city to be typed when a configured delivery area already
     # matches (customers often enter only locality/road/campus names). If there are
     # no configured areas, fall back to the configured city.
@@ -1693,6 +1703,18 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                             reply = "Please review the details and confirm again.\n" + reply
                         st.session_state.display_messages.append({"role":"assistant","content":reply})
                         st.rerun()
+                    sold_out_now = {
+                        re.sub(r"[^a-z0-9]+", " ", x.lower()).strip()
+                        for x in str(sold_out_items or "").split(",") if x.strip()
+                    }
+                    if any(re.sub(r"[^a-z0-9]+", " ", str(i.get('item') or '').lower()).strip() in sold_out_now
+                           for i in confirm_order.get('items') or []):
+                        reply = "Sorry, that item is currently sold out. The order has not been submitted."
+                        st.session_state.checkout_stage = None
+                        st.session_state.confirmation_order = None
+                        st.session_state.display_messages.append({'role':'assistant','content':reply})
+                        st.session_state.messages.append({'role':'assistant','content':reply})
+                        st.rerun()
                     try:
                         notification_email = st.secrets.get("ORDER_NOTIFICATION_EMAIL")
                         is_custom_request = confirm_order.get("order_type") == "custom_request"
@@ -1700,8 +1722,8 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                             confirm_order["order_type"] = "custom_request"
                             saved = submit_protected_custom_request(slug_from_url, confirm_order)
                             request_number = saved.get("request_number")
-                            if not request_number:
-                                raise RuntimeError("No custom request number returned.")
+                            if not request_number or saved.get('success') is False:
+                                raise RuntimeError("Custom request RPC did not confirm success.")
                             confirm_order["status"] = "confirmed"
                             st.session_state.current_order = confirm_order
                             st.session_state.order_saved = True
@@ -1791,6 +1813,28 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 st.session_state.confirmation_order = None
                 active = {}
 
+            # Enforce owner stock settings in Python, not only in Cohere's prompt.
+            unavailable = {
+                re.sub(r"[^a-z0-9]+", " ", x.lower()).strip()
+                for x in str(sold_out_items or "").split(",") if x.strip()
+            }
+            def is_unavailable(item_name):
+                return bool(item_name and re.sub(r"[^a-z0-9]+", " ", item_name.lower()).strip() in unavailable)
+            requested_menu_item = menu_mention or (
+                st.session_state.get('pending_menu_item') if re.fullmatch(
+                    r"(?i)\s*(?:yes|yeah|yep|yup|ok|okay|sure|please|sounds good|go ahead|i(?:'ll| will) take it)[.! ]*",
+                    clean_user_input
+                ) else None
+            )
+            if is_unavailable(requested_menu_item):
+                st.session_state.pending_menu_item = None
+                if active and ((active.get('items') or [{}])[0].get('item') == requested_menu_item):
+                    st.session_state.current_order = None
+                reply = f"Sorry, {requested_menu_item} is currently sold out. Would you like something else?"
+                st.session_state.display_messages.append({'role':'assistant','content':reply})
+                st.session_state.messages.append({'role':'assistant','content':reply})
+                st.rerun()
+
             # A new product question supersedes a stale off-menu offer.
             if menu_mention:
                 st.session_state.pending_custom_item = None
@@ -1847,12 +1891,17 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             short_yes = bool(re.fullmatch(r'(?i)\s*(?:yes|yeah|yep|yup|ok|okay|sure|please|sounds good|go ahead|i(?:\'ll| will) take it)[.! ]*',clean_user_input))
             pending_menu = st.session_state.get('pending_menu_item')
             pending_custom = st.session_state.get('pending_custom_item')
-            if short_yes and pending_menu:
+            # Accept an offered product when the answer also contains a quantity.
+            # Example: "yup I would like two" after recommending Tiramisu Cup.
+            acceptance_with_quantity = bool(re.match(
+                r"(?i)^\s*(?:yes|yeah|yep|yup|ok|okay|sure|sounds good)\b", clean_user_input
+            ) and loaf_quantity(clean_user_input) and not loaf_is_edit_request(clean_user_input))
+            if (short_yes or acceptance_with_quantity) and pending_menu:
                 menu_mention = pending_menu
                 order_intent = True
-            elif short_yes and pending_custom:
+            elif (short_yes or acceptance_with_quantity) and pending_custom:
                 st.session_state.current_order = {
-                    'items':[{'item':pending_custom,'quantity':None,'customizations':''}],
+                    'items':[{'item':pending_custom,'quantity':loaf_quantity(clean_user_input) if acceptance_with_quantity else None,'customizations':''}],
                     'order_type':'custom_request','fulfillment':None,
                     'requested_datetime':None,'requested_datetime_iso':None,
                     'delivery_address':None,'customer_name':None,'customer_contact':None,
@@ -1872,7 +1921,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
             if menu_mention and order_intent and not (question and not short_yes and not re.search(r'(?i)\b(i want|i need|i(?:\'ll| will) take|give me|add|order)\b',clean_user_input)):
                 product=next((x for x in menu if str(x.get('Item') or '').strip()==menu_mention),{})
-                qty=loaf_quantity(clean_user_input) if not short_yes else None
+                qty=loaf_quantity(clean_user_input) if acceptance_with_quantity or not short_yes else None
                 bespoke = bool(re.search(r'(?i)\b(eggless|sugar[ -]?free|gluten[ -]?free|dairy[ -]?free|without nuts|no nuts|custom(?:ized|ised)?|personaliz(?:e|ed)|personaliz(?:ation)|bespoke)\b', clean_user_input))
                 initial={
                     'items':[{'item':menu_mention,'quantity':qty,'customizations':clean_user_input if bespoke else ''}],
