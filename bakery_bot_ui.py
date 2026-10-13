@@ -799,6 +799,160 @@ def parse_retail_datetime(text, previous_order=None, now=None):
     return None,None,None,None
 
 
+
+def loaf_understand_message(message, menu, order=None, pending_menu=None, pending_custom=None):
+    """Semantic extraction only. This model is never authorized to save an order.
+
+    Fail closed: an unavailable/invalid model response returns None and the
+    existing deterministic flow remains available.
+    """
+    now = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
+    context = {
+        "message": str(message), "current_order": order or {},
+        "pending_menu": pending_menu, "pending_custom": pending_custom,
+        "menu_items": [str(x.get("Item")) for x in menu if x.get("Item")],
+        "local_time": now,
+    }
+    system = """Interpret the latest customer message in English, Hindi (including Devanagari),
+Hinglish, slang and typos, using context. Output ONE JSON object and no other text.
+Keys:
+intent: one of question, order, accept, change, cancel, provide_details, ambiguous, greeting
+product: canonical menu name ONLY if a confident match, else null
+off_menu_product: requested non-menu product if clearly named, else null
+quantity: positive integer if supplied, else null
+quantity_action: set, add, subtract, or null (e.g. 'ek aur' means add)
+fulfillment: pickup, delivery, or null
+datetime_text: customer's date/time expression, normalized to English when necessary, or null
+address: customer-provided location/address or null
+customer_name: name only if explicitly provided, else null
+customer_contact: phone/email only if explicitly provided, else null
+customization: customer-requested modification or null
+answer_refers_to_pending: true only when accepting the pending offer
+needs_clarification: true if the message is genuinely ambiguous
+Rules: Do not invent any detail. Do not interpret a time as quantity, an address
+as a name, or a question as an order. Do not claim an order is placed. If the
+customer changes the product, reference the newest product, not older offers.
+For a standalone number after a quantity question, interpret it as quantity.
+If a customer asks about an item, use question rather than order unless they
+express ordering intent. When unclear, set needs_clarification=true."""
+    try:
+        result = co.chat(
+            model="command-r-plus-08-2024",
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": json.dumps(context, ensure_ascii=False)}],
+        )
+        raw = result.message.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw).strip()
+        obj = json.loads(raw)
+        if not isinstance(obj, dict) or obj.get("intent") not in {
+            "question","order","accept","change","cancel",
+            "provide_details","ambiguous","greeting"
+        }:
+            return None
+        valid_names = menu_item_names(menu)
+        if obj.get("product") not in valid_names:
+            obj["product"] = None
+        qty = obj.get("quantity")
+        if isinstance(qty, bool) or not isinstance(qty, int) or not 1 <= qty <= 100:
+            obj["quantity"] = None
+        if obj.get("fulfillment") not in ("pickup","delivery"):
+            obj["fulfillment"] = None
+        if obj.get("quantity_action") not in ("set","add","subtract"):
+            obj["quantity_action"] = None
+        for key in ("datetime_text","address","customer_name","customer_contact",
+                    "customization","off_menu_product"):
+            if not isinstance(obj.get(key), str) or not obj[key].strip():
+                obj[key] = None
+        return obj
+    except Exception as exc:
+        print("LOAF_NLU_ERROR:", type(exc).__name__)
+        return None
+
+
+def loaf_apply_understanding(order, data, menu, delivery_city, delivery_areas, fulfillment_options):
+    """Merge extracted changes; never let the language model replace order state."""
+    order = dict(order)
+    order["items"] = [dict(x) for x in order.get("items", [])]
+    if not order["items"]:
+        return order, "What would you like to order?", False
+    item = order["items"][0]
+    quantity = data.get("quantity")
+    if quantity is not None:
+        operation = data.get("quantity_action")
+        previous = item.get("quantity")
+        if operation == "add":
+            quantity = (previous or 0) + quantity
+        elif operation == "subtract":
+            quantity = (previous or 0) - quantity
+        if 1 <= quantity <= 100:
+            item["quantity"] = quantity
+        else:
+            return order, "Please choose a quantity between 1 and 100.", False
+    if data.get("customization"):
+        item["customizations"] = data["customization"]
+        order["order_type"] = "custom_request"
+        order["estimated_total"] = None
+    fulfillment = data.get("fulfillment")
+    if fulfillment:
+        allowed = str(fulfillment_options or "").lower()
+        if fulfillment == "delivery" and "pickup only" in allowed:
+            return order, "This bakery offers pickup only. Would pickup work?", False
+        if fulfillment == "pickup" and "delivery only" in allowed:
+            return order, "This bakery offers delivery only. Would delivery work?", False
+        order["fulfillment"] = fulfillment
+        order["delivery_choice_pending"] = False
+        if fulfillment == "pickup":
+            order["delivery_address"] = None
+            order["delivery_locality"] = None
+    if data.get("datetime_text"):
+        human, iso, date_iso, label = parse_retail_datetime(
+            data["datetime_text"], order
+        )
+        if date_iso:
+            order["retail_date_iso"] = date_iso
+            order["retail_date_label"] = label
+            order["requested_datetime"] = human
+            order["requested_datetime_iso"] = iso
+        elif iso:
+            order["requested_datetime"] = human
+            order["requested_datetime_iso"] = iso
+        elif not order.get("requested_datetime_iso"):
+            return order, "Could you give an exact date and time?", False
+    if data.get("customer_name"):
+        order["customer_name"] = data["customer_name"]
+    if data.get("customer_contact"):
+        if loaf_valid_contact(data["customer_contact"]):
+            order["customer_contact"] = data["customer_contact"]
+        else:
+            return order, "Please share a valid phone number or email.", False
+    if data.get("address") and order.get("fulfillment") == "delivery":
+        address = data["address"].strip()
+        if not delivery_address_is_allowed(address, delivery_city, delivery_areas):
+            order["delivery_address"] = None
+            order["delivery_choice_pending"] = True
+            areas = ", ".join(delivery_areas or [])
+            return order, (
+                "Sorry, we don't deliver to that location. "
+                + (f"Available areas: {areas}. " if areas else "")
+                + "Would you prefer pickup or another delivery address?"
+            ), False
+        normalized = lambda x: re.sub(r"[^a-z0-9]+", " ", str(x).lower()).strip()
+        areas = [str(a) for a in (delivery_areas or [])]
+        if any(normalized(address) == normalized(a) for a in areas):
+            order["delivery_locality"] = address
+            order["delivery_address"] = None
+        else:
+            locality = order.get("delivery_locality")
+            if locality and normalized(locality) not in normalized(address):
+                address += ", " + locality
+            order["delivery_address"] = address
+            order["delivery_locality"] = None
+        order["delivery_choice_pending"] = False
+    return (order, *loaf_order_prompt(
+        order, menu, delivery_city, delivery_areas, fulfillment_options
+    ))
+
 def loaf_match_menu_item(text, menu):
     """Match an unambiguous menu product, including 'apple pie' for Classic Apple Pie.
 
@@ -1798,6 +1952,14 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             question = loaf_is_product_question(clean_user_input)
             order_intent = loaf_is_order_intent(clean_user_input)
             edit_intent = loaf_is_edit_request(clean_user_input)
+            # Interpret before deciding whether a submitted customer wants a new order.
+            understanding = loaf_understand_message(
+                clean_user_input, menu, active,
+                st.session_state.get("pending_menu_item"),
+                st.session_state.get("pending_custom_item"),
+            )
+            if understanding and understanding.get("intent") == "order":
+                order_intent = True
 
             # After successful submission, a follow-up cannot silently resubmit it.
             if st.session_state.get('order_saved') and not order_intent:
@@ -1813,6 +1975,78 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 st.session_state.confirmation_order = None
                 active = {}
 
+            # Semantic routing: model interprets; Python alone updates checkout.
+            if understanding:
+                intent = understanding["intent"]
+                selected = understanding.get("product")
+                if intent == "cancel" and active:
+                    st.session_state.current_order = None
+                    st.session_state.pending_menu_item = None
+                    st.session_state.pending_custom_item = None
+                    st.session_state.checkout_stage = None
+                    reply = "Okay, I haven't submitted anything. What else can I help with?"
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
+                if intent == "question" or intent == "greeting":
+                    if selected:
+                        st.session_state.pending_menu_item = selected
+                        st.session_state.pending_custom_item = None
+                    st.session_state.awaiting_assistant = True
+                    st.rerun()
+                if understanding.get("needs_clarification") and intent == "ambiguous":
+                    reply = "Could you clarify what you'd like me to change or order?"
+                    st.session_state.display_messages.append({"role":"assistant","content":reply})
+                    st.session_state.messages.append({"role":"assistant","content":reply})
+                    st.rerun()
+                if intent in ("order","accept","change","provide_details"):
+                    pending_menu = st.session_state.get("pending_menu_item")
+                    pending_custom = st.session_state.get("pending_custom_item")
+                    chosen = selected or (
+                        pending_menu if intent == "accept" and understanding.get("answer_refers_to_pending")
+                        else None
+                    )
+                    custom_name = understanding.get("off_menu_product") or (
+                        pending_custom if intent == "accept" and understanding.get("answer_refers_to_pending")
+                        else None
+                    )
+                    if chosen or custom_name:
+                        if not active or (
+                            (active.get("items") or [{}])[0].get("item") != (chosen or custom_name)
+                        ):
+                            product_name = chosen or custom_name
+                            product = next((x for x in menu if x.get("Item") == product_name), {})
+                            active = {
+                                "items":[{"item":product_name,"quantity":None,"customizations":""}],
+                                "order_type":"retail" if chosen else "custom_request",
+                                "fulfillment":None,"requested_datetime":None,
+                                "requested_datetime_iso":None,"delivery_address":None,
+                                "customer_name":None,"customer_contact":None,
+                                "estimated_total":None,"status":"in_progress",
+                            }
+                        st.session_state.pending_menu_item = None
+                        st.session_state.pending_custom_item = None
+                    if active.get("items"):
+                        updated, reply, ready = loaf_apply_understanding(
+                            active, understanding, menu, delivery_city,
+                            delivery_areas, fulfillment_options
+                        )
+                        if updated.get("order_type") != "custom_request":
+                            product = next((x for x in menu if x.get("Item") ==
+                                updated["items"][0]["item"]), {})
+                            try:
+                                price = float(product.get("Price") or 0)
+                                qty = updated["items"][0].get("quantity")
+                                updated["estimated_total"] = price * qty if price > 0 and qty else None
+                            except (TypeError, ValueError):
+                                updated["estimated_total"] = None
+                        st.session_state.current_order = updated
+                        if ready:
+                            st.session_state.checkout_stage = "confirm"
+                            st.session_state.confirmation_order = dict(updated)
+                        st.session_state.display_messages.append({"role":"assistant","content":reply})
+                        st.session_state.messages.append({"role":"assistant","content":reply})
+                        st.rerun()
             # Enforce owner stock settings in Python, not only in Cohere's prompt.
             unavailable = {
                 re.sub(r"[^a-z0-9]+", " ", x.lower()).strip()
