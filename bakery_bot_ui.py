@@ -812,24 +812,34 @@ def loaf_quantity(text):
 
 
 def loaf_order_prompt(order, menu, delivery_city='', delivery_areas=None, fulfillment_options='Both'):
-    """Return (message, ready) based exclusively on persistent checkout fields."""
+    """Checkout prompts use only the persisted order, never an AI-generated summary."""
     first=(order.get('items') or [{}])[0]
-    if not first.get('item'):return 'What would you like to order?',False
-    if not first.get('quantity'):return f"How many {first['item']} would you like?",False
-    allowed=fulfillment_options.lower()
+    if not first.get('item'):
+        return 'What would you like to order?',False
+    if not first.get('quantity'):
+        return f"How many {first['item']} would you like?",False
+    allowed=str(fulfillment_options or 'Both').lower()
     if not order.get('fulfillment'):
         if 'pickup only' in allowed:order['fulfillment']='pickup'
         elif 'delivery only' in allowed:order['fulfillment']='delivery'
         else:return 'Would you like pickup or delivery?',False
     if not order.get('requested_datetime_iso'):
-        if order.get('retail_date_iso'):return f"What time would you like {order.get('retail_date_label') or 'that day'}?",False
+        if order.get('retail_date_iso'):
+            return f"What time would you like {order.get('retail_date_label') or 'that day'}?",False
         return 'What date and time would you like?',False
     if order['fulfillment']=='delivery':
-        if not order.get('delivery_address'):return "What's the delivery address?",False
+        if order.get('delivery_choice_pending'):
+            areas=', '.join(delivery_areas or [])
+            return ('Would you prefer pickup or delivery to an address in '+
+                    (areas if areas else 'our delivery area')+'?'),False
+        if order.get('delivery_locality') and not order.get('delivery_address'):
+            return f"Please share the house/building number and street or landmark in {order['delivery_locality']}.",False
+        if not order.get('delivery_address'):
+            return "What's the delivery address?",False
         if not delivery_address_is_allowed(order['delivery_address'],delivery_city,delivery_areas):
             order['delivery_address']=None
-            areas=', '.join(delivery_areas or [])
-            return ("Sorry, that's outside our configured delivery area. " + (f"We deliver to: {areas}. " if areas else '') + 'Please give an eligible address or choose pickup.'),False
+            order['delivery_choice_pending']=True
+            return loaf_order_prompt(order,menu,delivery_city,delivery_areas,fulfillment_options)
     if not order.get('customer_name') or not order.get('customer_contact'):
         return "What's your name and contact number or email?",False
     label='Send this custom request?' if order.get('order_type')=='custom_request' else 'Confirm this order?'
@@ -841,40 +851,91 @@ def loaf_order_prompt(order, menu, delivery_city='', delivery_areas=None, fulfil
 
 
 def loaf_apply_turn(order, text, menu, delivery_city='', delivery_areas=None, fulfillment_options='Both', now=None):
-    """Advance an existing order using only the current message; never overwrite unrelated fields."""
+    """Apply one customer turn without discarding previously collected fields."""
     order=order.copy()
     order['items']=[dict(x) for x in (order.get('items') or [])]
     s=str(text or '').strip()
     low=s.lower()
-    if not order['items']:return order,'What would you like to order?',False
+    if not order['items']:
+        return order,'What would you like to order?',False
     item=order['items'][0]
     prior_prompt=loaf_order_prompt(order,menu,delivery_city,delivery_areas,fulfillment_options)[0]
     if not item.get('quantity'):
         q=loaf_quantity(s)
         if q:item['quantity']=q
-    # Accept an explicit change of quantity only when customer asks for a change.
     elif re.search(r'\b(change|make it|instead|quantity)\b',low):
         q=loaf_quantity(s)
         if q:item['quantity']=q
     if re.search(r'\b(pick\s*up|pickup|collect)\b',low):
-        order['fulfillment']='pickup';order['delivery_address']=None
-    elif re.search(r'\b(deliver|delivery|delivered)\b',low):order['fulfillment']='delivery'
+        order['fulfillment']='pickup'
+        order['delivery_address']=None
+        order['delivery_locality']=None
+        order['delivery_choice_pending']=False
+    elif re.search(r'\b(deliver|delivery|delivered)\b',low):
+        order['fulfillment']='delivery'
+        order['delivery_choice_pending']=False
+
     human,iso,date_iso,date_label=parse_retail_datetime(s,order,now)
     if date_iso:
-        order['retail_date_iso']=date_iso;order['retail_date_label']=date_label
+        order['retail_date_iso']=date_iso
+        order['retail_date_label']=date_label
     if iso:
-        order['requested_datetime']=human;order['requested_datetime_iso']=iso
+        order['requested_datetime']=human
+        order['requested_datetime_iso']=iso
     elif date_iso and re.search(r'\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b',low):
-        order['requested_datetime']=human;order['requested_datetime_iso']=None
-    # Only treat a turn as an address when the prior prompt was asking for one.
-    if order.get('fulfillment')=='delivery' and not order.get('delivery_address') and prior_prompt=="What's the delivery address?":
-        explicit_date_or_time=bool(re.search(r'\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|now)\b',low) or has_explicit_time(s))
-        if not (explicit_date_or_time or re.fullmatch(r'\s*(?:pickup|delivery|delivered)\s*',low)) and len(s)>=5:
-            if delivery_address_is_allowed(s,delivery_city,delivery_areas):order['delivery_address']=s
-            else:
-                areas=', '.join(delivery_areas or [])
-                return order,("Sorry, we don't deliver to that address. " + (f"Available areas: {areas}. " if areas else '') + 'Please give an eligible address or choose pickup.'),False
-    # Contact must not be parsed out of an address; collect only at identity stage.
+        order['requested_datetime']=human
+        order['requested_datetime_iso']=None
+
+    # Ambiguous agreement after an invalid address must never become an address.
+    if order.get('fulfillment')=='delivery' and order.get('delivery_choice_pending'):
+        if order['fulfillment']=='pickup':
+            pass
+        elif re.search(r'\b(pick\s*up|pickup|collect)\b',low):
+            order['fulfillment']='pickup'
+            order['delivery_choice_pending']=False
+        elif re.search(r'\b(deliver|delivery|delivered)\b',low):
+            order['delivery_choice_pending']=False
+            return order,"Sure. What's the delivery address in the eligible area?",False
+        elif re.fullmatch(r'(?i)\s*(?:that(?: would be| is)? fine(?: too)?|okay|ok|sure|yes|yup|yeah|fine|works for me)[.! ]*',s):
+            return order,loaf_order_prompt(order,menu,delivery_city,delivery_areas,fulfillment_options)[0],False
+        else:
+            # A location can itself answer the question; let address validation handle it.
+            order['delivery_choice_pending']=False
+
+    if order.get('fulfillment')=='delivery' and not order.get('delivery_address'):
+        asking_address = (
+            prior_prompt=="What's the delivery address?"
+            or 'eligible area' in prior_prompt.lower()
+            or 'prefer pickup or delivery to an address' in prior_prompt.lower()
+            or prior_prompt.startswith('Please share the house/building')
+        )
+        if asking_address and not re.search(r'\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|now)\b',low) and not has_explicit_time(s):
+            if not re.fullmatch(r'(?i)\s*(?:okay|ok|yes|yup|sure|fine|that would be fine too|pickup|delivery|delivered)\s*',s):
+                if order.get('delivery_locality'):
+                    locality=order['delivery_locality']
+                    candidate=s if locality.lower() in low else s+', '+locality
+                    if delivery_address_is_allowed(candidate,delivery_city,delivery_areas):
+                        order['delivery_address']=candidate
+                        order['delivery_locality']=None
+                    else:
+                        order['delivery_locality']=None
+                        order['delivery_choice_pending']=True
+                elif delivery_address_is_allowed(s,delivery_city,delivery_areas):
+                    areas=[str(x).strip() for x in (delivery_areas or []) if str(x).strip()]
+                    norm=lambda x:re.sub(r'[^a-z0-9]+',' ',x.lower()).strip()
+                    # A locality alone cannot serve as a deliverable street address.
+                    only_area=any(norm(s)==norm(a) or norm(s)==norm(a+' '+str(delivery_city or '')) for a in areas)
+                    if only_area:
+                        order['delivery_locality']=s
+                    else:
+                        order['delivery_address']=s
+                elif len(s)>=4:
+                    order['delivery_choice_pending']=True
+                    areas=', '.join(delivery_areas or [])
+                    return order,("Sorry, we don't deliver to that address. "+
+                        (f"Available areas: {areas}. " if areas else '')+
+                        'Would you prefer pickup or delivery to an eligible address?'),False
+
     if prior_prompt=="What's your name and contact number or email?":
         order=recover_name_contact(s,order)
         if not order.get('customer_name') and re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,79}",s) and not re.search(r'\b(?:yes|okay|no|pickup|delivery)\b',low):
