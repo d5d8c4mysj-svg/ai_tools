@@ -1643,6 +1643,13 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 st.session_state.messages.append({"role":"assistant","content":reply})
                 st.rerun()
 
+            # A newly mentioned real menu product supersedes an older off-menu offer.
+            # This must happen BEFORE interpreting short replies such as "ok".
+            mentioned_menu_item, mentioned_is_menu = detect_requested_product(clean_user_input, menu)
+            if mentioned_is_menu is True:
+                st.session_state.pending_custom_item = None
+                st.session_state.pending_menu_item = mentioned_menu_item
+
             # Resolve a pending off-menu offer deterministically.
             pending_custom = st.session_state.get("pending_custom_item")
             if pending_custom:
@@ -1678,6 +1685,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             # canonical menu name. Short follow-ups such as "yup", "4", "pickup", etc.
             # must not allow old conversation context to rename the product.
             if requested_item and is_menu_item is True:
+                st.session_state.pending_custom_item = None
                 st.session_state.pending_menu_item = requested_item
 
             if (requested_item and is_menu_item is True and
@@ -1848,7 +1856,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             try:
                 offer_data = json.loads(offer_match.group(1))
                 offered_item = str(offer_data.get("item") or "").strip()
-                if offered_item:
+                if offered_item and not detect_requested_product(clean_user_input, menu)[1]:
                     st.session_state.pending_custom_item = offered_item
             except Exception:
                 pass
@@ -1873,7 +1881,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 display_reply = re.sub(pattern, "", display_reply).strip()
 
 
-        if order_match and not offer_match and not (not st.session_state.get("current_order") and
+        if order_match and not (offer_match and not detect_requested_product(clean_user_input, menu)[1]) and not (not st.session_state.get("current_order") and
                 not re.search(r"(?i)\b(order|want|buy|give me|i'll take|i will take|add)\b",clean_user_input)):
             display_reply = bot_reply[:order_match.start()].strip()
             try:
