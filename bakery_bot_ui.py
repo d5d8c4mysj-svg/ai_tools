@@ -1773,6 +1773,19 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         parsed_items[0]["quantity"] = None
                         parsed_order["estimated_total"] = None
 
+                # NORMAL MENU TIME FIX: resolve the word "now" in the bakery's
+                # local timezone, never in the Streamlit server timezone.
+                # This is deliberately isolated from the custom-request state machine.
+                if (
+                    parsed_order.get("order_type") != "custom_request"
+                    and re.fullmatch(r"\s*(?:right\s+)?now\s*[.!?]*\s*", clean_user_input, re.I)
+                ):
+                    ist_now = datetime.now(ZoneInfo("Asia/Kolkata"))
+                    prior_date_text = str(previous_order.get("requested_datetime") or "").strip().lower()
+                    if prior_date_text == "today" or not prior_date_text:
+                        parsed_order["requested_datetime"] = ist_now.strftime("Today at %-I:%M %p")
+                        parsed_order["requested_datetime_iso"] = ist_now.replace(second=0, microsecond=0).isoformat()
+
                 # Preserve a date-only answer (today/tomorrow/weekday) as human state,
                 # while keeping ISO incomplete until the customer supplies a clock time.
                 date_only = re.search(
