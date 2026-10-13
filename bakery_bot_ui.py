@@ -1317,6 +1317,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
         st.session_state.order_number = None
         st.session_state.pending_custom_item = None
         st.session_state.custom_request_stage = None
+        st.session_state.pending_menu_item = None
         st.session_state.orders_this_session = 0
         st.session_state.awaiting_assistant = False
         st.session_state.checkout_stage = None
@@ -1574,6 +1575,14 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     st.rerun()
 
             requested_item, is_menu_item = detect_requested_product(clean_user_input, menu)
+
+            # NORMAL MENU ITEM LOCK:
+            # Once the customer explicitly refers to a real menu product, remember its
+            # canonical menu name. Short follow-ups such as "yup", "4", "pickup", etc.
+            # must not allow old conversation context to rename the product.
+            if requested_item and is_menu_item is True:
+                st.session_state.pending_menu_item = requested_item
+
             if requested_item and is_menu_item is False:
                 st.session_state.pending_custom_item = requested_item
                 reply = custom_request_prompt(requested_item, business_name)
@@ -1665,7 +1674,7 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
 
         if order_count > 0:
             if st.button("Start new order", key="top_start_new_order"):
-                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "last_user_input", "pending_custom_item", "custom_request_stage", "checkout_stage", "confirmation_order"]:
+                for key in ["messages", "display_messages", "current_order", "order_email_sent", "order_saved", "order_number", "awaiting_assistant", "last_user_input", "pending_custom_item", "custom_request_stage", "checkout_stage", "confirmation_order", "pending_menu_item"]:
                     if key in st.session_state:
                         del st.session_state[key]
                 st.rerun()
@@ -1744,6 +1753,43 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             try:
                 parsed_order = json.loads(order_match.group(1))
                 parsed_order = recover_name_contact(clean_user_input, parsed_order)
+
+                # Lock normal orders to a real canonical menu product.
+                # Priority:
+                #   a) an exact menu item explicitly named this turn;
+                #   b) the already-active normal-order item;
+                #   c) the most recently discussed exact menu item.
+                if parsed_order.get("order_type") != "custom_request":
+                    explicit_menu_item, explicit_is_menu = detect_requested_product(clean_user_input, menu)
+                    previous_normal = st.session_state.get("current_order") or {}
+                    previous_normal_items = previous_normal.get("items") or []
+                    locked_item = None
+
+                    if explicit_menu_item and explicit_is_menu is True:
+                        locked_item = explicit_menu_item
+                        st.session_state.pending_menu_item = explicit_menu_item
+                    elif (
+                        previous_normal.get("order_type") != "custom_request"
+                        and previous_normal_items
+                        and previous_normal_items[0].get("item") in menu_item_names(menu)
+                    ):
+                        locked_item = previous_normal_items[0].get("item")
+                    else:
+                        pending_menu_item = st.session_state.get("pending_menu_item")
+                        if pending_menu_item in menu_item_names(menu):
+                            locked_item = pending_menu_item
+
+                    if locked_item:
+                        parsed_items_for_lock = parsed_order.get("items") or []
+                        if not parsed_items_for_lock:
+                            parsed_items_for_lock = [{
+                                "item": locked_item,
+                                "quantity": None,
+                                "customizations": ""
+                            }]
+                            parsed_order["items"] = parsed_items_for_lock
+                        else:
+                            parsed_items_for_lock[0]["item"] = locked_item
 
                 prior_for_qty = st.session_state.get("current_order") or {}
                 if prior_for_qty.get("order_type") != "custom_request":
