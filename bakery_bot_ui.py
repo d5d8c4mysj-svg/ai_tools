@@ -842,8 +842,17 @@ def loaf_is_edit_request(text):
     return bool(re.search(r"(?i)\b(change|instead|make it|switch|actually|rather|add|remove|different)\b",str(text or '')))
 
 
+def loaf_valid_contact(value):
+    """Require a real-looking email or phone before confirming an order."""
+    raw=str(value or '').strip()
+    digits=re.sub(r"[^0-9]", "", raw)
+    email_ok=bool(re.fullmatch(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+[.][A-Za-z]{2,}",raw))
+    phone_ok=bool(re.fullmatch(r"[+]?[0-9 -]{10,17}",raw) and 10 <= len(digits) <= 15)
+    return email_ok or phone_ok
+
+
 def loaf_has_contact(order):
-    return bool(order.get('customer_name') and order.get('customer_contact'))
+    return bool(order.get('customer_name') and loaf_valid_contact(order.get('customer_contact')))
 
 
 def loaf_quantity(text):
@@ -887,8 +896,12 @@ def loaf_order_prompt(order, menu, delivery_city='', delivery_areas=None, fulfil
             order['delivery_address']=None
             order['delivery_choice_pending']=True
             return loaf_order_prompt(order,menu,delivery_city,delivery_areas,fulfillment_options)
-    if not order.get('customer_name') or not order.get('customer_contact'):
+    if not order.get('customer_name') and not order.get('customer_contact'):
         return "What's your name and contact number or email?",False
+    if not order.get('customer_name'):
+        return "What's your name?",False
+    if not order.get('customer_contact'):
+        return "What's your contact number or email?",False
     label='Send this custom request?' if order.get('order_type')=='custom_request' else 'Confirm this order?'
     summary=f"{label}\n- {first['quantity']} x {first['item']}\n- {order['fulfillment'].title()}\n- {order['requested_datetime']}"
     if order['fulfillment']=='delivery':summary+=f"\n- Delivery: {order['delivery_address']}"
@@ -977,7 +990,14 @@ def loaf_apply_turn(order, text, menu, delivery_city='', delivery_areas=None, fu
                     if only_area:
                         order['delivery_locality']=s
                     else:
-                        order['delivery_address']=s
+                        # Require a building/street/landmark in addition to the area.
+                        remainder=norm(s)
+                        for area in areas:
+                            remainder=remainder.replace(norm(area),' ').strip()
+                        if len(remainder.split()) < 2 and not re.search(r'\d',remainder):
+                            order['delivery_locality']=next((a for a in areas if norm(a) in norm(s)),s)
+                        else:
+                            order['delivery_address']=s
                 elif len(s)>=4:
                     order['delivery_choice_pending']=True
                     areas=', '.join(delivery_areas or [])
@@ -985,7 +1005,7 @@ def loaf_apply_turn(order, text, menu, delivery_city='', delivery_areas=None, fu
                         (f"Available areas: {areas}. " if areas else '')+
                         'Would you prefer pickup or delivery to an eligible address?'),False
 
-    if prior_prompt=="What's your name and contact number or email?":
+    if prior_prompt in ("What's your name and contact number or email?", "What's your contact number or email?", "What's your name?"):
         order=recover_name_contact(s,order)
         if not order.get('customer_name') and re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,79}",s) and not re.search(r'\b(?:yes|okay|no|pickup|delivery)\b',low):
             order['customer_name']=re.sub(r"(?i)^(?:my name is|name is|i am|i'm)\s+",'',s).strip()
@@ -1006,6 +1026,8 @@ def delivery_address_is_allowed(address, delivery_city, delivery_areas):
     city = str(delivery_city or "").strip()
     if not raw:
         return False
+    # A locality by itself, or a street name with no verified service locality,
+    # is not a deliverable address. Do not infer geography from arbitrary text.
     if not areas and not city:
         return True
 
@@ -1656,16 +1678,19 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             # Once the summary is shown, this runs before every other router and before Cohere.
             if st.session_state.get("checkout_stage") == "confirm":
                 confirm_order = st.session_state.get("confirmation_order") or st.session_state.get("current_order") or {}
-                if confirmation_reply_is_yes(clean_user_input) and not re.search(r"(?i)\b(but|change|instead|except|not yet)\b",clean_user_input):
+                if confirmation_reply_is_yes(clean_user_input) and not re.search(r"(?i)\b(but|change|instead|except|not yet|rather|actually|make it)\b",clean_user_input):
                     if not (confirm_order.get("items") and all(isinstance(i.get('quantity'), int) and i['quantity'] > 0 for i in confirm_order['items']) and confirm_order.get("requested_datetime_iso")
-                            and confirm_order.get("customer_name") and confirm_order.get("customer_contact")
+                            and confirm_order.get("customer_name") and loaf_valid_contact(confirm_order.get("customer_contact"))
                             and confirm_order.get("fulfillment") in ("pickup","delivery")
                             and (confirm_order.get("fulfillment") != "delivery" or
                                  (confirm_order.get("delivery_address") and delivery_address_is_allowed(
                                      confirm_order.get("delivery_address"), delivery_city, delivery_areas)))):
                         st.session_state.checkout_stage = None
                         st.session_state.confirmation_order = None
-                        reply = "Some required details are missing. Please complete your order before confirming."
+                        st.session_state.current_order = confirm_order
+                        reply, ready = loaf_order_prompt(confirm_order, menu, delivery_city, delivery_areas, fulfillment_options)
+                        if ready:
+                            reply = "Please review the details and confirm again.\n" + reply
                         st.session_state.display_messages.append({"role":"assistant","content":reply})
                         st.rerun()
                     try:
