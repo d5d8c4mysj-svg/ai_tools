@@ -747,6 +747,81 @@ def has_explicit_time(text):
     return bool(re.search(r"\b(?:[01]?\d|2[0-3])(?::[0-5]\d)?\s*(?:am|pm)\b", s)
                 or re.search(r"\b(?:[01]?\d|2[0-3]):[0-5]\d\b", s))
 
+
+
+def parse_retail_datetime(text, previous_order=None):
+    """Parse common retail date/time replies in Asia/Kolkata without relying on Cohere.
+
+    Returns (human_text, iso_text). Either may be None when the customer supplied
+    only one half of the date/time. A previously saved date can be combined with a
+    later time-only reply.
+    """
+    s = re.sub(r"\s+", " ", str(text or "").lower()).strip()
+    previous_order = previous_order or {}
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+
+    # Date supplied this turn.
+    day = None
+    date_label = None
+    if "day after tomorrow" in s:
+        day = now.date() + pd.Timedelta(days=2)
+        date_label = "day after tomorrow"
+    elif re.search(r"\btomorrow\b", s):
+        day = now.date() + pd.Timedelta(days=1)
+        date_label = "tomorrow"
+    elif re.search(r"\btoday\b", s):
+        day = now.date()
+        date_label = "today"
+    else:
+        weekdays = {
+            "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+            "friday": 4, "saturday": 5, "sunday": 6,
+        }
+        for name, weekday in weekdays.items():
+            if re.search(rf"\b{name}\b", s):
+                delta = (weekday - now.weekday()) % 7
+                if delta == 0 and re.search(rf"\bnext\s+{name}\b", s):
+                    delta = 7
+                day = now.date() + pd.Timedelta(days=delta)
+                date_label = name
+                break
+
+    # If this is a time-only reply, recover the date previously stored by Python.
+    if day is None:
+        saved_date = previous_order.get("retail_date_iso")
+        if saved_date:
+            try:
+                day = datetime.fromisoformat(str(saved_date)).date()
+                date_label = str(previous_order.get("retail_date_label") or "").strip() or None
+            except (ValueError, TypeError):
+                day = None
+
+    # Time supplied this turn.
+    hour = minute = None
+    if re.search(r"\b(?:right\s+)?now\b", s):
+        hour, minute = now.hour, now.minute
+        if day is None:
+            day = now.date()
+            date_label = "today"
+    else:
+        m = re.search(r"\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b", s)
+        if m:
+            hour = int(m.group(1)) % 12 + (12 if m.group(3) == "pm" else 0)
+            minute = int(m.group(2) or 0)
+        else:
+            m24 = re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", s)
+            if m24:
+                hour, minute = int(m24.group(1)), int(m24.group(2))
+
+    if day is not None and hour is not None:
+        dt = datetime(day.year, day.month, day.day, hour, minute or 0, tzinfo=ZoneInfo("Asia/Kolkata"))
+        return dt.strftime("%A, %d %b at %-I:%M %p"), dt.isoformat(), day.isoformat(), date_label
+
+    if day is not None:
+        return date_label or day.strftime("%A, %d %b"), None, day.isoformat(), date_label
+
+    return None, None, None, None
+
 def recover_name_contact(text, order):
     """Recover obvious 'Name + phone/email' input if model extraction misses it."""
     s = str(text or "").strip()
@@ -1181,7 +1256,7 @@ def run_chatbot(business):
     safe_display_name = html.escape(display_business_name)
 
     if "messages" not in st.session_state:
-        current_time_str = datetime.now().strftime("%A, %Y-%m-%d %I:%M %p")
+        current_time_str = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%A, %Y-%m-%d %I:%M %p")
 
         if fulfillment_options == "Pickup only":
             fulfillment_instructions = f"""This business offers PICKUP ONLY -- do not offer, mention, or ask about delivery under any circumstances. Do NOT ask the customer for a delivery address. Pickup happens at the business address: {address}."""
@@ -1819,6 +1894,22 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         parsed_items[0]["quantity"] = None
                         parsed_order["estimated_total"] = None
 
+                # NORMAL MENU DATE/TIME: Python is authoritative for common date/time phrases.
+                # This prevents Cohere from dropping inputs such as "Saturday 6pm".
+                if parsed_order.get("order_type") != "custom_request":
+                    retail_human, retail_iso, retail_date_iso, retail_date_label = parse_retail_datetime(
+                        clean_user_input, previous_order
+                    )
+                    if retail_date_iso:
+                        parsed_order["retail_date_iso"] = retail_date_iso
+                        parsed_order["retail_date_label"] = retail_date_label
+                    elif previous_order.get("retail_date_iso"):
+                        parsed_order["retail_date_iso"] = previous_order.get("retail_date_iso")
+                        parsed_order["retail_date_label"] = previous_order.get("retail_date_label")
+                    if retail_human:
+                        parsed_order["requested_datetime"] = retail_human
+                        parsed_order["requested_datetime_iso"] = retail_iso
+
                 # NORMAL MENU TIME FIX: resolve the word "now" in the bakery's
                 # local timezone, never in the Streamlit server timezone.
                 # This is deliberately isolated from the custom-request state machine.
@@ -1841,6 +1932,8 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                 if date_only and not has_explicit_time(clean_user_input):
                     parsed_order["requested_datetime"] = date_only.group(1)
                     parsed_order["requested_datetime_iso"] = None
+                    parsed_order["retail_date_iso"] = parsed_order.get("retail_date_iso") or parse_retail_datetime(clean_user_input, previous_order)[2]
+                    parsed_order["retail_date_label"] = date_only.group(1).lower()
 
                 # If the next turn supplies only a time, keep the previously stored date
                 # available to Cohere/Python instead of losing the partial date state.
