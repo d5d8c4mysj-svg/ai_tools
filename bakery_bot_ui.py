@@ -1992,10 +1992,41 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                     if selected:
                         st.session_state.pending_menu_item = selected
                         st.session_state.pending_custom_item = None
+                        product = next((x for x in menu if x.get("Item") == selected), {})
+                        sold = {re.sub(r"[^a-z0-9]+", " ", x.lower()).strip()
+                                for x in str(sold_out_items or "").split(",") if x.strip()}
+                        normalized = re.sub(r"[^a-z0-9]+", " ", selected.lower()).strip()
+                        if normalized in sold:
+                            reply = f"{selected} is currently sold out. Would you like another item?"
+                        else:
+                            price = product.get("Price")
+                            price_part = f" for \u20b9{price}" if price is not None else ""
+                            reply = f"Yes, we have {selected}{price_part}. Would you like to order it?"
+                        st.session_state.display_messages.append({"role":"assistant","content":reply})
+                        st.session_state.messages.append({"role":"assistant","content":reply})
+                        st.rerun()
+                    if understanding.get("off_menu_product"):
+                        name = understanding["off_menu_product"]
+                        st.session_state.pending_custom_item = name
+                        st.session_state.pending_menu_item = None
+                        reply = (f"{name} isn't on our current menu. "
+                                 "Would you like to send a custom request to the bakery?")
+                        st.session_state.display_messages.append({"role":"assistant","content":reply})
+                        st.session_state.messages.append({"role":"assistant","content":reply})
+                        st.rerun()
                     st.session_state.awaiting_assistant = True
                     st.rerun()
                 if understanding.get("needs_clarification") and intent == "ambiguous":
-                    reply = "Could you clarify what you'd like me to change or order?"
+                    if active.get("items"):
+                        reply, _ = loaf_order_prompt(active, menu, delivery_city,
+                                                     delivery_areas, fulfillment_options)
+                    elif st.session_state.get("pending_menu_item"):
+                        reply = ("Would you like to order "
+                                 + st.session_state["pending_menu_item"] + "?")
+                    elif st.session_state.get("pending_custom_item"):
+                        reply = "Would you like to send that custom request?"
+                    else:
+                        reply = "Could you clarify what you'd like me to change or order?"
                     st.session_state.display_messages.append({"role":"assistant","content":reply})
                     st.session_state.messages.append({"role":"assistant","content":reply})
                     st.rerun()
@@ -2047,6 +2078,12 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
                         st.session_state.display_messages.append({"role":"assistant","content":reply})
                         st.session_state.messages.append({"role":"assistant","content":reply})
                         st.rerun()
+            if understanding and active.get("items") and understanding.get("intent") in ("ambiguous", "greeting"):
+                reply, _ = loaf_order_prompt(active, menu, delivery_city,
+                                             delivery_areas, fulfillment_options)
+                st.session_state.display_messages.append({"role":"assistant","content":reply})
+                st.session_state.messages.append({"role":"assistant","content":reply})
+                st.rerun()
             # Enforce owner stock settings in Python, not only in Cohere's prompt.
             unavailable = {
                 re.sub(r"[^a-z0-9]+", " ", x.lower()).strip()
