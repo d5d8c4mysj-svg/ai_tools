@@ -1830,6 +1830,20 @@ def loaf_route_customer_turn(text, nlu, active, pending_menu, pending_custom,
     return reply,updated,pending_menu,pending_custom,False
 
 
+def show_loaf_thinking_cake(slot):
+    """Render the existing cake while an AI call is in flight."""
+    slot.markdown(
+            '<div class="pw-cake-loader" aria-label="Assistant is responding">'
+            '<div class="pw-cake-dots"><span></span><span></span><span></span></div>'
+            '<div class="pw-whole-cake">'
+            '<div class="pw-cake-top"><i class="pw-cherry ch1"></i><i class="pw-cherry ch2"></i><i class="pw-cherry ch3"></i></div>'
+            '<div class="pw-cake-icing"></div>'
+            '<div class="pw-cake-body"><i class="pw-cake-eye left"></i><i class="pw-cake-eye right"></i><i class="pw-cake-smile"></i></div>'
+            '<div class="pw-cake-plate"></div></div></div>',
+            unsafe_allow_html=True
+        )
+
+
 def run_chatbot(business):
     business_name = business["business_name"]
     contact = "the bakery directly"
@@ -2158,9 +2172,15 @@ Only set "status" to "confirmed" once the customer has explicitly confirmed AND 
             active = st.session_state.get("current_order") or {}
             pending_menu = st.session_state.get("pending_menu_item")
             pending_custom = st.session_state.get("pending_custom_item")
-            interpreted = loaf_understand_message(
-                clean_user_input, menu, active, pending_menu, pending_custom
-            )
+            # Show the original cake during the semantic Cohere request.
+            # This does not alter routing, state, or checkout decisions.
+            show_loaf_thinking_cake(thinking_slot)
+            try:
+                interpreted = loaf_understand_message(
+                    clean_user_input, menu, active, pending_menu, pending_custom
+                )
+            finally:
+                thinking_slot.empty()
             reply, next_order, next_pending_menu, next_pending_custom, should_chat = loaf_route_customer_turn(
                 clean_user_input, interpreted, active, pending_menu, pending_custom,
                 menu, delivery_city, delivery_areas, fulfillment_options,
