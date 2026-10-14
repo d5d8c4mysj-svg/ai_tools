@@ -1313,46 +1313,67 @@ def upload_menu_photos(slug, uploaded_files):
         safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", photo.name)
         path = f"{slug}/{int(datetime.now().timestamp())}_{safe_name}"
         try:
-            supabase.storage.from_("menu-photos").upload(
+            owner_supabase().storage.from_("menu-photos").upload(
                 path, photo.getvalue(), {"content-type": photo.type}
             )
-            urls.append(supabase.storage.from_("menu-photos").get_public_url(path))
+            urls.append(owner_supabase().storage.from_("menu-photos").get_public_url(path))
         except Exception:
             st.warning(f"Couldn't upload {photo.name}. The rest of your bot was still saved.")
     return urls
 
 
+def owner_supabase():
+    """Return a Supabase client private to this Streamlit session and rerun."""
+    client = st.session_state.get("_loaf_owner_client")
+    if client is None:
+        client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        st.session_state["_loaf_owner_client"] = client
+    return client
+
+
+def clear_owner_auth():
+    for key in (
+        "owner_user_id", "owner_email", "owner_access_token",
+        "owner_refresh_token", "_loaf_owner_client",
+    ):
+        st.session_state.pop(key, None)
+
+
 def restore_owner_auth_session():
-    """Restore the Supabase Auth session after a Streamlit rerun."""
+    """Restore only this visitor's owner session; never authenticate the public client."""
     access_token = st.session_state.get("owner_access_token")
     refresh_token = st.session_state.get("owner_refresh_token")
     if not access_token or not refresh_token:
         return False
     try:
-        supabase.auth.set_session(access_token, refresh_token)
+        client = owner_supabase()
+        result = client.auth.set_session(access_token, refresh_token)
+        if not result or not result.user or not result.session:
+            raise ValueError("Owner session invalid")
+        if str(result.user.id) != str(st.session_state.get("owner_user_id")):
+            raise ValueError("Owner identity changed")
+        st.session_state["owner_access_token"] = result.session.access_token
+        st.session_state["owner_refresh_token"] = result.session.refresh_token
         return True
     except Exception:
-        for key in [
-            "owner_user_id", "owner_email",
-            "owner_access_token", "owner_refresh_token"
-        ]:
-            st.session_state.pop(key, None)
+        clear_owner_auth()
         return False
 
 
 def auth_sign_in(email, password):
-    """Sign in and persist the actual Supabase JWT/session for RLS."""
+    """Authenticate only a client owned by this Streamlit visitor."""
+    clear_owner_auth()
+    client = owner_supabase()
     try:
-        result = supabase.auth.sign_in_with_password({
-            "email": email.strip(),
-            "password": password,
+        result = client.auth.sign_in_with_password({
+            "email": email.strip(), "password": password,
         })
     except Exception:
+        clear_owner_auth()
         return None
-
     if not result or not result.user or not result.session:
+        clear_owner_auth()
         return None
-
     st.session_state.owner_user_id = str(result.user.id)
     st.session_state.owner_email = result.user.email or email.strip()
     st.session_state.owner_access_token = result.session.access_token
@@ -1361,16 +1382,13 @@ def auth_sign_in(email, password):
 
 
 def auth_sign_out():
-    restore_owner_auth_session()
-    try:
-        supabase.auth.sign_out()
-    except Exception:
-        pass
-    for key in [
-        "owner_user_id", "owner_email",
-        "owner_access_token", "owner_refresh_token"
-    ]:
-        st.session_state.pop(key, None)
+    client = st.session_state.get("_loaf_owner_client")
+    if client is not None:
+        try:
+            client.auth.sign_out()
+        except Exception:
+            pass
+    clear_owner_auth()
 
 
 def current_owner_id():
@@ -1387,7 +1405,7 @@ def get_owned_business(slug):
         return None
     try:
         result = (
-            supabase.table("businesses")
+            owner_supabase().table("businesses")
             .select("*")
             .eq("slug", slug)
             .eq("owner_id", owner_id)
@@ -2575,7 +2593,7 @@ def quick_update_view():
     else:
         try:
             owned = (
-                supabase.table("businesses")
+                owner_supabase().table("businesses")
                 .select("slug,business_name,menu,sold_out_items")
                 .eq("owner_id", owner_id)
                 .execute()
@@ -2622,7 +2640,7 @@ def quick_update_view():
     if st.button("Update availability"):
         try:
             result = (
-                supabase.table("businesses")
+                owner_supabase().table("businesses")
                 .update({"sold_out_items": ", ".join(newly_sold_out)})
                 .eq("slug", clean_slug)
                 .eq("owner_id", owner_id)
@@ -2666,7 +2684,7 @@ def owner_view():
 
     try:
         owned_rows = (
-            supabase.table("businesses")
+            owner_supabase().table("businesses")
             .select("*")
             .eq("owner_id", owner_id)
             .execute()
@@ -2696,7 +2714,7 @@ def owner_view():
     # ----- Loaf owner dashboard -----
     try:
         owner_orders = (
-            supabase.table("orders")
+            owner_supabase().table("orders")
             .select("id,created_at,order_number,items,estimated_total,fulfillment,requested_datetime,customer_name,customer_contact,delivery_address,status")
             .eq("bakery_id", existing_business["id"])
             .order("created_at", desc=True)
@@ -2708,7 +2726,7 @@ def owner_view():
 
     try:
         owner_custom_requests = (
-            supabase.table("custom_requests")
+            owner_supabase().table("custom_requests")
             .select("id,created_at,request_number,requested_item,quantity,fulfillment,requested_datetime,customer_name,customer_contact,delivery_address,customer_notes,status")
             .eq("bakery_id", existing_business["id"])
             .order("created_at", desc=True)
@@ -2786,7 +2804,7 @@ def owner_view():
                 with ac:
                     if st.button("Accept", key=f"accept_order_{o['id']}", use_container_width=True, type="primary"):
                         try:
-                            result=(supabase.table("orders").update({"status":"accepted"}).eq("id",o["id"]).execute())
+                            result=(owner_supabase().table("orders").update({"status":"accepted"}).eq("id",o["id"]).execute())
                             if result.data: st.rerun()
                             else: st.error("Could not update this order.")
                         except Exception:
@@ -2794,7 +2812,7 @@ def owner_view():
                 with dc:
                     if st.button("Decline", key=f"decline_order_{o['id']}", use_container_width=True):
                         try:
-                            result=(supabase.table("orders").update({"status":"declined"}).eq("id",o["id"]).execute())
+                            result=(owner_supabase().table("orders").update({"status":"declined"}).eq("id",o["id"]).execute())
                             if result.data: st.rerun()
                             else: st.error("Could not update this order.")
                         except Exception:
@@ -2840,7 +2858,7 @@ def owner_view():
                 with a1:
                     if st.button("Mark confirmed", key=f"accept_custom_{r['id']}", use_container_width=True, type="primary"):
                         try:
-                            result=supabase.table("custom_requests").update({"status":"accepted"}).eq("id",r["id"]).execute()
+                            result=owner_supabase().table("custom_requests").update({"status":"accepted"}).eq("id",r["id"]).execute()
                             if result.data: st.rerun()
                             else: st.error("Could not update this request.")
                         except Exception:
@@ -2848,7 +2866,7 @@ def owner_view():
                 with a2:
                     if st.button("Decline", key=f"decline_custom_{r['id']}", use_container_width=True):
                         try:
-                            result=supabase.table("custom_requests").update({"status":"declined"}).eq("id",r["id"]).execute()
+                            result=owner_supabase().table("custom_requests").update({"status":"declined"}).eq("id",r["id"]).execute()
                             if result.data: st.rerun()
                             else: st.error("Could not update this request.")
                         except Exception:
@@ -3013,7 +3031,7 @@ def owner_view():
 
         try:
             result = (
-                supabase.table("businesses")
+                owner_supabase().table("businesses")
                 .update(business_data)
                 .eq("slug", clean_slug)
                 .eq("owner_id", owner_id)
@@ -3033,9 +3051,7 @@ def owner_view():
                 )
 
 
-# Restore the signed-in owner's Supabase JWT before any owner-side database request.
-if st.session_state.get("owner_access_token"):
-    restore_owner_auth_session()
+# Owner authentication is restored only through owner-specific access paths.
 
 if mode == "owner":
     owner_view()
