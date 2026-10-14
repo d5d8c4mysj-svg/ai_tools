@@ -7,7 +7,6 @@ import random
 import smtplib
 import requests
 import html
-from time import perf_counter
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from email.mime.text import MIMEText
@@ -1330,10 +1329,7 @@ def restore_owner_auth_session():
     if not access_token or not refresh_token:
         return False
     try:
-        _t = perf_counter()
         supabase.auth.set_session(access_token, refresh_token)
-        if mode == "owner":
-            st.session_state.setdefault("loaf_perf", {})["auth_restore"] = round(perf_counter()-_t, 3)
         return True
     except Exception:
         for key in [
@@ -2666,22 +2662,16 @@ def owner_view():
     ):
         return
 
-    _owner_start = perf_counter()
     owner_id = current_owner_id()
-    _perf = st.session_state.setdefault("loaf_perf", {})
-    _perf["current_owner_id"] = round(perf_counter()-_owner_start, 3)
 
     try:
-        _t = perf_counter()
         owned_rows = (
             supabase.table("businesses")
             .select("*")
             .eq("owner_id", owner_id)
             .execute()
         ).data or []
-        _perf["businesses_fetch"] = round(perf_counter()-_t, 3)
     except Exception:
-        _perf["businesses_fetch"] = round(perf_counter()-_t, 3)
         owned_rows = []
 
     if not owned_rows:
@@ -2705,7 +2695,6 @@ def owner_view():
 
     # ----- Loaf owner dashboard -----
     try:
-        _t = perf_counter()
         owner_orders = (
             supabase.table("orders")
             .select("id,created_at,order_number,items,estimated_total,fulfillment,requested_datetime,customer_name,customer_contact,delivery_address,status")
@@ -2714,13 +2703,10 @@ def owner_view():
             .limit(50)
             .execute()
         ).data or []
-        _perf["orders_fetch"] = round(perf_counter()-_t, 3)
     except Exception:
-        _perf["orders_fetch"] = round(perf_counter()-_t, 3)
         owner_orders = []
 
     try:
-        _t = perf_counter()
         owner_custom_requests = (
             supabase.table("custom_requests")
             .select("id,created_at,request_number,requested_item,quantity,fulfillment,requested_datetime,customer_name,customer_contact,delivery_address,customer_notes,status")
@@ -2729,9 +2715,7 @@ def owner_view():
             .limit(50)
             .execute()
         ).data or []
-        _perf["custom_requests_fetch"] = round(perf_counter()-_t, 3)
     except Exception:
-        _perf["custom_requests_fetch"] = round(perf_counter()-_t, 3)
         owner_custom_requests = []
 
     pending_custom_requests = [r for r in owner_custom_requests if r.get("status") == "pending"]
@@ -2771,10 +2755,6 @@ def owner_view():
     with m4:
         st.metric("Accepted value", f"₹{today_total:,.0f}")
 
-    with st.expander("Dashboard performance diagnostics", expanded=False):
-        st.caption("Seconds measured on the server; refresh and compare after Accept/Decline.")
-        st.json(st.session_state.get("loaf_perf", {}))
-
     st.markdown("## New orders")
     if not pending_orders:
         st.info("You're all caught up — no new orders.")
@@ -2806,9 +2786,7 @@ def owner_view():
                 with ac:
                     if st.button("Accept", key=f"accept_order_{o['id']}", use_container_width=True, type="primary"):
                         try:
-                            _t = perf_counter()
                             result=(supabase.table("orders").update({"status":"accepted"}).eq("id",o["id"]).execute())
-                            st.session_state.setdefault("loaf_perf", {})["last_status_update"] = round(perf_counter()-_t, 3)
                             if result.data: st.rerun()
                             else: st.error("Could not update this order.")
                         except Exception:
@@ -2816,9 +2794,7 @@ def owner_view():
                 with dc:
                     if st.button("Decline", key=f"decline_order_{o['id']}", use_container_width=True):
                         try:
-                            _t = perf_counter()
                             result=(supabase.table("orders").update({"status":"declined"}).eq("id",o["id"]).execute())
-                            st.session_state.setdefault("loaf_perf", {})["last_status_update"] = round(perf_counter()-_t, 3)
                             if result.data: st.rerun()
                             else: st.error("Could not update this order.")
                         except Exception:
@@ -2864,9 +2840,7 @@ def owner_view():
                 with a1:
                     if st.button("Mark confirmed", key=f"accept_custom_{r['id']}", use_container_width=True, type="primary"):
                         try:
-                            _t = perf_counter()
                             result=supabase.table("custom_requests").update({"status":"accepted"}).eq("id",r["id"]).execute()
-                            st.session_state.setdefault("loaf_perf", {})["last_status_update"] = round(perf_counter()-_t, 3)
                             if result.data: st.rerun()
                             else: st.error("Could not update this request.")
                         except Exception:
@@ -2874,9 +2848,7 @@ def owner_view():
                 with a2:
                     if st.button("Decline", key=f"decline_custom_{r['id']}", use_container_width=True):
                         try:
-                            _t = perf_counter()
                             result=supabase.table("custom_requests").update({"status":"declined"}).eq("id",r["id"]).execute()
-                            st.session_state.setdefault("loaf_perf", {})["last_status_update"] = round(perf_counter()-_t, 3)
                             if result.data: st.rerun()
                             else: st.error("Could not update this request.")
                         except Exception:
